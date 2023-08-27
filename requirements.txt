@@ -1,0 +1,12 @@
+peewee
+langchain
+pydantic
+firebase_admin
+fastapi
+pgvector
+psycopg2
+python-multipart
+beautifulsoup4
+youtube-transcript-api
+unstructured
+gptcache
