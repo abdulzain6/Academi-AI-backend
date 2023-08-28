@@ -64,7 +64,7 @@ async def create_link_file(
             detail="File Already exists", status_code=status.HTTP_400_BAD_REQUEST
         )
 
-    extension = ".txt" if linkfile.youtube_link else ".html"
+    extension = ".yt" if linkfile.youtube_link else ".html"
 
     contents, ids, file_bytes = knowledge_manager.load_web_youtube_link(
         collection.vectordb_collection_name,
