@@ -184,8 +184,7 @@ You must answer the human in {language} (important)"""
             ),
             HumanMessagePromptTemplate.from_template(
                 """
-                
-Help Data:
+Help Data (This is from a file/collection):
 =========
 {help_data}
 =========
