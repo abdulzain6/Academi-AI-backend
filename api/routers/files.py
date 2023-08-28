@@ -64,7 +64,9 @@ async def create_link_file(
             detail="File Already exists", status_code=status.HTTP_400_BAD_REQUEST
         )
 
+
     extension = ".yt" if linkfile.youtube_link else ".html"
+    #extension = ".yt" if linkfile.youtube_link else ".html"
 
     contents, ids, file_bytes = knowledge_manager.load_web_youtube_link(
         collection.vectordb_collection_name,
@@ -140,6 +142,7 @@ async def create_file(
                     collection.vectordb_collection_name, temp_file.name, {"file": filename}
                 )
             except Exception as e:
+                print(e)
                 raise HTTPException(400, "FIle not supported") from e
 
             file_model = file_manager.add_file(
