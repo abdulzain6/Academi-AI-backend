@@ -10,3 +10,6 @@ beautifulsoup4
 youtube-transcript-api
 unstructured
 gptcache
+qdrant_client
+openai
+tiktoken

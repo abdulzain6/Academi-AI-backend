@@ -10,6 +10,8 @@ from langchain.embeddings import OpenAIEmbeddings
 from langchain.docstore.in_memory import InMemoryDocstore
 from langchain.schema import Document
 from qdrant_client import QdrantClient
+from qdrant_client.http import models as rest
+
 
 
 class PlaceholderModel(BaseModel):
@@ -156,11 +158,21 @@ class KnowledgeManager(TemplateObserver):
         self.vectorstore = self.get_vectorstore()
 
     def get_vectorstore(self) -> Qdrant:  
+        client = QdrantClient(location=":memory:")
+        embedding = OpenAIEmbeddings(
+            openai_api_key=self.openai_api_key
+        )
+        partial_embeddings = embedding.embed_documents(["test"])
+        vector_size = len(partial_embeddings[0])
+        
+        vectors_config = rest.VectorParams(
+            size=vector_size,
+            distance=rest.Distance.COSINE,
+        )
+        client.create_collection("templates", vectors_config=vectors_config)
         return Qdrant(
-            embeddings=OpenAIEmbeddings(
-                openai_api_key=self.openai_api_key
-            ),
-            client=QdrantClient(),
+            embeddings=embedding,
+            client=client,
             collection_name="templates"
         )
         
@@ -172,7 +184,7 @@ class KnowledgeManager(TemplateObserver):
         self.add_documents([document])
         
     def get_best_template(self, topic: str) -> str:
-        return self.vectorstore.similarity_search(topic, k=1)[0].page_content
+        return self.vectorstore.similarity_search(topic, k=1)[0].metadata["name"]
         
 
 if __name__ == "__main__":
@@ -184,5 +196,6 @@ if __name__ == "__main__":
     template_manager.register_observer(knowledge_manager)
     
     
-    print(knowledge_manager.get_best_template("Operating systems"))
+    template_name = knowledge_manager.get_best_template("Operating systems")
+    print(template_manager.read_template(template_name))
     
