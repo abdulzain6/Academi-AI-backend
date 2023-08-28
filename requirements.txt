@@ -13,3 +13,4 @@ gptcache
 qdrant_client
 openai
 tiktoken
+uvicorn
