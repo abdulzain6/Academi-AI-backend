@@ -9,6 +9,7 @@ python-multipart
 beautifulsoup4
 youtube-transcript-api
 unstructured
+python-pptx
 gptcache
 qdrant_client
 openai
