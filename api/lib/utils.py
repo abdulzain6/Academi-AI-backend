@@ -11,7 +11,7 @@ def split_into_chunks(text, chunk_size):
 
 def format_url(url: str) -> Union[str, None]:
     if not url:
-        return None
+        return ""
     
     # Strip out 'http://' or 'https://' if they exist
     if url.startswith("http://"):
@@ -35,6 +35,8 @@ def convert_youtube_url_to_standard(url: str) -> str:
     Returns:
         str: The converted YouTube URL in standard format.
     """
+    if not url:
+        return ""
     
     parsed_url = urlparse(url)
     
@@ -47,8 +49,8 @@ def convert_youtube_url_to_standard(url: str) -> str:
         elif parsed_url.path.startswith("/embed/"):
             video_id = parsed_url.path.split("/")[2]
         else:
-            return "Invalid URL format"
+            return url
     else:
-        return "Not a YouTube URL"
+        return url
     
     return f"https://www.youtube.com/watch?v={video_id}"

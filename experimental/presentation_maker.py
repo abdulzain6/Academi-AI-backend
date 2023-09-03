@@ -257,13 +257,12 @@ Do not choose slide types that are not shown to you.
 
         return blocks
 
-    def auto_reduce_text_by_words(self, text: str, word_limit_points: int, word_limit_para: int) -> str:
+    def auto_reduce_text_by_words(self, text: str, word_limit_points: int, word_limit_para: int, word_limit_hybrid: int) -> str:
         reduced_text = []
         current_word_count = 0
         blocks = self.split_text_into_blocks(text)
 
         is_hybrid = len({block_type for block_type, _ in blocks}) > 1
-        word_limit_hybrid = (word_limit_points + word_limit_para) // 2
 
         for i, (block_type, block) in enumerate(blocks):
             if is_hybrid:
@@ -312,7 +311,8 @@ Do not choose slide types that are not shown to you.
         presentation_input: PresentationInput,
         all_slides: list[PresentationSequencePart],
         word_limit_para: int,
-        word_limit_points: int
+        word_limit_points: int,
+        word_limit_hybrid: int
     ) -> Placeholders:
         parser = PydanticOutputParser(pydantic_object=Placeholders)
         prompt = ChatPromptTemplate(
@@ -395,8 +395,7 @@ Lets think step by step to accomplish this.
                 "\n\n", "\n"
             )
             try:
-                print(repr(placeholder.placeholder_data))
-                placeholder.placeholder_data = str(self.auto_reduce_text_by_words(placeholder.placeholder_data, word_limit_para, word_limit_points))
+                placeholder.placeholder_data = str(self.auto_reduce_text_by_words(placeholder.placeholder_data, word_limit_para, word_limit_points, word_limit_hybrid))
                 print(repr(placeholder.placeholder_data))
                 
             except Exception as e:
@@ -512,10 +511,10 @@ Lets think step by step to accomplish this.
 
         return prs
 
-    def fill_single_slide(self, i: int, slide_part: Any, prs: Presentation, template_slides: List[SlideModel], presentation_input: PresentationInput, sequence: PresentationSequence, word_limit_para: int, word_limit_points: int) -> None:
+    def fill_single_slide(self, i: int, slide_part: Any, prs: Presentation, template_slides: List[SlideModel], presentation_input: PresentationInput, sequence: PresentationSequence, word_limit_para: int, word_limit_points: int, word_limit_hybrid: int) -> None:
         print(f"Filling in placeholders for slide: {i + 1}")
         template_slide = self.get_slide_by_type(slide_part.slide_type, template_slides)
-        slide_content = self.get_slide_content(slide_part, template_slide, presentation_input, sequence.slide_sequence, word_limit_para, word_limit_points)
+        slide_content = self.get_slide_content(slide_part, template_slide, presentation_input, sequence.slide_sequence, word_limit_para, word_limit_points, word_limit_hybrid)
         presentation_slide = prs.slides[i]
         print(f"Got content for {i + 1}")
         self.replace_placeholders_in_single_slide(presentation_slide, slide_content)
@@ -530,7 +529,7 @@ Lets think step by step to accomplish this.
         print("Filling in placeholders...")
         threads = []
         for i, slide_part in enumerate(sequence.slide_sequence):
-            thread = Thread(target=self.fill_single_slide, args=(i, slide_part, prs, template.slides, presentation_input, sequence, template.word_limit_para, template.word_limit_points))
+            thread = Thread(target=self.fill_single_slide, args=(i, slide_part, prs, template.slides, presentation_input, sequence, template.word_limit_para, template.word_limit_points, template.word_limit_hybrid))
             threads.append(thread)
             thread.start()
 
@@ -671,9 +670,9 @@ if __name__ == "__main__":
     print(
         presentation_maker.make_presentation(
             PresentationInput(
-                topic="Evils of the CIA",
-                instructions="Explain as if i was 10",
-                number_of_pages=8,
+                topic="Minimalist Elegance",
+                instructions="Explain as if i was 10\nExplain the point sin detail. Use extra slides if needed (IMportant)",
+                number_of_pages=18,
                 negative_prompt="dont use hard vocabulary",
             ),
             "example_modified.pptx"
