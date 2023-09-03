@@ -6,7 +6,7 @@ from fastapi import Depends, HTTPException, status
 from ..auth import get_current_user
 from ..globals import collection_manager, knowledge_manager, file_manager
 from ..lib.database import FileModel
-from ..lib.utils import get_file_extension
+from ..lib.utils import get_file_extension, format_url, convert_youtube_url_to_standard
 from pydantic import BaseModel
 from typing import Optional
 
@@ -39,6 +39,10 @@ class LinkFileInput(BaseModel):
 async def create_link_file(
     linkfile: LinkFileInput, current_user=Depends(get_current_user)
 ):
+    
+    linkfile.youtube_link = convert_youtube_url_to_standard(format_url(linkfile.youtube_link))
+    linkfile.web_link = format_url(linkfile.web_link)
+
     collection = collection_manager.get_collection_by_name_and_user(
         linkfile.collection_name, current_user["user_id"]
     )
@@ -66,14 +70,17 @@ async def create_link_file(
 
 
     extension = ".yt" if linkfile.youtube_link else ".html"
-    #extension = ".yt" if linkfile.youtube_link else ".html"
 
-    contents, ids, file_bytes = knowledge_manager.load_web_youtube_link(
-        collection.vectordb_collection_name,
-        metadata={"file": linkfile.filename},
-        youtube_link=linkfile.youtube_link,
-        web_url=linkfile.web_link,
-    )
+    try:
+        contents, ids, file_bytes = knowledge_manager.load_web_youtube_link(
+            collection.vectordb_collection_name,
+            metadata={"file": linkfile.filename},
+            youtube_link=linkfile.youtube_link,
+            web_url=linkfile.web_link,
+        )
+    except ValueError as e:
+        print(e)
+        raise HTTPException(400, "Link has no data/ Invalid link") from e
 
     file_model = file_manager.add_file(
         FileModel(

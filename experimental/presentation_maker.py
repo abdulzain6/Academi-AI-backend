@@ -1,12 +1,8 @@
-from pptx.slide import Slide
+from concurrent.futures import ThreadPoolExecutor
 from pptx.enum.shapes import MSO_SHAPE_TYPE
 from pptx import Presentation
-
-import copy
 from threading import Thread
-from tempfile import NamedTemporaryFile
-import os
-from typing import Any, Optional, List
+from typing import Any, Optional, List, Tuple
 from langchain.chat_models import ChatOpenAI
 from langchain.output_parsers import PydanticOutputParser
 from exceptions import NoValidSequenceException
@@ -21,6 +17,9 @@ from langchain.output_parsers import PydanticOutputParser
 from database import TemplateDBManager, KnowledgeManager, TemplateModel, PlaceholderModel, SlideModel, initialize_managers
 from pydantic import BaseModel, Field
 from image_gen import PexelsImageSearch
+
+import re
+import copy, six
 
 class PresentationInput(BaseModel):
     topic: str
@@ -49,7 +48,7 @@ class PlaceholderData(BaseModel):
     )
     placeholder_data: str = Field(
         json_schema_extra={
-            "description": "The data to display in the placeholder. Make sure it fits in a presentaion slide must be short (Important)"
+            "description": "The data to display in the placeholder. Make sure it fits in a presentaion slide."
         }
     )
 
@@ -68,30 +67,49 @@ class PresentationSequence(BaseModel):
     )
 
 
+class CombinedPlaceholder(BaseModel):
+    placeholder_name: str
+    placeholder_data: str
+    description: Optional[str] = None
+    is_image: bool = False
+    image_width: Optional[int] = None
+    image_height: Optional[int] = None
+
+
+class CombinedPlaceholders(BaseModel):
+    placeholders: Optional[List[CombinedPlaceholder]] = Field(
+        json_schema_extra={"description": "The combined placeholder data"}
+    )
+
+
 class PresentationMaker:
     def __init__(
         self,
         template_manager: TemplateDBManager,
         knowledge_manager: KnowledgeManager,
         openai_api_key: str,
-        pexel_image_gen: PexelsImageSearch
+        pexel_image_gen_cls: PexelsImageSearch,
+        image_gen_args: dict
     ) -> None:
         self.template_manager = template_manager
         self.knowledge_manager = knowledge_manager
         self.openai_api_key = openai_api_key
-        self.pexel_image_gen = pexel_image_gen
+        self.pexel_image_gen_cls = pexel_image_gen_cls
+        self.image_gen_args = image_gen_args
 
     def get_best_template(self, topic: str) -> TemplateModel:
         template_name = self.knowledge_manager.get_best_template(topic)
         return self.template_manager.read_template(template_name)
 
-    def format_placeholders(self, placeholders: List[PlaceholderModel]) -> str:
+    def format_placeholders(self, placeholders: List[PlaceholderModel], add_is_image: bool) -> str:
         formatted_str = "Placeholders:\n"
         if not placeholders:
             formatted_str += "No placeholders."
         for placeholder in placeholders:
             formatted_str += f"  - Name: {placeholder.name}\n"
             formatted_str += f"    Description: {placeholder.description}\n"
+            if add_is_image:
+                formatted_str += f"    is image: {placeholder.is_image}\n"
         return formatted_str
 
     def format_slides(self, slides: List[SlideModel]) -> str:
@@ -99,7 +117,7 @@ class PresentationMaker:
         formatted_str += "=" * 40 + "\n"
         for slide in slides:
             formatted_str += f"Slide Type: {slide.slide_type}\n"
-            formatted_str += self.format_placeholders(slide.placeholders)
+            formatted_str += self.format_placeholders(slide.placeholders, True)
             formatted_str += "=" * 40 + "\n"
         return formatted_str
 
@@ -113,6 +131,7 @@ class PresentationMaker:
                     """
 You are an AI designed to assist in creating presentations. You are to pick a sequence of slides to create a presentation
 on the topic "{topic}". THe presentation will be of {pages} pages (Important). 
+Use a variety of slide types, keep in mind using a lot of slides with images can impact performance.
 You must follow the following instructions:
 {instructions}
 ==========================================
@@ -129,6 +148,7 @@ Here are the available slides with the placeholders in them for automatic presen
 ==========================================
 
 Lets think step by step, Looking at the slide types and the placeholders inside them 
+Use a variety of slide types, keep in mind using a lot of slides with images can impact performance.
 to create a sequence of slides that can be used to create a perfect presentation on {topic} of {pages} pages.
 Do not choose slide types that are not shown to you.
 
@@ -165,85 +185,125 @@ Do not choose slide types that are not shown to you.
         slide_types = [slide.slide_type for slide in slides.slide_sequence]
         slides_to_choose_from = [slide.slide_type for slide in template.slides]
         return all(slide in slides_to_choose_from for slide in slide_types)
-    
+
     @staticmethod
-    def reduce_points_by_word_limit(text: str, word_limit: int) -> str:
-        """
-        Reduce the number of text points to fit within a word limit, ensuring that only complete points are included.
-        
-        Parameters:
-        text (str): The original text points to be reduced.
-        word_limit (int): The word limit for reduction.
-        
-        Returns:
-        str: The reduced text with fewer points, each being complete within the word limit.
-        """
+    def reduce_points_by_word_limit(text: str, word_limit: int, current_count: int) -> Tuple[str, int]:
         points = text.split("\n")
         reduced_points = []
-        current_word_count = 0
-        
+        current_word_count = current_count
+
         for point in points:
             point_word_count = len(point.split())
             new_word_count = current_word_count + point_word_count
-            
+
             if new_word_count <= word_limit:
-                reduced_points.append(point)
+                reduced_points.append(point.strip())  # Remove leading/trailing whitespace
                 current_word_count = new_word_count
             else:
                 break
-        
-        return "\n".join(reduced_points)
 
+        return "\n".join(reduced_points).strip(), current_word_count  # Remove leading/trailing whitespace
+    
     @staticmethod
-    def reduce_paragraph_by_word_limit(paragraph: str, word_limit: int) -> str:
-        """
-        Reduce the size of a paragraph based on a word limit, ensuring that only complete sentences are included.
-        
-        Parameters:
-        paragraph (str): The original paragraph to be reduced.
-        word_limit (int): The word limit for reduction.
-        
-        Returns:
-        str: The reduced paragraph containing only complete sentences within the word limit.
-        """
+    def reduce_paragraph_by_word_limit(paragraph: str, word_limit: int, current_count: int) -> Tuple[str, int]:
         sentences = paragraph.split('. ')
-        reduced_paragraph = ""
-        current_word_count = 0
+        reduced_paragraph = []
+        current_word_count = current_count
 
         for sentence in sentences:
             sentence_word_count = len(sentence.split())
             new_word_count = current_word_count + sentence_word_count
 
-            # Check if adding this sentence would exceed the word limit
             if new_word_count <= word_limit:
-                # Add the sentence to the reduced paragraph
-                reduced_paragraph += f"{sentence}. "
-                # Update the current word count
+                reduced_paragraph.append(f"{sentence}.")
                 current_word_count = new_word_count
             else:
-                # Stop adding sentences once the word limit is reached
                 break
 
-        return reduced_paragraph.strip()
+        return " ".join(reduced_paragraph).rstrip(), current_word_count
+
+    @staticmethod
+    def split_text_into_blocks(text: str) -> List[Tuple[str, str]]:
+        blocks = []
+        lines = text.split("\n")
+        block = []
+        block_type = None
+
+        for i, line in enumerate(lines):
+            stripped_line = line.strip()
+            is_point = re.match(r"\d+\.", stripped_line) or stripped_line.startswith(("-", "*"))
+            is_empty = not stripped_line
+
+            if block_type is None and not is_empty:
+                block_type = 'point' if is_point else 'paragraph'
+
+            if is_empty and block:
+                blocks.append((block_type, "\n".join(block)))
+                block = []
+                block_type = None
+                continue
+
+            if block and is_point != (block_type == 'point'):
+                blocks.append((block_type, "\n".join(block)))
+                block = [stripped_line]
+                block_type = 'point' if is_point else 'paragraph'
+                continue
+
+            if not is_empty:
+                block.append(stripped_line)
+
+        if block:
+            blocks.append((block_type, "\n".join(block)))
+
+        return blocks
 
     def auto_reduce_text_by_words(self, text: str, word_limit_points: int, word_limit_para: int) -> str:
-        """
-        Automatically reduce the text size based on its type (points or paragraph).
-        If the text contains both, the paragraph reduction function is used.
-        
-        Parameters:
-        text (str): The original text to be reduced.
-        word_limit (int): The word limit for reduction.
-        
-        Returns:
-        str: The reduced text.
-        """
-        if text.startswith("1.") or "\n1." in text:
-            return self.reduce_points_by_word_limit(text, word_limit_points)
-        elif "." in text:
-            return self.reduce_paragraph_by_word_limit(text, word_limit_para)
-        else:
-            return self.reduce_paragraph_by_word_limit(text, word_limit_para)
+        reduced_text = []
+        current_word_count = 0
+        blocks = self.split_text_into_blocks(text)
+
+        is_hybrid = len({block_type for block_type, _ in blocks}) > 1
+        word_limit_hybrid = (word_limit_points + word_limit_para) // 2
+
+        for i, (block_type, block) in enumerate(blocks):
+            if is_hybrid:
+                word_limit = word_limit_hybrid
+            else:
+                word_limit = word_limit_points if block_type == 'point' else word_limit_para
+
+            if block_type == 'point':
+                reduced_block, current_word_count = self.reduce_points_by_word_limit(
+                    block, word_limit, current_word_count)
+            else:
+                reduced_block, current_word_count = self.reduce_paragraph_by_word_limit(
+                    block, word_limit, current_word_count)
+
+            if reduced_block:
+                reduced_text.append(reduced_block)
+
+        return "\n".join(reduced_text).strip()  # Remove leading/trailing whitespace
+    
+    def combine_placeholders(
+            self,
+            slide_placeholders: List[PlaceholderModel],
+            formatted_placeholders: List[PlaceholderData]) -> CombinedPlaceholders:
+
+        combined_list = []
+
+        for slide_placeholder in slide_placeholders:
+            for formatted_placeholder in formatted_placeholders:
+                if slide_placeholder.name == formatted_placeholder.placeholder_name:
+                    combined = CombinedPlaceholder(
+                        placeholder_name=formatted_placeholder.placeholder_name,
+                        placeholder_data=formatted_placeholder.placeholder_data,
+                        description=slide_placeholder.description,
+                        is_image=slide_placeholder.is_image,
+                        image_width=slide_placeholder.image_width,
+                        image_height=slide_placeholder.image_height
+                    )
+                    combined_list.append(combined)
+
+        return CombinedPlaceholders(placeholders=combined_list)
     
     def get_slide_content(
         self,
@@ -261,9 +321,8 @@ Do not choose slide types that are not shown to you.
                     """
 You are an AI designed to assist in automatic presentation generation.
 You will generate content for a slide by looking at placeholders and return what should they be filled with.
-
-Make sure the placeholder content is small enough to fit a slide dont go over slide length words per placeholder.
-Keep in mind lists take up more space then paragraph.
+Ordered or unordered list points must be short(Very importsnt)
+Make sure content fills the slide.
 
 Follow the following instructions:
 ==============
@@ -294,11 +353,12 @@ Here are the placeholders we want to fill:
 {placeholders}
 =====================
 
+Ordered or unordered list points must be short (Very importsnt)
 Lets think step by step, Looking at the placeholders and their descriptions to fill them for the slide topic {slide_detail}. Follow all rules above! Ensure it fits in a slide
 {format_instructions}
-Follow the damn rules, you gave 150 words for a placeholder last time that caused error so keep it short.
+Follow the damn rules, you gave 150 words for a placeholder last time that caused error so keep it within slide limits.
 Lets think step by step to accomplish this. 
-        """
+"""
                 ),
             ],
             input_variables=[
@@ -318,12 +378,11 @@ Lets think step by step to accomplish this.
             llm=ChatOpenAI(
                 openai_api_key=self.openai_api_key,
                 temperature=0,
-                max_tokens=250,
                 model="gpt-3.5-turbo",
             ),
         )
         placeholders: Placeholders = chain.run(
-            placeholders=self.format_placeholders(slide.placeholders),
+            placeholders=self.format_placeholders(slide.placeholders, True),
             slide_detail=sequence_part.slide_detail,
             slides="\n".join([slide.slide_detail for slide in all_slides]),
             presentation_topic=presentation_input.topic,
@@ -335,9 +394,18 @@ Lets think step by step to accomplish this.
             placeholder.placeholder_data = placeholder.placeholder_data.replace(
                 "\n\n", "\n"
             )
-            placeholder.placeholder_data = self.auto_reduce_text_by_words(placeholder.placeholder_data, word_limit_para, word_limit_points)
-
-        return placeholders
+            try:
+                print(repr(placeholder.placeholder_data))
+                placeholder.placeholder_data = str(self.auto_reduce_text_by_words(placeholder.placeholder_data, word_limit_para, word_limit_points))
+                print(repr(placeholder.placeholder_data))
+                
+            except Exception as e:
+                import traceback
+                traceback.print_exception(e)
+                
+                
+        print(self.combine_placeholders(slide.placeholders, placeholders.placeholders)) 
+        return self.combine_placeholders(slide.placeholders, placeholders.placeholders)
 
     def remove_placeholders_and_artifacts(self, slide) -> None:
         """
@@ -362,49 +430,33 @@ Lets think step by step to accomplish this.
     def duplicate_slide_with_temp_img(
         self, prs: Presentation, slide_index: int, layout_index: int
     ) -> None:
-        print("Starting slide duplication...")
-        slide_to_copy = prs.slides[slide_index]
-        slide_layout = prs.slide_layouts[layout_index]
+        template = prs.slides[slide_index]
+        
+        # Try to get the layout as specified, else use the last available layout
+        try:
+            blank_slide_layout = prs.slide_layouts[layout_index]
+        except IndexError:
+            blank_slide_layout = prs.slide_layouts[-1]
+        
+        copied_slide = prs.slides.add_slide(blank_slide_layout)
+        
+        # Copy shapes
+        for shp in template.shapes:
+            el = shp.element
+            new_el = copy.deepcopy(el)
+            copied_slide.shapes._spTree.insert_element_before(new_el, 'p:extLst')
 
-        print(f"Number of shapes in slide to copy: {len(slide_to_copy.shapes)}")
+        # Copy relationships (excluding notes)
+        for _, value in six.iteritems(template.part.rels):
+            if "notesSlide" not in value.reltype:
+                copied_slide.part.rels.add_relationship(
+                    value.reltype,
+                    value._target,
+                    value.rId
+                )
 
-        new_slide = prs.slides.add_slide(slide_layout)
-
-        print(f"Number of shapes in new slide: {len(new_slide.shapes)}")
-
-        img_dict = {}
-
-        for shape in slide_to_copy.shapes:
-            try:
-                print(f"Processing shape: {shape.name}")
-
-                if "Picture" in shape.name:
-                    with NamedTemporaryFile(suffix=".jpg", delete=False) as temp_file:
-                        temp_file.write(shape.image.blob)
-                    img_dict[temp_file.name] = (
-                        shape.left,
-                        shape.top,
-                        shape.width,
-                        shape.height,
-                    )
-                else:
-                    el = shape.element
-                    new_el = copy.deepcopy(el)
-                    new_slide.shapes._spTree.insert_element_before(new_el, "p:extLst")
-
-                    print(f"Shape element inserted: {new_el.tag}")
-
-            except Exception as e:
-                print(f"Could not copy shape due to: {e}")
-
-        for img_path, dims in img_dict.items():
-            new_slide.shapes.add_picture(img_path, *dims)
-            os.remove(img_path)
-
-        self.remove_placeholders_and_artifacts(new_slide)
-        print(
-            f"Slide duplication completed. New slide has {len(new_slide.shapes)} shapes."
-        )
+        # Remove placeholders if needed
+        self.remove_placeholders_and_artifacts(copied_slide)
 
     def create_presentation_from_sequence(
         self,
@@ -465,6 +517,7 @@ Lets think step by step to accomplish this.
         template_slide = self.get_slide_by_type(slide_part.slide_type, template_slides)
         slide_content = self.get_slide_content(slide_part, template_slide, presentation_input, sequence.slide_sequence, word_limit_para, word_limit_points)
         presentation_slide = prs.slides[i]
+        print(f"Got content for {i + 1}")
         self.replace_placeholders_in_single_slide(presentation_slide, slide_content)
 
     def fill_presentation_with_content(
@@ -481,7 +534,6 @@ Lets think step by step to accomplish this.
             threads.append(thread)
             thread.start()
 
-        # Wait for all threads to complete
         for thread in threads:
             thread.join()
 
@@ -504,8 +556,6 @@ Lets think step by step to accomplish this.
         sequence.slide_sequence = sorted(
             sequence.slide_sequence, key=lambda x: x.page_number if x else 0
         )
-        print(sequence)
-        exit()
 
         prs = self.create_presentation_from_sequence(
             sequence, slide_path, template.slides
@@ -514,36 +564,88 @@ Lets think step by step to accomplish this.
         self.fill_presentation_with_content(
             prs, sequence, presentation_input, template
         )
-
         print("Saving the new presentation...")
         prs.save(slide_save_path)
         print("Presentation saved successfully.")
 
-    def replace_placeholders_in_single_slide(
-        self, slide: Slide, placeholders: Placeholders
-    ):
-        for shape in slide.shapes:
-            if shape.has_text_frame:
-                text_frame = shape.text_frame
-                for paragraph in text_frame.paragraphs:
-                    for run in paragraph.runs:
-                        for placeholder in placeholders.placeholders:
-                            if placeholder.placeholder_name in run.text:
-                                run.text = run.text.replace(
-                                    "{{" + placeholder.placeholder_name + "}}",
-                                    placeholder.placeholder_data,
-                                )
-            if shape.has_table:
-                for row in shape.table.rows:
-                    for cell in row.cells:
-                        for placeholder in placeholders.placeholders:
-                            if placeholder.placeholder_name in cell.text:
-                                cell.text = cell.text.replace(
-                                    "{{" + placeholder.placeholder_name + "}}",
-                                    placeholder.placeholder_data,
-                                )
-        return slide
+    def replace_text_in_run(self, run, placeholders: List[CombinedPlaceholder]) -> None:
+        for placeholder in placeholders:
+            if not placeholder.is_image and placeholder.placeholder_name in run.text:
+                run.text = run.text.replace(
+                    "{{" + placeholder.placeholder_name + "}}",
+                    placeholder.placeholder_data,
+                )
 
+    def replace_images_in_shape(self, shape, placeholders: List[CombinedPlaceholder]) -> list[tuple]:
+        new_shapes = []
+        pixel = self.pexel_image_gen_cls(**self.image_gen_args)
+        for placeholder in placeholders:
+            if placeholder.is_image:
+
+                if image_path := pixel.search_download_and_resize(
+                    placeholder.placeholder_data,
+                    placeholder.image_width,
+                    placeholder.image_height,
+                ):
+                    ...
+                else:
+                    return
+                left = shape.left
+                top = shape.top
+                width = shape.width
+                height = shape.height
+
+            new_shapes.append((image_path, left, top, width, height))
+
+        return new_shapes
+
+    def process_text_frame(self, text_frame, placeholders: List[CombinedPlaceholder]) -> None:
+        for paragraph in text_frame.paragraphs:
+            for run in paragraph.runs:
+                self.replace_text_in_run(run, placeholders)
+
+    def process_table(self, table, placeholders: List[CombinedPlaceholder]) -> None:
+        for row in table.rows:
+            for cell in row.cells:
+                if cell.text_frame:
+                    self.process_text_frame(cell.text_frame, placeholders)
+
+    def replace_placeholders_in_single_slide(self, slide, placeholders: CombinedPlaceholders) -> None:
+        shapes_to_remove = []
+        shapes_to_add = []
+        
+        
+        def process_shape(shape):
+            try:
+                nonlocal shapes_to_remove, shapes_to_add
+                
+                if shape.has_text_frame:
+                    self.process_text_frame(shape.text_frame, placeholders.placeholders)
+                elif shape.has_table:
+                    self.process_table(shape.table, placeholders.placeholders)
+
+                if shape.shape_type == 13:
+                    for placeholder in placeholders.placeholders:
+                        if placeholder.is_image and shape.name == placeholder.placeholder_name:
+                            images = self.replace_images_in_shape(shape, [placeholder])
+                            print("Downloaded image")
+                            shapes_to_add.extend(images)
+                            shapes_to_remove.append(shape)
+            except Exception as e:
+                print(e)
+                    
+        with ThreadPoolExecutor(max_workers=len(slide.shapes)) as executor:
+            executor.map(process_shape, slide.shapes)
+                        
+        for shape in shapes_to_remove:
+            slide.shapes._spTree.remove(shape._element)
+
+        for temp_file_name, left, top, width, height in shapes_to_add:
+            try:
+                new_shape = slide.shapes.add_picture(temp_file_name, left, top, width, height)
+            except Exception as e:
+                print(f"An error occurred while adding the picture: {e}")
+  
     def get_slide_by_type(self, type: str, slides: list[SlideModel]) -> SlideModel:
         for slide in slides:
             if slide.slide_type.lower() == type.lower():
@@ -555,11 +657,11 @@ if __name__ == "__main__":
     PEXELS_API_KEY = "rX8ysruEFR2U4IMpCjh9KviIdKl0orDwJRXwmf6mVRkbEGlbdyATveM8"
     
     import langchain
-    langchain.verbose = True
+    langchain.verbose = False
     
     template_manager, knowledge_manager = initialize_managers(OPENAI_API_KEY)
     presentation_maker = PresentationMaker(
-        template_manager, knowledge_manager, OPENAI_API_KEY, PexelsImageSearch(PEXELS_API_KEY)
+        template_manager, knowledge_manager, OPENAI_API_KEY, pexel_image_gen_cls=PexelsImageSearch, image_gen_args={"api_key" : PEXELS_API_KEY}
     )
     
     
@@ -569,10 +671,10 @@ if __name__ == "__main__":
     print(
         presentation_maker.make_presentation(
             PresentationInput(
-                topic="science project",
+                topic="Evils of the CIA",
                 instructions="Explain as if i was 10",
-                number_of_pages=5,
-                negative_prompt="use hard vocabulary",
+                number_of_pages=8,
+                negative_prompt="dont use hard vocabulary",
             ),
             "example_modified.pptx"
         )

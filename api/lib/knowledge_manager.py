@@ -144,6 +144,10 @@ class KnowledgeManager:
 
         docs = self.split_docs(docs)
         contents = "\n\n".join([doc.page_content for doc in docs])
+        
+        if not contents:
+            raise ValueError("Link has no data.")
+        
         docs = self.add_metadata_to_docs(metadata=metadata, docs=docs)
         ids = self.injest_data(collection_name=collection_name, documents=docs)
         return contents, ids, bytes(contents, encoding="utf-8")

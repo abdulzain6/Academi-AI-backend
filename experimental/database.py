@@ -1,3 +1,4 @@
+from pptx.util import Inches
 import firebase
 import os
 from shutil import copyfile

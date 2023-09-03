@@ -13,5 +13,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Make port 8000 available to the world outside this container
 EXPOSE 8000
 
-# Run the command to start Hug server
-CMD ["uvicorn", "api.api:app", "--port", "8000"]
+CMD ["uvicorn", "api.api:app", "--host", "0.0.0.0", "--port", "8000"]

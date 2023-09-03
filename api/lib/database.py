@@ -218,7 +218,9 @@ class FileDBManager:
 
         if file_model.file_bytes:
             blob.upload_from_string(file_model.file_bytes)
-
+        else:
+            blob.upload_from_string(b"[]")
+    
         file_data = file_model.model_dump(exclude={"file_bytes"})
         file_data['file_uuid'] = str(file_uuid)
         file_ref = collection_doc_ref.collection('files').document(file_model.filename)
