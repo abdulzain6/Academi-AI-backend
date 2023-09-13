@@ -1,15 +1,14 @@
 from langchain.embeddings.base import Embeddings
-from langchain.vectorstores import PGVector
 from langchain.chat_models.base import BaseChatModel
 from langchain.document_loaders import UnstructuredAPIFileLoader
 from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.vectorstores.pgvector import PGVector
-from langchain.vectorstores._pgvector_data_models import EmbeddingStore
+from langchain.vectorstores import Qdrant
 from langchain.document_loaders import WebBaseLoader, YoutubeLoader
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.schema import Document, LLMResult
 from langchain.chains import LLMChain
+from langchain.embeddings import OpenAIEmbeddings
 from langchain.prompts import (
     PromptTemplate,
     ChatPromptTemplate,
@@ -18,19 +17,18 @@ from langchain.prompts import (
     HumanMessagePromptTemplate,
 )
 
-from sqlalchemy.orm import Session
-from sqlalchemy import and_
 from typing import Type, Dict, List, Tuple, Union
-import logging, time
+from qdrant_client import QdrantClient
+import time
 
 
 def split_into_chunks(text, chunk_size):
     return [text[i : i + chunk_size] for i in range(0, len(text), chunk_size)]
 
-
 class CustomCallback(BaseCallbackHandler):
-    def __init__(self, callback) -> None:
+    def __init__(self, callback, on_end_callback) -> None:
         self.callback = callback
+        self.on_end_callback = on_end_callback
         super().__init__()
         self.cached = True
 
@@ -45,36 +43,43 @@ class CustomCallback(BaseCallbackHandler):
                 self.callback(chunk)
                 time.sleep(0.1)
         self.callback(None)
+        self.on_end_callback(response)
 
-
-class PGVectorModified(PGVector):
-    def delete(self, ids: List[str]) -> None:
-        with Session(self._conn) as session:
-            collection = self.get_collection(session)
-            if not collection:
-                raise ValueError("Collection not found")
-            collection_uuid = collection.uuid
-            session.query(EmbeddingStore).filter(
-                and_(
-                    EmbeddingStore.custom_id.in_(ids),
-                    EmbeddingStore.collection_id == collection_uuid,
-                )
-            ).delete(synchronize_session="fetch")
-            session.commit()
-
-
+class QdrantModified(Qdrant):
+    @staticmethod
+    def create_collection_and_injest(
+        collection_name: str,
+        docs: list[Document],
+        embeddings: OpenAIEmbeddings,
+        **kwargs,
+    ) -> list[str]:
+        texts = [d.page_content for d in docs]
+        metadatas = [d.metadata for d in docs]
+        qdrant = Qdrant.construct_instance(
+            texts=texts, embedding=embeddings, collection_name=collection_name, **kwargs
+        )
+        return qdrant.add_texts(texts, metadatas)
+    
+    
 class KnowledgeManager:
     def __init__(
         self,
         embeddings: Embeddings,
         unstructured_api_key: str,
-        connection_string: str,
+        unstructured_url: str,
+        qdrant_api_key: str,
+        qdrant_url: str,
         chunk_size: int = 1000,
     ) -> None:
         self.embeddings = embeddings
         self.unstructured_api_key = unstructured_api_key
         self.chunk_size = chunk_size
-        self.connection_string = connection_string
+        self.qdrant_api_key = qdrant_api_key
+        self.qdrant_url = qdrant_url
+        self.unstructured_url = unstructured_url
+        self.client = QdrantClient(
+            url=self.qdrant_url, api_key=self.qdrant_api_key, prefer_grpc=True
+        )
 
     def split_docs(self, docs: Document) -> List[Document]:
         return RecursiveCharacterTextSplitter(
@@ -86,6 +91,7 @@ class KnowledgeManager:
         loader = UnstructuredAPIFileLoader(
             file_path=file_path,
             api_key=self.unstructured_api_key,
+            url=self.unstructured_url
         )
 
         docs = loader.load()
@@ -98,14 +104,31 @@ class KnowledgeManager:
 
         return contents, docs, file_bytes
 
+    def collection_exists(self, collection_name: str) -> bool:
+        try:
+            return bool(self.client.get_collection(collection_name))
+        except Exception:
+            return False
+        
     def injest_data(
         self,
         collection_name: str,
         documents: List[Document],
         ids: List[str] = None,
     ) -> List[str]:
-        vectorstore = PGVector(self.connection_string, self.embeddings, collection_name)
-        return vectorstore.add_documents(documents, ids=ids)
+        
+        vectorstore = Qdrant(self.client, collection_name, self.embeddings)
+        if self.collection_exists(collection_name):
+            return vectorstore.add_documents(documents)
+        else:
+            return QdrantModified.create_collection_and_injest(
+                collection_name,
+                documents,
+                self.embeddings,
+                url=self.qdrant_url,
+                api_key=self.qdrant_api_key,
+                prefer_grpc=True,
+            )
 
     def add_metadata_to_docs(self, metadata: Dict, docs: List[Document]):
         for document in docs:
@@ -154,24 +177,20 @@ class KnowledgeManager:
 
     def delete_collection(self, collection_name: str) -> bool:
         try:
-            vectorstore = PGVector(
-                self.connection_string, self.embeddings, collection_name
-            )
-            vectorstore.delete_collection()
+            self.client.delete_collection(collection_name)
             return True
         except Exception:
             return False
 
     def delete_ids(self, collection_name: str, ids: list[str]):
-        vectorstore = PGVectorModified(
-            self.connection_string, self.embeddings, collection_name
-        )
-        return vectorstore.delete(ids)
+        vectorstore = Qdrant(self.client, collection_name, self.embeddings)
+        if ids:
+            return vectorstore.delete(ids)
 
     def query_data(
         self, query: str, collection_name: str, k: int, metadata: Dict[str, str] = None
     ):
-        vectorstore = PGVector(self.connection_string, self.embeddings, collection_name)
+        vectorstore = Qdrant(self.client, collection_name, self.embeddings)
         return vectorstore.similarity_search(query, k, filter=metadata)
 
 
@@ -188,12 +207,12 @@ You must answer the human in {language} (important)"""
             ),
             HumanMessagePromptTemplate.from_template(
                 """
-Help Data (This is from a file/collection):
+Help Data (This data is from files/collections the human has provided and can be of any type):
 =========
 {help_data}
 =========
 
-Let's think in a step by step, answer the humans question in {language}.
+Let's think in a step by step, answer the humans question in {language}. Use the data provided by the human and personal knowledge to answer (Important)
 
 {conversation}
 
@@ -216,7 +235,8 @@ Human: {question}
         embeddings: Embeddings,
         llm_cls: Type[BaseChatModel],
         llm_kwargs: Dict[str, str],
-        connection_string: str,
+        qdrant_api_key: str,
+        qdrant_url: str,
         conversation_limit: int,
         docs_limit: int,
         ai_name: str = "AI",
@@ -224,15 +244,18 @@ Human: {question}
         self.embeddings = embeddings
         self.llm_cls = llm_cls
         self.llm_kwargs = llm_kwargs
-        self.connection_string = connection_string
+        self.qdrant_api_key = qdrant_api_key
+        self.qdrant_url = qdrant_url
         self.conversation_limit = conversation_limit
         self.docs_limit = docs_limit
         self.ai_name = ai_name
+        self.client = QdrantClient(url=self.qdrant_url, api_key=self.qdrant_api_key, prefer_grpc=True)
+
 
     def query_data(
         self, query: str, collection_name: str, k: int, metadata: Dict[str, str] = None
     ):
-        vectorstore = PGVector(self.connection_string, self.embeddings, collection_name)
+        vectorstore = Qdrant(self.client, collection_name, self.embeddings)
         return vectorstore.similarity_search(query, k, filter=metadata)
 
     def chat(
@@ -243,6 +266,7 @@ Human: {question}
         language: str,
         stream: bool = True,
         callback_func: callable = None,
+        on_end_callback: callable = None,
         k: int = 5,
         metadata: dict[str, str] = None,
         filename: str = None,
@@ -251,7 +275,7 @@ Human: {question}
         if metadata is None:
             metadata = {}
 
-        llm = self.get_llm(stream=stream, callback_func=callback_func, model=model_name)
+        llm = self.get_llm(stream=stream, callback_func=callback_func, on_end_callback=on_end_callback, model=model_name)
         conversation = self.format_messages(
             chat_history=chat_history,
             tokens_limit=self.conversation_limit,
@@ -341,50 +365,21 @@ Human: {question}
 
         return docs[:num_docs]
 
-    def get_llm(self, stream=False, callback_func=None, model: str = "gpt-3.5-turbo"):
+    def get_llm(self, stream=False, callback_func=None, on_end_callback=None, model: str = "gpt-3.5-turbo"):
         if not stream:
             return self.llm_cls(
                 model=model,
                 **self.llm_kwargs,
                 streaming=False,
+                request_timeout=100
             )
 
         return self.llm_cls(
             model=model,
             **self.llm_kwargs,
             streaming=True,
-            callbacks=[CustomCallback(callback_func)],
+            callbacks=[CustomCallback(callback_func, on_end_callback)],
         )
 
 
-if __name__ == "__main__":
-    from langchain.embeddings import OpenAIEmbeddings
-    from langchain.chat_models import ChatOpenAI
 
-    manager = KnowledgeManager(
-        OpenAIEmbeddings(
-            openai_api_key="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"
-        ),
-        ChatOpenAI,
-        {"openai_api_key": "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"},
-        "Is7uRcLSA8JmHEZGgBldmz2uU54Loo",
-        "postgresql://postgres:8GP4h656&u#X@db.jxwuioejtfbvilnmkumc.supabase.co:6543/postgres",
-    )
-
-    print(
-        manager.load_and_injest_file(
-            "python", "../requirements.txt", {"file": "requirements.txt"}
-        )
-    )
-    print(
-        manager.load_and_injest_file(
-            "python", "../requirements.txt", {"file": "requirements2.txt"}
-        )
-    )
-
-    # print(manager.delete_ids("python", ["85f5079c-2968-11ee-bd4a-7920d26a8218"]))
-    print(
-        manager.query_data(
-            "databases", "python", 1, metadata={"file": "requirements2.txt"}
-        )
-    )

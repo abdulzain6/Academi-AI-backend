@@ -7,6 +7,20 @@ import logging
 
 security = HTTPBearer()
 
+def get_user_id(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
+    try:
+        token = credentials.credentials
+        logging.info(f"Verifying token {token}")
+        user = auth.verify_id_token(token, app=default_app)
+        return user["user_id"]
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Invalid authentication credentials {str(e)}",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from e
+
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     try:
         token = credentials.credentials

@@ -9,9 +9,13 @@ python-multipart
 beautifulsoup4
 youtube-transcript-api
 unstructured
-python-pptx
 gptcache
+lxml
+Pillow
+XlsxWriter
+python-dotenv
 qdrant_client
+pymongo
 openai
 tiktoken
 uvicorn

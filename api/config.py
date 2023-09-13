@@ -1,12 +1,15 @@
-UNSTRUCTURED_API_KEY = "Is7uRcLSA8JmHEZGgBldmz2uU54Loo"
+import os
+from dotenv import load_dotenv
 
-OPENAI_APIKEY = "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"
-MODEL_NAME = "gpt-3.5-turbo-16k"
+load_dotenv()
 
-DATABASE_NAME = "postgres"
-DATABASE_USER = "postgres"
-DATABASE_PASSWORD = "ZA6vi2tvls5Mkbs5"
-DATABASE_HOST = "db.nzxannlgythazqxdhzvq.supabase.co"
-DATABASE_PORT = 5432
-
-CON_STRING = "postgresql://postgres:ZA6vi2tvls5Mkbs5@db.nzxannlgythazqxdhzvq.supabase.co:5432/postgres"
+UNSTRUCTURED_API_KEY = os.getenv("UNSTRUCTURED_API_KEY", None)
+UNSTRUCTURED_URL = os.getenv("UNSTRUCTURED_URL", "http://localhost:8080/general/v0/general")
+OPENAI_APIKEY = os.getenv("OPENAI_APIKEY", "")
+MODEL_NAME = os.getenv("MODEL_NAME", "gpt-3.5-turbo")
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", None)
+QDRANT_URL = os.getenv("QDRANT_URL", "localhost")
+MONGODB_URL = os.getenv("MONGODB_URL")
+DATABASE_NAME = os.getenv("DATABASE_NAME", "study-app")
+PEXELS_API_KEY = os.getenv("PEXELS_API_KEY")
+QUIZ_MAX_API_CALLS = os.getenv("QUIZ_MAX_API_CALLS", 5)

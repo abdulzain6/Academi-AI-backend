@@ -3,7 +3,7 @@ import tempfile
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse
 from fastapi import Depends, HTTPException, status
-from ..auth import get_current_user
+from ..auth import get_user_id
 from ..globals import collection_manager, knowledge_manager, file_manager
 from ..lib.database import FileModel
 from ..lib.utils import get_file_extension, format_url, convert_youtube_url_to_standard
@@ -36,15 +36,15 @@ class LinkFileInput(BaseModel):
 
 
 @router.post("/linkfile")
-async def create_link_file(
-    linkfile: LinkFileInput, current_user=Depends(get_current_user)
+def create_link_file(
+    linkfile: LinkFileInput, user_id=Depends(get_user_id)
 ):
     
     linkfile.youtube_link = convert_youtube_url_to_standard(format_url(linkfile.youtube_link))
     linkfile.web_link = format_url(linkfile.web_link)
 
     collection = collection_manager.get_collection_by_name_and_user(
-        linkfile.collection_name, current_user["user_id"]
+        linkfile.collection_name, user_id
     )
     if not collection:
         raise HTTPException(detail="Collection does not exist", status_code=404)
@@ -62,7 +62,7 @@ async def create_link_file(
         )
 
     if file_manager.file_exists(
-        linkfile.collection_name, current_user["user_id"], linkfile.filename
+        collection.collection_uid, user_id, linkfile.filename
     ):
         raise HTTPException(
             detail="File Already exists", status_code=status.HTTP_400_BAD_REQUEST
@@ -78,7 +78,7 @@ async def create_link_file(
             youtube_link=linkfile.youtube_link,
             web_url=linkfile.web_link,
         )
-    except ValueError as e:
+    except Exception as e:
         print(e)
         raise HTTPException(400, "Link has no data/ Invalid link") from e
 
@@ -86,7 +86,7 @@ async def create_link_file(
         FileModel(
             friendly_filename=linkfile.filename,
             collection_name=linkfile.collection_name,
-            user_id=current_user["user_id"],
+            user_id=user_id,
             filename=linkfile.filename,
             description=linkfile.description,
             file_content=contents,
@@ -108,12 +108,12 @@ async def create_link_file(
 
 
 @router.post("/")
-async def create_file(
+def create_file(
     collection_name: str,
     filename: str,
     description: str = "",
     file: UploadFile = File(...),
-    current_user=Depends(get_current_user),
+    user_id=Depends(get_user_id),
 ):
     try:
         if "../" in filename or "../" in file.filename:
@@ -122,12 +122,12 @@ async def create_file(
             )
 
         collection = collection_manager.get_collection_by_name_and_user(
-            collection_name, current_user["user_id"]
+            collection_name, user_id
         )
         if not collection:
             raise HTTPException(detail="Collection does not exist", status_code=404)
 
-        if file_manager.file_exists(collection_name, current_user["user_id"], filename):
+        if file_manager.file_exists(collection.collection_uid, user_id, filename):
             raise HTTPException(
                 detail="File Already exists", status_code=status.HTTP_400_BAD_REQUEST
             )
@@ -138,7 +138,7 @@ async def create_file(
         with tempfile.NamedTemporaryFile(
             delete=True, suffix=file_extension, mode="w+b"
         ) as temp_file:
-            contents = await file.read()
+            contents = file.file.read()
             if len(contents) > MAX_FILE_SIZE:
                 raise HTTPException(status_code=400, detail="File size exceeds the maximum limit of 20 MB")
             temp_file.write(contents)
@@ -150,7 +150,7 @@ async def create_file(
                 )
             except Exception as e:
                 print(e)
-                raise HTTPException(400, "FIle not supported") from e
+                raise HTTPException(400, "FIle not supported/ FIle has no Data") from e
 
             file_model = file_manager.add_file(
                 FileModel(
@@ -162,7 +162,7 @@ async def create_file(
                     file_bytes=file_bytes,
                     vector_ids=ids,
                     filetype=get_file_extension(file.filename),
-                    user_id=current_user["user_id"],
+                    user_id=user_id,
                 ),
             )
         return {
@@ -180,13 +180,13 @@ async def create_file(
 
 
 @router.get("/")
-async def get_file(collection_name: str, current_user=Depends(get_current_user)):
+def get_file(collection_name: str, user_id=Depends(get_user_id)):
     if not collection_manager.get_collection_by_name_and_user(
-        collection_name, current_user["user_id"]
+        collection_name, user_id
     ):
         raise HTTPException(detail="Collection does not exist", status_code=404)
 
-    files = file_manager.get_all_files(collection_name, current_user["user_id"])
+    files = file_manager.get_all_files(user_id, collection_name)
     files_response = [
         {
             "collection_name": collection_name,
@@ -201,16 +201,18 @@ async def get_file(collection_name: str, current_user=Depends(get_current_user))
 
 
 @router.get("/{file_name}")
-async def get_file(
-    collection_name: str, file_name: str, current_user=Depends(get_current_user)
+def get_file(
+    collection_name: str, file_name: str, user_id=Depends(get_user_id)
 ):
     if not collection_manager.collection_exists(
-        collection_name, current_user["user_id"]
+        collection_name, user_id
     ):
         raise HTTPException(detail="Collection does not exist", status_code=404)
 
     if file := file_manager.get_file_by_name(
-        collection_name, current_user["user_id"], file_name
+        collection_name=collection_name,
+        filename=file_name,
+        user_id=user_id
     ):
         return {
             "file": {
@@ -226,42 +228,50 @@ async def get_file(
 
 
 @router.delete("/")
-async def delete_file(
-    collection_name: str, file_name: str, current_user=Depends(get_current_user)
+def delete_file(
+    collection_name: str, file_name: str, user_id=Depends(get_user_id)
 ):
-    if not collection_manager.collection_exists(
-        collection_name, current_user["user_id"]
-    ):
+    collection = collection_manager.get_collection_by_name_and_user(
+        collection_name, user_id
+    )
+    if not collection:
         raise HTTPException(detail="Collection does not exist", status_code=404)
 
     if not file_manager.file_exists(
-        collection_name, current_user["user_id"], file_name
+        collection_uid=collection.collection_uid,
+        filename=file_name,
+        user_id=user_id
     ):
         raise HTTPException(detail="File does not exist", status_code=404)
 
     file = file_manager.get_file_by_name(
-        collection_name, current_user["user_id"], file_name
+        collection_name=collection_name,
+        filename=file_name,
+        user_id=user_id
     )
-    knowledge_manager.delete_ids(collection_name=collection_name, ids=file.vector_ids)
+    knowledge_manager.delete_ids(collection_name=collection.vectordb_collection_name, ids=file.vector_ids)
     success = file_manager.delete_file(
         collection_name=collection_name,
         filename=file_name,
-        user_id=current_user["user_id"],
+        user_id=user_id,
     )
     return {"status": "success", "error": "", "code": success}
 
 
 @router.get("/{file_name}/download")
-async def download_file(
-    collection_name: str, file_name: str, current_user=Depends(get_current_user)
+def download_file(
+    collection_name: str, file_name: str, user_id=Depends(get_user_id)
 ):
     if not collection_manager.collection_exists(
-        collection_name, current_user["user_id"]
+        collection_name, user_id
     ):
         raise HTTPException(detail="Collection does not exist", status_code=404)
 
     if file := file_manager.get_file_by_name(
-        collection_name, current_user["user_id"], file_name
+        collection_name=collection_name,
+        filename=file_name,
+        user_id=user_id,
+        bytes=True
     ):
         with tempfile.NamedTemporaryFile(delete=False, prefix=file.friendly_filename, suffix=file.filetype) as temp_file:
             temp_file.write(file.file_bytes)

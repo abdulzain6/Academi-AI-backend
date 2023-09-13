@@ -2,3 +2,5 @@ venv
 temp
 .image_cache
 *.pptx
+.env
+tests/
