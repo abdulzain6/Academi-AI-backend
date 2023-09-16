@@ -105,7 +105,6 @@ class Quiz(BaseModel):
 class QuizQuestionResponse(QuizQuestion):
     id: str
 
-
 class QuizGenerator:
     def __init__(
         self,

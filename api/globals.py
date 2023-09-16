@@ -4,13 +4,15 @@ from .lib.database import (
     FileDBManager,
     CollectionDBManager,
     UserDBManager,
-    MessageDBManager
+    MessageDBManager,
 )
 from .lib.knowledge_manager import KnowledgeManager, ChatManager
 from .lib.presentation_maker.database import initialize_managers
 from .lib.presentation_maker.image_gen import PexelsImageSearch
 from .lib.presentation_maker.presentation_maker import PresentationMaker
 from .lib.quiz import QuizGenerator
+from .lib.maths_solver.agent import MathSolver
+from .lib.maths_solver.python_exec_client import PythonClient, Urls
 from langchain.chat_models import ChatOpenAI
 import langchain
 
@@ -55,4 +57,18 @@ quiz_generator = QuizGenerator(
         "openai_api_key": OPENAI_APIKEY,
         "temperature": 0.5,
     },
+)
+client = PythonClient(
+    Urls(
+        main_url=MAIN_URL_EXECUTOR,
+        evaluate_url=EVALUATE_URL_EXECUTOR,
+        available_libraries_url=AVAILABLE_LIBRARIES_URL,
+    ),
+    40,
+)
+default_llm = ChatOpenAI
+maths_solver = MathSolver(
+    client,
+    default_llm,
+    llm_kwargs={"openai_api_key": OPENAI_APIKEY, "temperature": 0.2},
 )

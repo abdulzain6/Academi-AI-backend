@@ -24,10 +24,17 @@ router = APIRouter()
 
 
 @router.get("/templates", response_model=GetTemplateResponse)
-def get_available_templates(user_id=Depends(get_user_id)):
+def get_available_templates(user_id: str = Depends(get_user_id)) -> GetTemplateResponse:
     templates = template_manager.get_all_templates()
-    return GetTemplateResponse(templates=[{template.template_name: template.template_description} for template in templates])
-
+    
+    formatted_templates = [
+        {
+            template.template_name.title(): template.template_description
+        }
+        for template in templates
+    ]
+    
+    return GetTemplateResponse(templates=formatted_templates)
 
 @router.post("/")
 def make_presentation(presentation_input: MakePresentationInput, user_id=Depends(get_user_id)):
