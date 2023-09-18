@@ -41,7 +41,7 @@ class Option(BaseModel):
 class QuestionType(str, Enum):
     MCQ = "MCQ"
     SHORT_ANSWER = "short_answer"
-    TRUE_FALSE = "true_false"
+#    TRUE_FALSE = "true_false"
 
 class ResultType(str, Enum):
     CORRECT = "CORRECT"
@@ -202,7 +202,7 @@ The generated quiz in proper schema without useless and incomplete questions, wh
         for idx, response in enumerate(responses):
             formatted_response = (
                 f"Response {idx + 1}:\n"
-                f"  Question ID: {response.question_id}\n"
+                f"  Question ID: {response.id}\n"
                 f"  Question: {response.question}\n"
                 f"  User Answer: {response.user_answer}\n"
                 f"  Correct Answer: {response.correct_answer}\n"
@@ -238,20 +238,22 @@ The generated quiz in proper schema without useless and incomplete questions, wh
             messages=[
                 SystemMessagePromptTemplate.from_template(
                     """
-    You are an AI designed to evaluate quiz answers. 
-    You will follow the following schema to return the result nothing else and will not return anything else
-    The schema:
-    {format_instructions}
-    """
-                ),
-                HumanMessagePromptTemplate.from_template(
-                    """
-    Here is the correct answer with explanation and user response.
-    ===========
-    {data}
-    ===========
-
-    The result for the quiz, You must follow the schema(Important):
+You are an AI designed to evaluate quiz answers. 
+You must behave like a teacher, help the students learn.
+You will not check word to word, which means even if the answers wording is a bit different but it means the same as correct answer it will be correct. (Important)
+You will follow the following schema to return the result nothing else and will not return anything else
+The schema:
+{format_instructions}
+"""
+            ),
+            HumanMessagePromptTemplate.from_template(
+                """
+Here is the correct answer with explanation and user response.
+===========
+{data}
+===========
+You will not check word to word, which means even if the answers wording is a bit different but it means the same as correct answer it will be correct. (Important)
+The result for the quiz, You must follow the schema(Important):
     """
                 ),
             ],
@@ -267,9 +269,9 @@ The generated quiz in proper schema without useless and incomplete questions, wh
         results = []
         for answer in rest_answers:
             if answer.user_answer == answer.correct_answer:
-                result = QuestionResult(question_id=answer.question_id, reason_of_choice=answer.reason_of_choice, result=ResultType.CORRECT, correct_answer=answer.correct_answer)
+                result = QuestionResult(question_id=answer.id, reason_of_choice=answer.reason_of_choice, result=ResultType.CORRECT, correct_answer=answer.correct_answer)
             else:
-                result = QuestionResult(question_id=answer.question_id, reason_of_choice=answer.reason_of_choice, result=ResultType.WRONG, correct_answer=answer.correct_answer)
+                result = QuestionResult(question_id=answer.id, reason_of_choice=answer.reason_of_choice, result=ResultType.WRONG, correct_answer=answer.correct_answer)
             results.append(result)
         
         short_answer_result: QuestionResults = chain.run(data=self.format_user_responses(short_answers))

@@ -190,8 +190,11 @@ class KnowledgeManager:
     def query_data(
         self, query: str, collection_name: str, k: int, metadata: Dict[str, str] = None
     ):
-        vectorstore = Qdrant(self.client, collection_name, self.embeddings)
-        return vectorstore.similarity_search(query, k, filter=metadata)
+        try:
+            vectorstore = Qdrant(self.client, collection_name, self.embeddings)
+            return vectorstore.similarity_search(query, k, filter=metadata)
+        except Exception:
+            return []
 
 
 class ChatManager:

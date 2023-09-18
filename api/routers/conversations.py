@@ -2,10 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi import Depends, HTTPException, status
 from ..auth import get_user_id
 from ..globals import conversation_manager as message_manager
-from ..lib.database import UserLatestConversations, MessagePair
+from ..globals import collection_manager
+from ..lib.models import UserLatestConversations, MessagePair
+from ..lib.models import ConversationMetadata
 from pydantic import BaseModel
-from typing import List, Dict, Optional
-from datetime import datetime
+from typing import List
 import logging
 
 class DeleteConversationResponse(BaseModel):
@@ -20,36 +21,35 @@ class AddMessageRequest(BaseModel):
     bot_response: str
     
 
-class AddConversationRequest(BaseModel):
-    collection_name: Optional[str] = None
-    file_name: Optional[str] = None
-    timestamp: Optional[datetime] = None
+
 
 router = APIRouter()
     
 
 @router.post("/add_conversation", response_model=AddConversationResponse)
-def add_conversation(metadata: AddConversationRequest, user_id: str = Depends(get_user_id)):
-    try:
-        conversation_id = message_manager.add_conversation(user_id, metadata.model_dump())
-        return AddConversationResponse(conversation_id=conversation_id)
-    except Exception as e:
-        logging.error(f"Error adding conversation, {e}")
-        raise HTTPException(status.HTTP_409_CONFLICT, f"Error adding conversation, {e}") from e
+def add_conversation(metadata: ConversationMetadata, user_id: str = Depends(get_user_id)):
+    if not collection_manager.collection_exists(metadata.collection_name, user_id):
+        raise HTTPException(400, detail="Collection does not exist")
+    conversation_id = message_manager.add_conversation(user_id, metadata)
+    return AddConversationResponse(conversation_id=conversation_id)
+
 
 @router.post("/add_message")
 def add_message(request: AddMessageRequest, user_id: str = Depends(get_user_id)):
     try:
+        if not message_manager.conversation_exists(user_id, request.conversation_id):
+            raise HTTPException(400, detail="Conversation does not exist")
+
         message_manager.add_message(user_id, request.conversation_id, request.human_message, request.bot_response)
         return {"message" : "Added Message Successfully!"}
     except ValueError as e:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e)) from e
-    except Exception as e:
-        logging.error(f"Error adding message, {e}")
-        raise HTTPException(status.HTTP_409_CONFLICT, f"Error adding message, {e}") from e
+
 
 @router.get("/get_messages", response_model=List[MessagePair])
 def get_messages(conversation_id: str, user_id: str = Depends(get_user_id)):
+    if not message_manager.conversation_exists(user_id, conversation_id):
+        raise HTTPException(400, detail="Conversation does not exist")
     messages = message_manager.get_messages(user_id, conversation_id)
     return [] if messages is None else messages
 
@@ -57,11 +57,13 @@ def get_messages(conversation_id: str, user_id: str = Depends(get_user_id)):
 def get_all_conversations(user_id: str = Depends(get_user_id)):
     conversations = message_manager.get_all_conversations(user_id)
     if conversations is None:
-        conversations = UserLatestConversations(user_id=user_id, conversations=[])
+        return UserLatestConversations(user_id=user_id, conversations=[])
     return UserLatestConversations(user_id=user_id, conversations=conversations)
 
 @router.delete("/delete_conversation", response_model=DeleteConversationResponse)
 def delete_conversation(conversation_id: str, user_id: str = Depends(get_user_id)):
+    if not message_manager.conversation_exists(user_id, conversation_id):
+        raise HTTPException(400, detail="Conversation does not exist")
     try:
         deleted_count = message_manager.delete_conversation(user_id, conversation_id)
         return DeleteConversationResponse(deleted_rows=deleted_count)

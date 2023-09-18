@@ -1,3 +1,4 @@
+import re
 from .pptx.util import Inches
 import os
 from pydantic import BaseModel
@@ -87,7 +88,8 @@ class TemplateDBManager:
         return self._find_template_by_name(template_name) is None
 
     def _find_template_by_name(self, template_name: str) -> Optional[Dict]:
-        return self.template_collection.find_one({"template_name": template_name})
+        query = {"template_name": {"$regex": re.compile(f'^{re.escape(template_name)}$', re.IGNORECASE)}}
+        return self.template_collection.find_one(query)
 
     def create_template(
         self, template: TemplateModel, file_path: str
@@ -293,3 +295,9 @@ class PresentationTemplateWizard:
 
 
 
+if __name__ == "__main__":
+    path = "/home/zain/Downloads/Lesson plan.pptx"
+    manager = TemplateDBManager(os.getenv("MONGODB_URL"), "study-app")
+    wizard = PresentationTemplateWizard(path)
+    model = wizard.wizard_cli()
+    manager.create_template(model, path)

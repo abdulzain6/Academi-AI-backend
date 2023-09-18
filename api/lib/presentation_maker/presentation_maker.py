@@ -182,7 +182,7 @@ Do not choose slide types that are not shown to you.
         chain = LLMChain(
             prompt=prompt,
             output_parser=parser,
-            llm=ChatOpenAI(openai_api_key=self.openai_api_key, temperature=0, model="gpt-3.5-turbo", request_timeout=200),
+            llm=ChatOpenAI(openai_api_key=self.openai_api_key, temperature=0, model="gpt-3.5-turbo", request_timeout=100),
         )
         return chain.run(
             topic=presentation_input.topic,
@@ -371,10 +371,7 @@ Here are the placeholders we want to fill:
 {placeholders}
 =====================
 
-Take help from the following material to fill the placeholders:
-=====================
 {help_text}
-=====================
 
 Ordered or unordered list points must be short (Very importsnt)
 Lets think step by step, Looking at the placeholders and their descriptions to fill them for the slide topic {slide_detail}. Follow all rules above! Ensure it fits in a slide
@@ -403,13 +400,26 @@ Lets think step by step to accomplish this.
                 openai_api_key=self.openai_api_key,
                 temperature=0,
                 model="gpt-3.5-turbo",
-                request_timeout=200
+                request_timeout=100
             ),
         )
         if presentation_input.files:
             metadata = {"file" : presentation_input.files}
         else:
             metadata = None
+            
+        vectordata = self.query_vectorstore(sequence_part.slide_detail, presentation_input.collection_name, k=3, metadata=metadata)
+        
+        if vectordata:
+            help_text = f"""
+    Take help from the following material to fill the placeholders if its empty use your knowledge:
+    =====================
+    {vectordata}
+    =====================
+            """
+        else:
+            help_text = "Use your own knowledge to fill the placeholders"
+            
         placeholders: Placeholders = chain.run(
             placeholders=self.format_placeholders(slide.placeholders, True),
             slide_detail=sequence_part.slide_detail,
@@ -418,7 +428,7 @@ Lets think step by step to accomplish this.
             instructions=presentation_input.instructions,
             negative_prompt=presentation_input.negative_prompt,
             page_no=sequence_part.page_number,
-            help_text=self.query_vectorstore(sequence_part.slide_detail, presentation_input.collection_name, k=3, metadata=metadata)
+            help_text=help_text
         )
         for placeholder in placeholders.placeholders:
             placeholder.placeholder_data = placeholder.placeholder_data.replace(
@@ -549,10 +559,12 @@ Lets think step by step to accomplish this.
             template_slide = self.get_slide_by_type(slide_part.slide_type, template_slides)
             
             for _ in range(3):
-                with contextlib.suppress(Exception):
+                try:
                     slide_content = self.get_slide_content(slide_part, template_slide, presentation_input, sequence.slide_sequence, word_limit_para, word_limit_points, word_limit_hybrid)
                     slide_content_obtained = True  # Set the flag to True if content is obtained
                     break
+                except Exception as e:
+                    print(e)
 
             if not slide_content_obtained:
                 print(f"Failed to get content for slide {i + 1}. Deleting the slide.")

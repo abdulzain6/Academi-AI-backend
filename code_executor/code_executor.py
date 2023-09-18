@@ -1,12 +1,10 @@
-import contextlib
-from datetime import datetime
-import io
-from typing import List, Tuple, Dict, Any, Optional
-from RestrictedPython import compile_restricted, safe_builtins
+from typing import List, Tuple, Any, Optional
+from RestrictedPython import safe_builtins
 from RestrictedPython.Utilities import utility_builtins
 from RestrictedPython.Limits import limited_builtins
 import sys
 import traceback
+import io
 import ast
 
 safe_builtins_2 = {
@@ -57,6 +55,8 @@ safe_builtins_2 = {
     'type': type,
     'zip': zip,
 }
+
+
 
 class FinalStatefulSafeCodeEvaluator:
     def __init__(self, allowed_libraries: Optional[List[str]] = None):
@@ -191,11 +191,7 @@ class FinalStatefulSafeCodeEvaluator:
 if __name__ == "__main__":
     execd=FinalStatefulSafeCodeEvaluator(["numpy", "scipy"])
     code = """
-import scipy.integrate as spi
-import numpy as np
-f = lambda u: np.sin(u)/u
-integral_value, error = spi.quad(f, 0, 1)
-print(integral_value)
+import scipy.integrate as spi;import numpy as np;f = lambda u: np.sin(u)/u;integral_value, error = spi.quad(f, 0, 1);print(integral_value)
 """
     print(execd.run_code(code)[1])
     print(execd.run_code("print(1)")[1])

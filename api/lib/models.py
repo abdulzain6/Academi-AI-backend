@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 
@@ -44,3 +45,8 @@ class LatestConversation(BaseModel):
 class UserLatestConversations(BaseModel):
     user_id: str
     conversations: List[LatestConversation] = Field(default_factory=list)
+
+class ConversationMetadata(BaseModel):
+    collection_name: str
+    file_name: Optional[str] = None
+    timestamp: Optional[datetime] = None

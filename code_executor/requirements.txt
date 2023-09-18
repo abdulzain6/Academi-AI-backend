@@ -1,0 +1,17 @@
+uvicorn
+
+numpy
+scipy
+sympy
+statsmodels
+networkx
+cvxpy
+gmpy2
+mpmath
+pyomo
+qiskit
+shapely
+numexpr
+fastapi[all]
+
+RestrictedPython

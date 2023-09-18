@@ -3,7 +3,7 @@ from pymongo import MongoClient
 from pymongo.collection import Collection
 from pymongo.errors import BulkWriteError
 from gridfs import GridFS, NoFile
-from .models import UserModel, CollectionModel, FileModel, Conversation, LatestConversation, MessagePair, UserLatestConversations
+from .models import UserModel, CollectionModel, FileModel, Conversation, LatestConversation, MessagePair, ConversationMetadata
 
 import uuid
 import unittest
@@ -73,6 +73,20 @@ class CollectionDBManager:
         self.collection_collection.create_index([("name", 1), ("user_uid", 1)], unique=True)
         
         self.file_manager = FileDBManager(connection_string, database_name, self)
+        
+    def get_collection_name_by_uid(self, collection_uid: str) -> Optional[str]:
+        """
+        Retrieve the collection name by its UID.
+
+        Parameters:
+        - collection_uid (str): The unique identifier for the collection.
+
+        Returns:
+        - Optional[str]: The name of the collection if found, else None.
+        """
+        if doc := self.collection_collection.find_one({"collection_uid": collection_uid}):
+            return doc['name']
+        return None
 
     def resolve_collection_uid(self, name: str, user_id: str) -> Optional[str]:
         if doc := self.collection_collection.find_one(
@@ -288,14 +302,26 @@ class FileDBManager:
 
 
 class MessageDBManager:
-    def __init__(self, connection_string: str, database_name: str) -> None:
+    def __init__(self, connection_string: str, database_name: str, collection_dbmanager: CollectionDBManager = None) -> None:
         self.client = MongoClient(connection_string)
         self.db = self.client[database_name]
         self.message_collection: Collection = self.db["messages"]
         self.message_collection.create_index("user_id", unique=False)
+        if not collection_dbmanager:
+            self.collection_dbmanager = CollectionDBManager(connection_string, database_name)
+        else:
+            self.collection_dbmanager = collection_dbmanager
 
-    def add_conversation(self, user_id: str, metadata: Dict[str, Any]) -> str:
+    def add_conversation(self, user_id: str, metadata: ConversationMetadata) -> str:
         conversation_id = str(uuid.uuid4())
+        collection_id = self.collection_dbmanager.resolve_collection_uid(metadata.collection_name, user_id)
+        
+        metadata = metadata.model_dump()
+        if "collection_name" in metadata:
+            del metadata["collection_name"]
+            
+        metadata["collection_uid"] = collection_id
+        
         conversation = Conversation(metadata=metadata)
         self.message_collection.update_one(
             {"user_id": user_id},
@@ -333,7 +359,9 @@ class MessageDBManager:
         latest_conversations = []
         for conv_id, conv_data in user_data.get("conversations", {}).items():
             latest_message = MessagePair(**conv_data["messages"][-1]) if conv_data["messages"] else None
-            latest_conversation = LatestConversation(conversation_id=conv_id, metadata=conv_data["metadata"], latest_message=latest_message)
+            metadata = conv_data["metadata"]
+            metadata["collection_name"] = self.collection_dbmanager.get_collection_name_by_uid(metadata["collection_uid"])
+            latest_conversation = LatestConversation(conversation_id=conv_id, metadata=metadata, latest_message=latest_message)
             latest_conversations.append(latest_conversation)
         return latest_conversations
 

@@ -19,3 +19,6 @@ pymongo
 openai
 tiktoken
 uvicorn
+requests
+six
+httpx
