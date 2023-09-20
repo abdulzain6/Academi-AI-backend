@@ -40,7 +40,7 @@ def make_quiz(quiz_input: MakeQuizInput, user_id=Depends(get_user_id)):
         ]
     )
     try:
-        questions = quiz_generator.generate_quiz(data, quiz_input.number_of_questions, max_generations=QUIZ_MAX_API_CALLS)
+        questions = quiz_generator.generate_quiz(data, quiz_input.number_of_questions, max_generations=QUIZ_MAX_API_CALLS, collection_name=quiz_input.collection_name)
     except Exception as e:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=f"Error: {str(e)}") from e
     

@@ -1,15 +1,13 @@
+numpy
 peewee
 langchain
 pydantic
 firebase_admin
 fastapi
-pgvector
-psycopg2-binary
 python-multipart
 beautifulsoup4
 youtube-transcript-api
 unstructured
-gptcache
 lxml
 Pillow
 XlsxWriter
@@ -21,4 +19,5 @@ tiktoken
 uvicorn
 requests
 six
+pytesseract
 httpx

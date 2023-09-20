@@ -1,6 +1,6 @@
 venv
 temp
 .image_cache
-*.pptx
 .env
+*.pptx
 tests/

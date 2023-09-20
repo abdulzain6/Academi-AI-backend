@@ -86,6 +86,8 @@ class QuestionResult(BaseModel):
     )
     result: ResultType
     correct_answer: str
+    user_answer: str
+    question: str
 
 class QuestionResults(BaseModel):
     results: list[QuestionResult]
@@ -124,7 +126,7 @@ class QuizGenerator:
         output: Quiz = chain.run(data=text, number_of_questions=number_of_questions)
         return output.questions
 
-    def generate_quiz(self, data: str, number_of_questions: int, max_generations: int = 5) -> list[QuizQuestionResponse]:
+    def generate_quiz(self, data: str, number_of_questions: int, max_generations: int = 5, collection_name: str = "Anything") -> list[QuizQuestionResponse]:
         text_splitter = TokenTextSplitter(
             chunk_size=self.chunk_size, model_name="gpt-3.5-turbo"
         )
@@ -152,12 +154,14 @@ Here is the data used to generate the quiz
 {data}
 ===========
 
+If there is no data, Use your knowledge to generate the quiz about {collection_name}. if you dont know about this, make a general quiz
+
 The generated quiz in proper schema without useless and incomplete questions, while picking a variety of question types. You must follow the schema(Important):
 """
                 ),
             ],
             input_variables=["data", "number_of_questions"],
-            partial_variables={"format_instructions": parser.get_format_instructions()},
+            partial_variables={"format_instructions": parser.get_format_instructions(), "collection_name" : collection_name},
         )
         questions: List[QuizQuestion] = []
         chain = LLMChain(
@@ -166,10 +170,13 @@ The generated quiz in proper schema without useless and incomplete questions, wh
             llm=self.llm(**self.llm_kwargs),
         )
         
-        with ThreadPoolExecutor(max_workers=len(texts)) as executor:
-            futures = [executor.submit(self.run_chain, chain, text, (number_of_questions // len(texts)) + 1) for text in texts]
-            for future in futures:
-                questions.extend(future.result())
+        if len(texts) == 0:
+            questions = self.run_chain(chain, "", min(number_of_questions, 10))
+        else:
+            with ThreadPoolExecutor(max_workers=len(texts)) as executor:
+                futures = [executor.submit(self.run_chain, chain, text, (number_of_questions // len(texts)) + 1) for text in texts]
+                for future in futures:
+                    questions.extend(future.result())
 
         return [QuizQuestionResponse(**question.model_dump(), id=str(uuid.uuid4())) for question in questions[:number_of_questions]]
     
@@ -242,6 +249,7 @@ You are an AI designed to evaluate quiz answers.
 You must behave like a teacher, help the students learn.
 You will not check word to word, which means even if the answers wording is a bit different but it means the same as correct answer it will be correct. (Important)
 You will follow the following schema to return the result nothing else and will not return anything else
+Only evaluate the questions given to you, dont return any extra
 The schema:
 {format_instructions}
 """
@@ -266,16 +274,22 @@ The result for the quiz, You must follow the schema(Important):
             llm=self.llm(**self.llm_kwargs),
         )
         short_answers, rest_answers = self.separate_responses_by_type(user_answers)
+        incoming_ids = {answer.id for answer in user_answers}
+
         results = []
         for answer in rest_answers:
             if answer.user_answer == answer.correct_answer:
-                result = QuestionResult(question_id=answer.id, reason_of_choice=answer.reason_of_choice, result=ResultType.CORRECT, correct_answer=answer.correct_answer)
+                result = QuestionResult(question_id=answer.id, reason_of_choice=answer.reason_of_choice, result="CORRECT", correct_answer=answer.correct_answer, question=answer.question, user_answer=answer.user_answer)
             else:
-                result = QuestionResult(question_id=answer.id, reason_of_choice=answer.reason_of_choice, result=ResultType.WRONG, correct_answer=answer.correct_answer)
+                result = QuestionResult(question_id=answer.id, reason_of_choice=answer.reason_of_choice, result="WRONG", correct_answer=answer.correct_answer, question=answer.question, user_answer=answer.user_answer)
+            
             results.append(result)
-        
-        short_answer_result: QuestionResults = chain.run(data=self.format_user_responses(short_answers))
-        results.extend(short_answer_result.results)
+
+        if short_answers:
+            short_answer_result: QuestionResults = chain.run(data=self.format_user_responses(short_answers))
+            results.extend(short_answer_result.results)
+
+        results = [result for result in results if result.question_id in incoming_ids]
         percentage_correct, correct_answers, total_questions = self.calculate_performance(results)
+
         return Result(results=results, score_percentage=percentage_correct, correct_answers=correct_answers, total_answers=total_questions)
-        

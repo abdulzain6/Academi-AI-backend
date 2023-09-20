@@ -1,11 +1,13 @@
 import queue
+import tempfile
 import threading
-from fastapi import APIRouter, Depends, HTTPException
+from typing import Optional
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi import Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from ..auth import get_user_id
 from ..lib.utils import split_into_chunks
-from ..globals import maths_solver
+from ..globals import maths_solver, image_ocr
 from pydantic import BaseModel
 
 
@@ -15,7 +17,6 @@ router = APIRouter()
 class MathsSolveInput(BaseModel):
     question: str
     model_name: str = "gpt-3.5-turbo"
-
 
 @router.post("/solve_maths_json")
 def solve_maths(maths_solver_input: MathsSolveInput, user_id=Depends(get_user_id)):
@@ -33,7 +34,6 @@ def solve_maths(maths_solver_input: MathsSolveInput, user_id=Depends(get_user_id
             400,
             detail="The AI was not able to solve the question please make your question clearer.",
         ) from e
-
 
 @router.post("/solve_maths_stream")
 def solve_maths_stream(
@@ -71,3 +71,21 @@ def solve_maths_stream(
 
     threading.Thread(target=run_agent).start()
     return StreamingResponse(data_generator())
+
+@router.post("/ocr_image")
+def ocr_image_route(user_id: str = Depends(get_user_id), file: UploadFile = File(...)) -> Optional[str]:
+    try:
+        with tempfile.NamedTemporaryFile(delete=True) as temp_file:
+            temp_file.write(file.file.read())
+            temp_file_path = temp_file.name
+            ocr_result = image_ocr.ocr_image(temp_file_path)
+
+        return ocr_result
+
+    except Exception as e:
+        raise HTTPException(400, f"Error: {e}") from e
+
+
+
+
+
