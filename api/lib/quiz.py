@@ -19,6 +19,7 @@ from typing import Any, List, Union
 from enum import Enum
 
 
+
 class Answer(BaseModel):
     answer: str = Field(
         ...,
@@ -250,6 +251,7 @@ You must behave like a teacher, help the students learn.
 You will not check word to word, which means even if the answers wording is a bit different but it means the same as correct answer it will be correct. (Important)
 You will follow the following schema to return the result nothing else and will not return anything else
 Only evaluate the questions given to you, dont return any extra
+Be lenient in your evaluation, dont be super strict
 The schema:
 {format_instructions}
 """

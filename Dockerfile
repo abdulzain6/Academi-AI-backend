@@ -7,6 +7,8 @@ COPY ./requirements.txt /app/requirements.txt
 RUN apt-get update && \
     apt-get install -y \
     tesseract-ocr \
+    wkhtmltopdf \
+    pandoc \
     && apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 

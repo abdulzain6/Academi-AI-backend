@@ -14,6 +14,7 @@ from .lib.quiz import QuizGenerator
 from .lib.maths_solver.agent import MathSolver
 from .lib.maths_solver.python_exec_client import PythonClient, Urls
 from .lib.maths_solver.ocr import ImageOCR
+from .lib.writer import Writer
 from langchain.chat_models import ChatOpenAI
 from langchain.llms import OpenAI
 import langchain
@@ -77,6 +78,14 @@ maths_solver = MathSolver(
 image_ocr = ImageOCR(
     app_id=MATHPIX_APPID,
     app_key=MATHPIX_API_KEY,
-    llm_kwargs={"openai_api_key": OPENAI_APIKEY, "model" : "gpt-3.5-turbo-instruct"},
-    llm_cls=OpenAI
+    llm_kwargs={"openai_api_key": OPENAI_APIKEY, "model": "gpt-3.5-turbo-instruct"},
+    llm_cls=OpenAI,
+)
+writer = Writer(
+    ChatOpenAI,
+    llm_kwargs={
+        "model_name": "gpt-3.5-turbo",
+        "temperature": 0.3,
+        "openai_api_key": OPENAI_APIKEY,
+    },
 )

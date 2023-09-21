@@ -21,3 +21,4 @@ requests
 six
 pytesseract
 httpx
+pypandoc

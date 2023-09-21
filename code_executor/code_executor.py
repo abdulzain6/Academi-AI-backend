@@ -191,7 +191,8 @@ class FinalStatefulSafeCodeEvaluator:
 if __name__ == "__main__":
     execd=FinalStatefulSafeCodeEvaluator(["numpy", "scipy"])
     code = """
-import scipy.integrate as spi;import numpy as np;f = lambda u: np.sin(u)/u;integral_value, error = spi.quad(f, 0, 1);print(integral_value)
+import scipy.integrate as spi;
+import numpy as np;f = lambda u: np.sin(u)/u;integral_value, error = spi.quad(f, 0, 1);print(integral_value)
 """
     print(execd.run_code(code)[1])
     print(execd.run_code("print(1)")[1])
