@@ -17,6 +17,7 @@ from langchain.schema.language_model import BaseLanguageModel
 from pydantic import BaseModel, Field
 from typing import Any, List, Union
 from enum import Enum
+from retrying import retry
 
 
 
@@ -127,6 +128,7 @@ class QuizGenerator:
         output: Quiz = chain.run(data=text, number_of_questions=number_of_questions)
         return output.questions
 
+    @retry(stop_max_attempt_number=3)
     def generate_quiz(self, data: str, number_of_questions: int, max_generations: int = 5, collection_name: str = "Anything") -> list[QuizQuestionResponse]:
         text_splitter = TokenTextSplitter(
             chunk_size=self.chunk_size, model_name="gpt-3.5-turbo"
@@ -239,7 +241,8 @@ The generated quiz in proper schema without useless and incomplete questions, wh
         )
         percentage_correct = (correct_answers / total_questions) * 100 if total_questions > 0 else 0.0
         return percentage_correct, correct_answers, total_questions      
-  
+
+    @retry(stop_max_attempt_number=3)
     def evaluate_quiz(self, user_answers: list[UserResponse]) -> Result:
         parser = PydanticOutputParser(pydantic_object=QuestionResults)
         prompt_template = ChatPromptTemplate(

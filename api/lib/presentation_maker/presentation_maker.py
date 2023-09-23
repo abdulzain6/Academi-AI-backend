@@ -19,7 +19,7 @@ from .database import TemplateDBManager, TemplateKnowledgeManager, TemplateModel
 from pydantic import BaseModel, Field
 from .image_gen import PexelsImageSearch
 from ..knowledge_manager import KnowledgeManager
-
+from retrying import retry
 import re
 import copy, six
 import contextlib
@@ -596,6 +596,7 @@ Lets think step by step to accomplish this.
 
         print("Completed filling in placeholders.")
 
+    @retry(stop_max_attempt_number=3)
     def make_presentation(self, presentation_input: PresentationInput, template_name: str = None) -> str:
         print("Fetching best template...")
         start_time = time.time()

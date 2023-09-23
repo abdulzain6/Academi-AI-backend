@@ -12,6 +12,7 @@ from langchain.prompts import (
 )
 import pdfkit
 import pypandoc
+from retrying import retry
 
 
 
@@ -113,7 +114,7 @@ Here is the plan you can use to write it:
 {plan}
  
 
-
+Do not explictly mention intro body conclusion, the output must be good so no changes need to be made
 Lets think step by step, keeping in mind whats said above to generate the {to_generate} for the {topic} it must be of {minimum_words} words.
 Follow the schema above (Important) Make sure the json is correct!
 """   
@@ -158,6 +159,7 @@ Follow the schema above (Important) Make sure the json is correct!
             docx_bytes = tmpfile.read()
         return docx_bytes
     
+    @retry(stop_max_attempt_number=3)
     def get_content(self, content_input: ContentInput):
         html, text = self.generate_content_html(content_input)
         pdf_bytes = self.html_to_pdf_bytes(html)
