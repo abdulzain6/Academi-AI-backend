@@ -28,7 +28,7 @@ router = APIRouter()
 
 @router.post("/add_conversation", response_model=AddConversationResponse)
 def add_conversation(metadata: ConversationMetadata, user_id: str = Depends(get_user_id)):
-    if not collection_manager.collection_exists(metadata.collection_name, user_id):
+    if metadata.collection_name and not collection_manager.collection_exists(metadata.collection_name, user_id):
         raise HTTPException(400, detail="Collection does not exist")
     conversation_id = message_manager.add_conversation(user_id, metadata)
     return AddConversationResponse(conversation_id=conversation_id)

@@ -47,6 +47,7 @@ class UserLatestConversations(BaseModel):
     conversations: List[LatestConversation] = Field(default_factory=list)
 
 class ConversationMetadata(BaseModel):
-    collection_name: str
+    collection_name: Optional[str] = None
     file_name: Optional[str] = None
     timestamp: Optional[datetime] = None
+    extra_data: Optional[Dict[str, str]] = Field(None)

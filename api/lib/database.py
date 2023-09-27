@@ -314,13 +314,16 @@ class MessageDBManager:
 
     def add_conversation(self, user_id: str, metadata: ConversationMetadata) -> str:
         conversation_id = str(uuid.uuid4())
-        collection_id = self.collection_dbmanager.resolve_collection_uid(metadata.collection_name, user_id)
         
-        metadata = metadata.model_dump()
-        if "collection_name" in metadata:
-            del metadata["collection_name"]
-            
-        metadata["collection_uid"] = collection_id
+        if metadata.collection_name: 
+            collection_id = self.collection_dbmanager.resolve_collection_uid(metadata.collection_name, user_id)
+            metadata = metadata.model_dump()
+            if "collection_name" in metadata:
+                del metadata["collection_name"]
+                
+            metadata["collection_uid"] = collection_id
+        else:
+            metadata = metadata.model_dump()
         
         conversation = Conversation(metadata=metadata)
         self.message_collection.update_one(
@@ -360,7 +363,8 @@ class MessageDBManager:
         for conv_id, conv_data in user_data.get("conversations", {}).items():
             latest_message = MessagePair(**conv_data["messages"][-1]) if conv_data["messages"] else None
             metadata = conv_data["metadata"]
-            metadata["collection_name"] = self.collection_dbmanager.get_collection_name_by_uid(metadata["collection_uid"])
+            if "collection_uid" in metadata:
+                metadata["collection_name"] = self.collection_dbmanager.get_collection_name_by_uid(metadata["collection_uid"])
             latest_conversation = LatestConversation(conversation_id=conv_id, metadata=metadata, latest_message=latest_message)
             latest_conversations.append(latest_conversation)
         return latest_conversations

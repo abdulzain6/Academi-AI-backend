@@ -14,10 +14,9 @@ from langchain.schema.messages import (
     FunctionMessage,
 )
 from dataclasses import dataclass
+from langchain.schema.agent import AgentActionMessageLog
 
-@dataclass
-class _FunctionsAgentAction(AgentAction):
-    message_log: List[BaseMessage]
+_FunctionsAgentAction = AgentActionMessageLog
 
 def _create_function_message(
     agent_action: AgentAction, observation: str

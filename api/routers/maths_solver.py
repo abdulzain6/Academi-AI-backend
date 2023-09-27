@@ -1,13 +1,14 @@
 import queue
 import tempfile
 import threading
-from typing import Optional
+from typing import Generator, Optional
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
+from ..lib.models import MessagePair
 from ..auth import get_user_id
 from ..lib.utils import split_into_chunks
-from ..globals import maths_solver, image_ocr
+from ..globals import maths_solver, image_ocr, conversation_manager
 from pydantic import BaseModel
 
 
@@ -17,43 +18,56 @@ router = APIRouter()
 class MathsSolveInput(BaseModel):
     question: str
     model_name: str = "gpt-3.5-turbo"
+    chat_history: Optional[list[tuple[str, str]]] = None
+    
+    
+def convert_message_pairs_to_tuples(message_pairs: list[MessagePair]) -> list[tuple[str, str]]:
+    return [(pair.human_message, pair.bot_response) for pair in message_pairs]
 
-@router.post("/solve_maths_json")
-def solve_maths(maths_solver_input: MathsSolveInput, user_id=Depends(get_user_id)):
-    try:
-        for _ in range(3):
-            return maths_solver.run_agent(
-                maths_solver_input.question,
-                structured=True,
-                stream=False,
-                model_name=maths_solver_input.model_name,
-            )
-    except Exception as e:
-        print(e)
-        raise HTTPException(
-            400,
-            detail="The AI was not able to solve the question please make your question clearer.",
-        ) from e
+
 
 @router.post("/solve_maths_stream")
 def solve_maths_stream(
-    maths_solver_input: MathsSolveInput, user_id=Depends(get_user_id)
-):
+    maths_solver_input: MathsSolveInput, 
+    conversation_id: Optional[str] = None, 
+    user_id: str = Depends(get_user_id)
+) -> StreamingResponse:
+    
+    if conversation_id and not conversation_manager.conversation_exists(user_id, conversation_id):
+        raise HTTPException(
+            detail="Conversation not found", 
+            status_code=status.HTTP_400_BAD_REQUEST
+        )
+    
+    chat_history = (
+        convert_message_pairs_to_tuples(
+            conversation_manager.get_messages(user_id, conversation_id)
+        ) if conversation_id else maths_solver_input.chat_history
+    ) or []
+    
     data_queue = queue.Queue()
 
-    def callback(data):
+    def callback(data: str) -> None:
         data_queue.put(data)
 
-    def data_generator():
+    def on_end_callback(response: str) -> None:
+        if conversation_id:
+            conversation_manager.add_message(user_id, conversation_id, maths_solver_input.question, response)
+            
+    def data_generator() -> Generator[str, None, None]:
         yield "[START]"
         while True:
-            data = data_queue.get(timeout=60)
-            if data == "@@END@@":
-                yield "[END]"
+            try:
+                data = data_queue.get(timeout=60)
+                if data == "@@END@@":
+                    yield "[END]"
+                    break
+                yield data
+            except queue.Empty:
+                yield "[TIMEOUT]"
                 break
-            yield data
 
-    def run_agent():
+    def run_agent() -> None:
         try:
             maths_solver.run_agent(
                 maths_solver_input.question,
@@ -61,6 +75,8 @@ def solve_maths_stream(
                 stream=True,
                 model_name=maths_solver_input.model_name,
                 callback=callback,
+                chat_history=chat_history,
+                on_end_callback=on_end_callback
             )
         except Exception as e:
             print(e)
@@ -70,6 +86,7 @@ def solve_maths_stream(
             callback("@@END@@")
 
     threading.Thread(target=run_agent).start()
+    
     return StreamingResponse(data_generator())
 
 @router.post("/ocr_image")

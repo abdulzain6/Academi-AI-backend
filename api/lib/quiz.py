@@ -109,6 +109,24 @@ class Quiz(BaseModel):
 class QuizQuestionResponse(QuizQuestion):
     id: str
 
+class FlashCard(BaseModel):
+    question: str = Field(
+        ...,
+        json_schema_extra={"description": "The question"},
+    )
+    answer: str = Field(
+        ...,
+        json_schema_extra={
+            "description": "The correct answer for the question"
+        },
+    )
+
+class FlashCards(BaseModel):
+    flashcards: list[FlashCard] = Field(
+        default_factory=list,
+        json_schema_extra={"description": "THe list of flashcards"},
+    )
+
 class QuizGenerator:
     def __init__(
         self,
@@ -116,7 +134,7 @@ class QuizGenerator:
         knowledge_manager: KnowledgeManager,
         llm: BaseLanguageModel,
         llm_kwargs: dict,
-        chunk_size: int = 1500,
+        chunk_size: int = 1000,
     ) -> None:
         self.file_manager = file_manager
         self.knowledge_manager = knowledge_manager
@@ -127,9 +145,13 @@ class QuizGenerator:
     def run_chain(self, chain, text, number_of_questions: int) -> List[QuizQuestion]:
         output: Quiz = chain.run(data=text, number_of_questions=number_of_questions)
         return output.questions
+    
+    def run_chain_fc(self, chain, text, number_of_questions: int) -> List[FlashCards]:
+        output: FlashCards = chain.run(data=text, number_of_questions=number_of_questions)
+        return output.flashcards
 
     @retry(stop_max_attempt_number=3)
-    def generate_quiz(self, data: str, number_of_questions: int, max_generations: int = 5, collection_name: str = "Anything") -> list[QuizQuestionResponse]:
+    def generate_quiz(self, data: str, number_of_questions: int, max_generations: int = 2, collection_name: str = "Anything") -> list[QuizQuestionResponse]:
         text_splitter = TokenTextSplitter(
             chunk_size=self.chunk_size, model_name="gpt-3.5-turbo"
         )
@@ -242,6 +264,60 @@ The generated quiz in proper schema without useless and incomplete questions, wh
         percentage_correct = (correct_answers / total_questions) * 100 if total_questions > 0 else 0.0
         return percentage_correct, correct_answers, total_questions      
 
+    @retry(stop_max_attempt_number=3)
+    def generate_flashcards(self, data: str, number_of_flashcards: int, max_generations: int = 2, collection_name: str = "Anything") -> list[FlashCard]:
+        text_splitter = TokenTextSplitter(
+            chunk_size=self.chunk_size, model_name="gpt-3.5-turbo"
+        )
+        splits = text_splitter.split_text(data)
+        texts = self.pick_evenly_spaced_elements(splits, max_generations)
+        parser = PydanticOutputParser(pydantic_object=FlashCards)
+        prompt_template = ChatPromptTemplate(
+            messages=[
+                SystemMessagePromptTemplate.from_template(
+                    """
+You are an AI designed to generate flashcards from the data. 
+You will not generate unimportant or incomplete questions.
+You will not generate too many questions as this is not the full set but a part of it. (Important) 
+The flashcard set is to be of {number_of_questions} questions. (Important)
+You will follow the following schema and will not return anything else
+The schema:
+{format_instructions}
+"""
+                ),
+                HumanMessagePromptTemplate.from_template(
+                    """
+Here is the data used to generate the flashcards
+===========
+{data}
+===========
+
+If there is no data, Use your knowledge to generate the flashcards about {collection_name}. if you dont know about this, make a general flashcards
+
+The generated flashcards in proper schema without useless and incomplete questions. You must follow the schema(Important):
+"""
+                ),
+            ],
+            input_variables=["data", "number_of_questions"],
+            partial_variables={"format_instructions": parser.get_format_instructions(), "collection_name" : collection_name},
+        )
+        flashcards: List[FlashCard] = []
+        chain = LLMChain(
+            prompt=prompt_template,
+            output_parser=parser,
+            llm=self.llm(**self.llm_kwargs),
+        )
+        
+        if len(texts) == 0:
+            flashcards = self.run_chain_fc(chain, "", min(number_of_flashcards, 10))
+        else:
+            with ThreadPoolExecutor(max_workers=len(texts)) as executor:
+                futures = [executor.submit(self.run_chain_fc, chain, text, (number_of_flashcards // len(texts)) + 1) for text in texts]
+                for future in futures:
+                    flashcards.extend(future.result())
+
+        return flashcards[:number_of_flashcards]
+  
     @retry(stop_max_attempt_number=3)
     def evaluate_quiz(self, user_answers: list[UserResponse]) -> Result:
         parser = PydanticOutputParser(pydantic_object=QuestionResults)

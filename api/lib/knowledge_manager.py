@@ -1,3 +1,6 @@
+import ipaddress
+import socket
+from urllib.parse import urlparse
 from langchain.embeddings.base import Embeddings
 from langchain.chat_models.base import BaseChatModel
 from langchain.document_loaders import UnstructuredAPIFileLoader
@@ -41,7 +44,7 @@ class CustomCallback(BaseCallbackHandler):
         if self.cached:
             for chunk in split_into_chunks(response.generations[0][0].text, 8):
                 self.callback(chunk)
-                time.sleep(0.1)
+                time.sleep(0.05)
         self.callback(None)
         self.on_end_callback(response)
 
@@ -143,6 +146,31 @@ class KnowledgeManager:
         ids = self.injest_data(collection_name=collection_name, documents=docs)
         return contents, ids, file_bytes
 
+    def is_local_ip(self, ip: str) -> bool:
+        try:
+            return ipaddress.ip_address(ip).is_private
+        except ValueError:
+            return False
+
+    def validate_url(self, url: str) -> bool:
+        allowed_schemes = ["http", "https"]
+
+        parsed_url = urlparse(url)
+        
+        if parsed_url.scheme not in allowed_schemes:
+            print("Invalid URL scheme")
+            return False
+        
+        try:
+            ip = socket.gethostbyname(parsed_url.hostname)
+            if self.is_local_ip(ip):
+                print("Local IPs are not allowed")
+                return False
+        except (socket.gaierror, TypeError):
+            print("Invalid domain")
+            return False
+
+        return True
     def load_web_youtube_link(
         self,
         collection_name: str,
@@ -159,6 +187,9 @@ class KnowledgeManager:
             )
 
         if web_url:
+            if not self.validate_url(web_url):
+                raise ValueError("Invalid URL")
+            
             loader = WebBaseLoader(web_url)
         else:
             loader = YoutubeLoader.from_youtube_url(youtube_link)

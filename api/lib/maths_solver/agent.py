@@ -1,12 +1,12 @@
 import re
 import time
-from typing import List, Optional, Sequence
+from typing import Dict, List, Optional, Sequence, Tuple, Union
 from uuid import UUID
 from langchain.agents import Tool
 from langchain.agents import AgentExecutor
 from pydantic import BaseModel, Field
 from .python_exec_client import PythonClient
-from langchain.schema import SystemMessage
+from langchain.schema import SystemMessage, BaseMessage, HumanMessage, AIMessage, LLMResult
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.chat_models.base import BaseChatModel
 from langchain.chains import create_extraction_chain
@@ -34,6 +34,32 @@ class CustomCallback(BaseCallbackHandler):
         self.cached = False
         if not self.cached:
             self.callback(token)
+            
+    def on_tool_start(
+        self,
+        serialized: Dict[str, Any],
+        input_str: str,
+        *,
+        run_id: UUID,
+        parent_run_id: Optional[UUID] = None,
+        tags: Optional[List[str]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        **kwargs: Any,
+    ) -> Any:
+        ...
+        self.callback("AI is using a tool to perform calculations to better assist you...\n")
+        
+    def on_tool_end(
+        self,
+        output: str,
+        *,
+        run_id: UUID,
+        parent_run_id: Optional[UUID] = None,
+        **kwargs: Any,
+    ) -> Any:
+        """Run when tool ends running."""
+        self.callback("AI has finished using the tool and will respond shortly...\n")
+
 
     def on_agent_finish(
         self,
@@ -43,11 +69,13 @@ class CustomCallback(BaseCallbackHandler):
         parent_run_id: Optional[UUID] = None,
         **kwargs: Any,
     ) -> Any:
-        
+        self.on_end_callback(finish.return_values.get("output", ""))
+        if self.cached:
+            self.callback(finish.return_values.get("output", ""))
         self.callback("@@END@@")
 
 
-
+        
 class Solution(BaseModel):
     answer_markdown: str = Field(
         None,
@@ -125,7 +153,7 @@ Do not import libraries that are not allowed.
 
         return [Tool("python", python_function, description)]
 
-    def make_agent(self, llm: BaseChatModel) -> AgentExecutor:
+    def make_agent(self, llm: BaseChatModel, chat_history_messages: list[BaseMessage]) -> AgentExecutor:
         agent_kwargs = {
             "system_message": SystemMessage(
                 content="""
@@ -140,13 +168,15 @@ You must return (Important):
     1. The answer to the user question in markdown.
     2. The explanation for the answer with definitions, assumptions intermediate results, units and problem statement Must explain in the easiest language as possible to a non programmer. Must be in markdown
     3. The step by step methodology used to reach the solution.
+    4. The steps must be in mathematical notation
 A little bit of arthmetic and a logical approach will help us quickly arrive at the solution for this problem
 Use tools if you think you need help or to confirm answer.
 Make sure arguments to tools are loadable by json.loads (Super important), so use double quotes!! or it will cause error
-You must use tools to confirm you answers.
+Reject any non math related queries! (Important)
+Use latex for maths equations and symbols (important)
 Lets think step by step
-"""
-            )
+"""),
+            "extra_prompt_messages" : chat_history_messages
         }
         return self.initialize_agent(
             self.make_tools(),
@@ -185,34 +215,37 @@ You are an AI dsigned to help students.
 You will use tools to answer questions and reject any unsafe operations like reading files or os related things
 lets look at the query and try to answer it 
 dont return python code or mention python related stuff. Explain to me as if i was 10 dont mention python functions.. 
-Query: {prompt} use tools
-A little bit of arthmetic and a logical approach will help us quizkly arrive at the solution for this problem, use tools to confirm answer"""
+Dont mention about tools in your answer just mention the answer
+Use latex for maths equations and symbols (important)
 
-    def run_agent(
-        self,
-        prompt: str,
-        structured: bool,
-        stream: bool = False,
-        callback: callable = None,
-        on_end_callback: callable = None,
-        model_name: str = "gpt-3.5-turbo"
-    ):
+Student: {prompt} use tools
+
+A little bit of arthmetic and a logical approach will help us quickly arrive at the solution for this problem, use tools to confirm answer
+Answer:"""
+
+    def run_agent(self, prompt: str, structured: bool, stream: bool = False, callback: callable = None, on_end_callback: callable = None, model_name: str = "gpt-3.5-turbo", chat_history: list[tuple[str, str]] = None):
         
+        if chat_history is None:
+            chat_history = []
+            
         if structured and stream:
             raise ValueError("Stream must be disabled for structured output")
 
-        agent = self.make_agent(
-            llm=self.llm_cls(**self.llm_kwargs,
+        llm = self.llm_cls(**self.llm_kwargs,
             **{"streaming": stream,
                 "model_name" : model_name,
-            }),
-        ) 
+        })
+        agent = self.make_agent(
+            llm=llm,
+            chat_history_messages=self.format_messages(chat_history, 700, llm)
+        )
         if stream:
             agent = self.make_agent(
                 llm=self.llm_cls(**self.llm_kwargs,
                 **{"streaming": stream,
                    "model_name" : model_name,
                 }),
+                chat_history_messages=self.format_messages(chat_history, 700, llm)
             ) 
             if not callback:
                 raise ValueError("Callback not passed for streaming to")
@@ -224,3 +257,28 @@ A little bit of arthmetic and a logical approach will help us quizkly arrive at 
             response = agent.run(self.wrap_prompt(prompt))
             return self.get_structured_output(response) if structured else response
 
+    def format_messages(
+        self,
+        chat_history: List[Tuple[str, str]],
+        tokens_limit: int,
+        llm: BaseChatModel,
+    ) -> List[BaseMessage]:
+        messages: List[BaseMessage] = []
+        tokens_used: int = 0
+
+        for human_msg, ai_msg in chat_history:
+            human_tokens = llm.get_num_tokens(human_msg)
+            ai_tokens = llm.get_num_tokens(ai_msg)
+
+            new_tokens_used = tokens_used + human_tokens + ai_tokens
+
+            if new_tokens_used > tokens_limit:
+                break
+
+            tokens_used = new_tokens_used
+
+            messages.extend((HumanMessage(content=human_msg), AIMessage(content=ai_msg)))
+
+        return messages
+    
+    

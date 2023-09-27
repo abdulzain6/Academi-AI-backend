@@ -7,7 +7,6 @@ from langchain.chains import LLMChain
 from langchain.prompts import (
     PromptTemplate
 )
-from io import BufferedReader, BytesIO
 from langchain.chat_models.base import BaseChatModel
 
 
@@ -53,8 +52,10 @@ class ImageOCR:
                               files={"file": image_bytes},
                               data={
                                   "options_json": json.dumps({
-                                      "math_inline_delimiters": ["$", "$"],
-                                      "rm_spaces": True
+                                    "numbers_default_to_math": True,
+                                    "math_inline_delimiters": ["$$", "$$"],
+                                    "math_display_delimiters": ["$$", "$$"],
+                                    "rm_spaces": True
                                   })
                               },
                               headers={
@@ -62,6 +63,7 @@ class ImageOCR:
                                   "app_key": self.app_key
                               }
                              )
+            print(r.json())
             return r.json().get("text", None)
         except Exception as e:
             print(f"An error occurred: {e}")
@@ -73,6 +75,7 @@ You are to look at two ocrs for a maths/physics problem one from tesseract and m
 So look at both the ocrs and construct a final piece that uses both of the ocrs to create a perfect result.
 Return the cleaned result nothing else.
 Return latex in good form.
+Ignore the new lines in the latex also dont change \\ to \\\\ (important)
 
 Following is a maths/physics question extracted using tesseract ocr:
 {tesseract_text}
@@ -90,8 +93,8 @@ The cleaned text after looking at both ocrs, No other text:"""
         return chain.run(tesseract_text=tesseract_text, mathpix_text=mathpix_text)
 
     def ocr_image(self, image_input: str) -> Optional[str]:
+        return self.extract_text_with_mathpix(image_input)
         tesseract_text = self.extract_text_with_tesseract(image_input)
-        mathpix_text = self.extract_text_with_mathpix(image_input)
         print("Tesseract text: ", tesseract_text, "Mathpix Text:", mathpix_text)
         if tesseract_text or mathpix_text:
             return self.extract_clean_text(mathpix_text, tesseract_text)

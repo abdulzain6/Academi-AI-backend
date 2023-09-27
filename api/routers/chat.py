@@ -1,6 +1,6 @@
 import queue
 import threading
-from typing import Optional
+from typing import Generator, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi import Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
@@ -107,23 +107,27 @@ def chat_collection_stream(
 
     data_queue = queue.Queue()
 
-    def callback(data):
+    def callback(data: str) -> None:
         data_queue.put(data)
         
-    def on_end_callback(response):
+    def data_generator() -> Generator[str, None, None]:
+        yield "[START]"
+        while True:
+            try:
+                data = data_queue.get(timeout=60)
+                if data is None:
+                    yield "[END]"
+                    break
+                yield data
+            except queue.Empty:
+                yield "[TIMEOUT]"
+                break
+    
+    def on_end_callback(response: str) -> None:
         if conversation_id:
             conversation_manager.add_message(user_id, conversation_id, data.prompt, response.generations[0][0].text)
 
-    def data_generator():
-        yield "[START]"
-        while True:
-            data = data_queue.get(timeout=60)
-            if data is None:
-                yield "[END]"
-                break
-            yield data
-
-    def run_chat():
+    def run_chat() -> None:
         try:
             chat_manager.chat(
                 collection.vectordb_collection_name,
@@ -143,6 +147,7 @@ def chat_collection_stream(
             callback(None)
 
     threading.Thread(target=run_chat).start()
+    
     return StreamingResponse(data_generator())
 
 
@@ -184,23 +189,27 @@ def chat_file_stream(
             
     data_queue = queue.Queue()
 
-    def callback(data):
+    def callback(data: str) -> None:
         data_queue.put(data)
-
-    def data_generator():
+        
+    def data_generator() -> Generator[str, None, None]:
         yield "[START]"
         while True:
-            data = data_queue.get(timeout=60)
-            if data is None:
-                yield "[END]"
+            try:
+                data = data_queue.get(timeout=60)
+                if data is None:
+                    yield "[END]"
+                    break
+                yield data
+            except queue.Empty:
+                yield "[TIMEOUT]"
                 break
-            yield data
     
-    def on_end_callback(response):
+    def on_end_callback(response: str) -> None:
         if conversation_id:
             conversation_manager.add_message(user_id, conversation_id, data.prompt, response.generations[0][0].text)
 
-    def run_chat():
+    def run_chat() -> None:
         try:
             chat_manager.chat(
                 collection.vectordb_collection_name,
@@ -221,6 +230,7 @@ def chat_file_stream(
             callback(None)
 
     threading.Thread(target=run_chat).start()
+    
     return StreamingResponse(data_generator())
 
 

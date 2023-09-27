@@ -12,10 +12,13 @@ QDRANT_URL = os.getenv("QDRANT_URL", "localhost")
 MONGODB_URL = os.getenv("MONGODB_URL")
 DATABASE_NAME = os.getenv("DATABASE_NAME", "study-app")
 PEXELS_API_KEY = os.getenv("PEXELS_API_KEY")
-QUIZ_MAX_API_CALLS = os.getenv("QUIZ_MAX_API_CALLS", 5)
+QUIZ_MAX_API_CALLS = int(os.getenv("QUIZ_MAX_API_CALLS", 4))
 
 MAIN_URL_EXECUTOR = os.getenv("MAIN_URL_EXECUTOR", "http://127.0.0.1:9000/")
 EVALUATE_URL_EXECUTOR = os.getenv("EVALUATE_URL_EXECUTOR", "http://127.0.0.1:9000/evaluate")
 AVAILABLE_LIBRARIES_URL = os.getenv("AVAILABLE_LIBRARIES_URL", "http://127.0.0.1:9000/allowed_libraries")
 MATHPIX_APPID = os.getenv("MATHPIX_APPID")
 MATHPIX_API_KEY = os.getenv("MATHPIX_API_KEY")
+REQUEST_TIMEOUT = 250
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:10001")
+CACHE_TTL = 5 * 24 * 60 * 60

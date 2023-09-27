@@ -15,12 +15,15 @@ from .lib.maths_solver.agent import MathSolver
 from .lib.maths_solver.python_exec_client import PythonClient, Urls
 from .lib.maths_solver.ocr import ImageOCR
 from .lib.writer import Writer
+from .lib.redis_cache import RedisCache
 from langchain.chat_models import ChatOpenAI
 from langchain.llms import OpenAI
 import langchain
+import redis
 
 
 langchain.verbose = True
+langchain.llm_cache = RedisCache(redis_=redis.from_url(REDIS_URL), ttl=CACHE_TTL)
 user_manager = UserDBManager(MONGODB_URL, DATABASE_NAME)
 collection_manager = CollectionDBManager(MONGODB_URL, DATABASE_NAME)
 file_manager = FileDBManager(MONGODB_URL, DATABASE_NAME, collection_manager)
@@ -73,7 +76,7 @@ default_llm = ChatOpenAI
 maths_solver = MathSolver(
     client,
     default_llm,
-    llm_kwargs={"openai_api_key": OPENAI_APIKEY, "temperature": 0.2},
+    llm_kwargs={"openai_api_key": OPENAI_APIKEY, "temperature": 0.3},
 )
 image_ocr = ImageOCR(
     app_id=MATHPIX_APPID,
