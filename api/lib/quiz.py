@@ -2,7 +2,6 @@ import math
 import random
 import uuid
 
-from concurrent.futures import ThreadPoolExecutor
 from .database import FileDBManager
 from .knowledge_manager import KnowledgeManager
 from langchain.text_splitter import TokenTextSplitter
@@ -134,7 +133,7 @@ class QuizGenerator:
         knowledge_manager: KnowledgeManager,
         llm: BaseLanguageModel,
         llm_kwargs: dict,
-        chunk_size: int = 1000,
+        chunk_size: int = 700,
     ) -> None:
         self.file_manager = file_manager
         self.knowledge_manager = knowledge_manager
@@ -151,12 +150,12 @@ class QuizGenerator:
         return output.flashcards
 
     @retry(stop_max_attempt_number=3)
-    def generate_quiz(self, data: str, number_of_questions: int, max_generations: int = 2, collection_name: str = "Anything") -> list[QuizQuestionResponse]:
+    def generate_quiz(self, data: str, number_of_questions: int, collection_name: str = "Anything") -> list[QuizQuestionResponse]:
         text_splitter = TokenTextSplitter(
             chunk_size=self.chunk_size, model_name="gpt-3.5-turbo"
         )
         splits = text_splitter.split_text(data)
-        texts = self.pick_evenly_spaced_elements(splits, max_generations)
+        texts = random.choice(splits)
         parser = PydanticOutputParser(pydantic_object=Quiz)
         prompt_template = ChatPromptTemplate(
             messages=[
@@ -198,10 +197,7 @@ The generated quiz in proper schema without useless and incomplete questions, wh
         if len(texts) == 0:
             questions = self.run_chain(chain, "", min(number_of_questions, 10))
         else:
-            with ThreadPoolExecutor(max_workers=len(texts)) as executor:
-                futures = [executor.submit(self.run_chain, chain, text, (number_of_questions // len(texts)) + 1) for text in texts]
-                for future in futures:
-                    questions.extend(future.result())
+            questions = self.run_chain(chain, texts, number_of_questions)
 
         return [QuizQuestionResponse(**question.model_dump(), id=str(uuid.uuid4())) for question in questions[:number_of_questions]]
     
@@ -265,12 +261,12 @@ The generated quiz in proper schema without useless and incomplete questions, wh
         return percentage_correct, correct_answers, total_questions      
 
     @retry(stop_max_attempt_number=3)
-    def generate_flashcards(self, data: str, number_of_flashcards: int, max_generations: int = 2, collection_name: str = "Anything") -> list[FlashCard]:
+    def generate_flashcards(self, data: str, number_of_flashcards: int, collection_name: str = "Anything") -> list[FlashCard]:
         text_splitter = TokenTextSplitter(
             chunk_size=self.chunk_size, model_name="gpt-3.5-turbo"
         )
         splits = text_splitter.split_text(data)
-        texts = self.pick_evenly_spaced_elements(splits, max_generations)
+        texts = random.choice(splits)
         parser = PydanticOutputParser(pydantic_object=FlashCards)
         prompt_template = ChatPromptTemplate(
             messages=[
@@ -311,10 +307,7 @@ The generated flashcards in proper schema without useless and incomplete questio
         if len(texts) == 0:
             flashcards = self.run_chain_fc(chain, "", min(number_of_flashcards, 10))
         else:
-            with ThreadPoolExecutor(max_workers=len(texts)) as executor:
-                futures = [executor.submit(self.run_chain_fc, chain, text, (number_of_flashcards // len(texts)) + 1) for text in texts]
-                for future in futures:
-                    flashcards.extend(future.result())
+            flashcards = self.run_chain_fc(chain, texts, min(number_of_flashcards, 10))
 
         return flashcards[:number_of_flashcards]
   

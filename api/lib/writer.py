@@ -145,8 +145,8 @@ Follow the schema above (Important) Make sure the json is correct!
         )
 
     def generate_content_html(self, content_input: ContentInput) -> tuple[str, str]:
-        plan = self.get_content_plan(content_input)
-        content = self.get_markdown(plan, content_input.minimum_word_count, content_input)
+        #plan = self.get_content_plan(content_input)
+        content = self.get_markdown(GenerationPlan(plan="Use your brain"), content_input.minimum_word_count, content_input)
         return markdown(content.content_markdown), content.content_markdown
     
     def html_to_pdf_bytes(self, html: str) -> bytes:

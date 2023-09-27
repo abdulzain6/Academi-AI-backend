@@ -44,7 +44,7 @@ def make_quiz(quiz_input: MakeQuizInput, user_id=Depends(get_user_id)):
         ]
     )
     try:
-        questions = quiz_generator.generate_quiz(data, quiz_input.number_of_questions, max_generations=QUIZ_MAX_API_CALLS, collection_name=quiz_input.collection_name)
+        questions = quiz_generator.generate_quiz(data, quiz_input.number_of_questions, collection_name=quiz_input.collection_name)
     except Exception as e:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=f"Error: {str(e)}") from e
     
@@ -81,7 +81,7 @@ def make_flashcards(fc_input: MakeFlashCardsInput, user_id=Depends(get_user_id))
         ]
     )
     try:
-        questions = quiz_generator.generate_flashcards(data, fc_input.number_of_flashcards, max_generations=QUIZ_MAX_API_CALLS, collection_name=fc_input.collection_name)
+        questions = quiz_generator.generate_flashcards(data, fc_input.number_of_flashcards, collection_name=fc_input.collection_name)
     except Exception as e:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=f"Error: {str(e)}") from e
     
