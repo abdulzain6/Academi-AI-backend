@@ -14,7 +14,7 @@ from langchain.prompts import (
 from langchain.output_parsers import PydanticOutputParser
 from langchain.schema.language_model import BaseLanguageModel
 from pydantic import BaseModel, Field
-from typing import Any, List, Union
+from typing import Any, Generator, List, Union
 from enum import Enum
 from retrying import retry
 
@@ -133,14 +133,28 @@ class QuizGenerator:
         knowledge_manager: KnowledgeManager,
         llm: BaseLanguageModel,
         llm_kwargs: dict,
-        chunk_size: int = 700,
     ) -> None:
         self.file_manager = file_manager
         self.knowledge_manager = knowledge_manager
-        self.chunk_size = chunk_size
         self.llm = llm
         self.llm_kwargs = llm_kwargs
 
+    def split_into_n_chunks(self, lst: List[Any], n: int) -> Generator[List[Any], None, None]:
+        if not lst or n <= 0:
+            return  # Yield nothing for empty list or non-positive n
+
+        n = min(n, len(lst))  # Adjust n to avoid empty chunks
+
+        avg_len = len(lst) // n
+        remainder = len(lst) % n
+
+        start = 0
+        for _ in range(n):
+            end = start + avg_len + (remainder > 0)
+            yield lst[start:end]
+            start = end
+            remainder -= 1
+            
     def run_chain(self, chain, text, number_of_questions: int) -> List[QuizQuestion]:
         output: Quiz = chain.run(data=text, number_of_questions=number_of_questions)
         return output.questions
@@ -150,12 +164,25 @@ class QuizGenerator:
         return output.flashcards
 
     @retry(stop_max_attempt_number=3)
-    def generate_quiz(self, data: str, number_of_questions: int, collection_name: str = "Anything") -> list[QuizQuestionResponse]:
-        text_splitter = TokenTextSplitter(
-            chunk_size=self.chunk_size, model_name="gpt-3.5-turbo"
-        )
-        splits = text_splitter.split_text(data)
-        texts = random.choice(splits)
+    def generate_quiz(self, data: str, number_of_questions: int, collection_name: str = "Anything", n: int = 4) -> list[QuizQuestionResponse]:
+        if data:
+            data_tokens = self.llm(**self.llm_kwargs).get_num_tokens(
+                data
+            )
+            if data_tokens < 1500:
+                texts = data
+            else:
+                chunk_size = min(data_tokens // n, 1500)
+                
+                text_splitter = TokenTextSplitter(
+                    chunk_size=chunk_size, model_name="gpt-3.5-turbo"
+                )
+                splits = text_splitter.split_text(data)
+                
+                texts = random.choice(splits)
+        else:
+            texts = data
+            
         parser = PydanticOutputParser(pydantic_object=Quiz)
         prompt_template = ChatPromptTemplate(
             messages=[
@@ -261,12 +288,25 @@ The generated quiz in proper schema without useless and incomplete questions, wh
         return percentage_correct, correct_answers, total_questions      
 
     @retry(stop_max_attempt_number=3)
-    def generate_flashcards(self, data: str, number_of_flashcards: int, collection_name: str = "Anything") -> list[FlashCard]:
-        text_splitter = TokenTextSplitter(
-            chunk_size=self.chunk_size, model_name="gpt-3.5-turbo"
-        )
-        splits = text_splitter.split_text(data)
-        texts = random.choice(splits)
+    def generate_flashcards(self, data: str, number_of_flashcards: int, collection_name: str = "Anything", n: int = 4) -> list[FlashCard]:
+        if data:
+            data_tokens = self.llm(**self.llm_kwargs).get_num_tokens(
+                data
+            )
+            if data_tokens < 1500:
+                texts = data
+            else:
+                chunk_size = min(data_tokens // n, 1500)
+                
+                text_splitter = TokenTextSplitter(
+                    chunk_size=chunk_size, model_name="gpt-3.5-turbo"
+                )
+                splits = text_splitter.split_text(data)
+                
+                texts = random.choice(splits)
+        else:
+            texts = data
+            
         parser = PydanticOutputParser(pydantic_object=FlashCards)
         prompt_template = ChatPromptTemplate(
             messages=[

@@ -42,7 +42,7 @@ class CustomCallback(BaseCallbackHandler):
         parent_run_id: Optional[UUID] = None,
         **kwargs: Any,
     ) -> Any:
-        self.callback("\n\nAI is using a tool to perform calculations to better assist you...\n\n")
+        self.callback("\nAI is using a tool to perform calculations to better assist you...\n")
         
     def on_tool_end(
         self,
@@ -53,7 +53,7 @@ class CustomCallback(BaseCallbackHandler):
         **kwargs: Any,
     ) -> Any:
         """Run when tool ends running."""
-        self.callback("\n\nAI has finished using the tool and will respond shortly...\n\n")
+        self.callback("\nAI has finished using the tool and will respond shortly...\n")
 
 
     def on_agent_finish(
@@ -206,7 +206,7 @@ Lets think step by step to help the student following all rules.
         return Solution.model_validate(chain.run(response)[0])
 
     def wrap_prompt(self, prompt: str) -> str:
-        return f"""{prompt}"""
+        return f"""{prompt} (Use Tool if applicable)"""
     
     def run_agent(self, prompt: str, structured: bool, stream: bool = False, callback: callable = None, on_end_callback: callable = None, model_name: str = "gpt-3.5-turbo", chat_history: list[tuple[str, str]] = None):
         

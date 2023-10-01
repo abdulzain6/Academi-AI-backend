@@ -3,7 +3,7 @@ from pymongo import MongoClient
 from pymongo.collection import Collection
 from pymongo.errors import BulkWriteError
 from gridfs import GridFS, NoFile
-from .models import UserModel, CollectionModel, FileModel, Conversation, LatestConversation, MessagePair, ConversationMetadata
+from .models import UserModel, CollectionModel, FileModel, Conversation, LatestConversation, MessagePair, ConversationMetadata, UserPoints
 
 import uuid
 import unittest
@@ -63,6 +63,38 @@ class UserDBManager:
         return 1
     
 
+
+class UserPointsManager:
+    def __init__(self, connection_string: str, database_name: str, default_points: int = 10) -> None:
+        self.client = MongoClient(connection_string)
+        self.db = self.client[database_name]
+        self.points_collection: Collection = self.db["user_points"]
+        self.default_points = default_points
+        self.points_collection.create_index("uid", unique=True)
+
+    def get_user_points(self, uid: str) -> Optional[UserPoints]:
+        if not self.user_exists(uid):
+            self.points_collection.insert_one(UserPoints(uid=uid, points=self.default_points).model_dump())
+            
+        data = self.points_collection.find_one({"uid": uid}, {"_id": 0})
+        return UserPoints(**data) if data else None
+
+    def user_exists(self, uid: str) -> bool:
+        return self.points_collection.count_documents({"uid": uid}, limit=1) > 0
+
+    def increment_user_points(self, uid: str, points: int) -> int:
+        if not self.user_exists(uid):
+            self.points_collection.insert_one(UserPoints(uid=uid, points=self.default_points).model_dump())
+        result = self.points_collection.update_one({"uid": uid}, {"$inc": {"points": points}})
+        return result.modified_count
+
+    def decrement_user_points(self, uid: str, points: int) -> int:
+        if not self.user_exists(uid):
+            self.points_collection.insert_one(UserPoints(uid=uid, points=self.default_points).model_dump())
+        result = self.points_collection.update_one({"uid": uid}, {"$inc": {"points": -points}})
+        return result.modified_count
+    
+    
 class CollectionDBManager:
     def __init__(self, connection_string: str, database_name: str) -> None:
         self.client = MongoClient(connection_string)

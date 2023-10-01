@@ -5,6 +5,8 @@ from typing import Generator, Optional
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi import Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
+
+from ..decorators import require_points_for_feature
 from ..lib.models import MessagePair
 from ..auth import get_user_id
 from ..lib.utils import split_into_chunks
@@ -19,32 +21,36 @@ class MathsSolveInput(BaseModel):
     question: str
     model_name: str = "gpt-3.5-turbo"
     chat_history: Optional[list[tuple[str, str]]] = None
-    
-    
-def convert_message_pairs_to_tuples(message_pairs: list[MessagePair]) -> list[tuple[str, str]]:
-    return [(pair.human_message, pair.bot_response) for pair in message_pairs]
 
+
+def convert_message_pairs_to_tuples(
+    message_pairs: list[MessagePair],
+) -> list[tuple[str, str]]:
+    return [(pair.human_message, pair.bot_response) for pair in message_pairs]
 
 
 @router.post("/solve_maths_stream")
 def solve_maths_stream(
-    maths_solver_input: MathsSolveInput, 
-    conversation_id: Optional[str] = None, 
-    user_id: str = Depends(get_user_id)
+    maths_solver_input: MathsSolveInput,
+    conversation_id: Optional[str] = None,
+    user_id: str = Depends(get_user_id),
+    _=Depends(require_points_for_feature("CHAT")),
 ) -> StreamingResponse:
-    
-    if conversation_id and not conversation_manager.conversation_exists(user_id, conversation_id):
+    if conversation_id and not conversation_manager.conversation_exists(
+        user_id, conversation_id
+    ):
         raise HTTPException(
-            detail="Conversation not found", 
-            status_code=status.HTTP_400_BAD_REQUEST
+            detail="Conversation not found", status_code=status.HTTP_400_BAD_REQUEST
         )
-    
+
     chat_history = (
         convert_message_pairs_to_tuples(
             conversation_manager.get_messages(user_id, conversation_id)
-        ) if conversation_id else maths_solver_input.chat_history
+        )
+        if conversation_id
+        else maths_solver_input.chat_history
     ) or []
-    
+
     data_queue = queue.Queue()
 
     def callback(data: str) -> None:
@@ -52,8 +58,10 @@ def solve_maths_stream(
 
     def on_end_callback(response: str) -> None:
         if conversation_id:
-            conversation_manager.add_message(user_id, conversation_id, maths_solver_input.question, response)
-            
+            conversation_manager.add_message(
+                user_id, conversation_id, maths_solver_input.question, response
+            )
+
     def data_generator() -> Generator[str, None, None]:
         yield "[START]"
         while True:
@@ -76,7 +84,7 @@ def solve_maths_stream(
                 model_name=maths_solver_input.model_name,
                 callback=callback,
                 chat_history=chat_history,
-                on_end_callback=on_end_callback
+                on_end_callback=on_end_callback,
             )
         except Exception as e:
             print(e)
@@ -86,11 +94,16 @@ def solve_maths_stream(
             callback("@@END@@")
 
     threading.Thread(target=run_agent).start()
-    
+
     return StreamingResponse(data_generator())
 
+
 @router.post("/ocr_image")
-def ocr_image_route(user_id: str = Depends(get_user_id), file: UploadFile = File(...)) -> Optional[str]:
+def ocr_image_route(
+    user_id: str = Depends(get_user_id),
+    file: UploadFile = File(...),
+    _=Depends(require_points_for_feature("OCR")),
+) -> Optional[str]:
     try:
         with tempfile.NamedTemporaryFile(delete=True) as temp_file:
             temp_file.write(file.file.read())
@@ -101,8 +114,3 @@ def ocr_image_route(user_id: str = Depends(get_user_id), file: UploadFile = File
 
     except Exception as e:
         raise HTTPException(400, f"Error: {e}") from e
-
-
-
-
-

@@ -405,7 +405,6 @@ Human: {question}
                 model=model,
                 **self.llm_kwargs,
                 streaming=False,
-                request_timeout=100
             )
 
         return self.llm_cls(

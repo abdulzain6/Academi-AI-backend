@@ -104,6 +104,8 @@ The user has given some instructions on how the {to_generate} should be. They ar
 Keep in mind to not do the following regarding the {to_generate}:
 {negative_prompt}
 
+it must be on {topic}
+
 Schema:
 ======================
 {format_instructions}

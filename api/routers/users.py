@@ -2,8 +2,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from ..auth import get_current_user, get_user_id
-from ..globals import user_manager, knowledge_manager, collection_manager
-from ..lib.database import UserModel
+from ..globals import user_manager, knowledge_manager, collection_manager, user_points_manager
+from ..lib.database import UserModel, UserPoints
 
 router = APIRouter()
 
@@ -30,6 +30,14 @@ def get_user(user_id=Depends(get_user_id)):
         return {"status": "success", "error": "", "user": user}
     else:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+    
+@router.get("/points", response_model=UserPoints)
+def get_user_points(user_id=Depends(get_user_id)):
+    if user_points := user_points_manager.get_user_points(user_id):
+        return user_points.model_dump()
+    else:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+    
     
 @router.post("/", response_model=UserResponse)
 def create_user(current_user=Depends(get_current_user)):

@@ -5,6 +5,7 @@ from .lib.database import (
     CollectionDBManager,
     UserDBManager,
     MessageDBManager,
+    UserPointsManager
 )
 from .lib.knowledge_manager import KnowledgeManager, ChatManager
 from .lib.presentation_maker.database import initialize_managers
@@ -38,7 +39,7 @@ knowledge_manager = KnowledgeManager(
 chat_manager = ChatManager(
     OpenAIEmbeddings(openai_api_key=OPENAI_APIKEY),
     ChatOpenAI,
-    llm_kwargs={"openai_api_key": OPENAI_APIKEY, "temperature": 0.3},
+    llm_kwargs={"openai_api_key": OPENAI_APIKEY, "temperature": 0.3, "request_timeout" : 100},
     conversation_limit=700,
     docs_limit=3000,
     qdrant_api_key=QDRANT_API_KEY,
@@ -62,6 +63,7 @@ quiz_generator = QuizGenerator(
     {
         "openai_api_key": OPENAI_APIKEY,
         "temperature": 0.5,
+        "request_timeout" : 100
     },
 )
 client = PythonClient(
@@ -76,12 +78,12 @@ default_llm = ChatOpenAI
 maths_solver = MathSolver(
     client,
     default_llm,
-    llm_kwargs={"openai_api_key": OPENAI_APIKEY, "temperature": 0.3},
+    llm_kwargs={"openai_api_key": OPENAI_APIKEY, "temperature": 0.3, "request_timeout" : 100},
 )
 image_ocr = ImageOCR(
     app_id=MATHPIX_APPID,
     app_key=MATHPIX_API_KEY,
-    llm_kwargs={"openai_api_key": OPENAI_APIKEY, "model": "gpt-3.5-turbo-instruct"},
+    llm_kwargs={"openai_api_key": OPENAI_APIKEY, "model": "gpt-3.5-turbo-instruct", "request_timeout" : 100},
     llm_cls=OpenAI,
 )
 writer = Writer(
@@ -90,5 +92,7 @@ writer = Writer(
         "model_name": "gpt-3.5-turbo",
         "temperature": 0.3,
         "openai_api_key": OPENAI_APIKEY,
+        "request_timeout" : 100
     },
 )
+user_points_manager = UserPointsManager(MONGODB_URL, DATABASE_NAME, DEFAULT_POINTS)

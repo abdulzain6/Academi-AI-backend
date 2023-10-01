@@ -4,12 +4,18 @@ from fastapi.responses import JSONResponse
 from ..auth import get_user_id
 from ..globals import writer
 from ..lib.writer import ContentInput
+from ..decorators import require_points_for_feature
 
 router = APIRouter()
 
+
 @router.post("/write")
-def write_content(input: ContentInput, user_id = Depends(get_user_id)):
-    content = writer.get_content(input)    
+def write_content(
+    input: ContentInput,
+    user_id=Depends(get_user_id),
+    _=Depends(require_points_for_feature("WRITER")),
+):
+    content = writer.get_content(input)
     content["pdf"] = base64.b64encode(content["pdf"]).decode()
     content["docx"] = base64.b64encode(content["docx"]).decode()
     return JSONResponse(content=content)
