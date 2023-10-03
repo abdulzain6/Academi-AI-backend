@@ -8,10 +8,11 @@ from fastapi.responses import StreamingResponse
 
 from ..decorators import require_points_for_feature
 from ..lib.models import MessagePair
-from ..auth import get_user_id
 from ..lib.utils import split_into_chunks
 from ..globals import maths_solver, image_ocr, conversation_manager
 from pydantic import BaseModel
+from ..auth import get_user_id, verify_play_integrity
+
 
 
 router = APIRouter()
@@ -35,6 +36,7 @@ def solve_maths_stream(
     conversation_id: Optional[str] = None,
     user_id: str = Depends(get_user_id),
     _=Depends(require_points_for_feature("CHAT")),
+    play_integrity_verified=Depends(verify_play_integrity)
 ) -> StreamingResponse:
     if conversation_id and not conversation_manager.conversation_exists(
         user_id, conversation_id
@@ -103,6 +105,7 @@ def ocr_image_route(
     user_id: str = Depends(get_user_id),
     file: UploadFile = File(...),
     _=Depends(require_points_for_feature("OCR")),
+    play_integrity_verified=Depends(verify_play_integrity)
 ) -> Optional[str]:
     try:
         with tempfile.NamedTemporaryFile(delete=True) as temp_file:

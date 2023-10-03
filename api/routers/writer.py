@@ -1,7 +1,7 @@
 import base64
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
-from ..auth import get_user_id
+from ..auth import get_user_id, verify_play_integrity
 from ..globals import writer
 from ..lib.writer import ContentInput
 from ..decorators import require_points_for_feature
@@ -14,6 +14,7 @@ def write_content(
     input: ContentInput,
     user_id=Depends(get_user_id),
     _=Depends(require_points_for_feature("WRITER")),
+    play_integrity_verified=Depends(verify_play_integrity)
 ):
     content = writer.get_content(input)
     content["pdf"] = base64.b64encode(content["pdf"]).decode()

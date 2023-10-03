@@ -2,7 +2,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from fastapi import Depends, HTTPException, status
-from ..auth import get_user_id
+from ..auth import get_user_id, verify_play_integrity
 from ..globals import (
     collection_manager,
     file_manager,
@@ -37,7 +37,10 @@ router = APIRouter()
 
 
 @router.get("/templates", response_model=GetTemplateResponse)
-def get_available_templates(user_id: str = Depends(get_user_id)) -> GetTemplateResponse:
+def get_available_templates(
+    user_id: str = Depends(get_user_id),
+    play_integrity_verified=Depends(verify_play_integrity),
+) -> GetTemplateResponse:
     templates = template_manager.get_all_templates()
 
     formatted_templates = [
@@ -53,6 +56,7 @@ def make_presentation(
     presentation_input: MakePresentationInput,
     user_id=Depends(get_user_id),
     _=Depends(require_points_for_feature("PRESENTATION")),
+    play_integrity_verified=Depends(verify_play_integrity),
 ):
     if presentation_input.use_data:
         if presentation_input.collection_name:

@@ -1,46 +1,72 @@
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
-from ..auth import get_current_user, get_user_id
-from ..globals import user_manager, knowledge_manager, collection_manager, user_points_manager
+from ..auth import get_current_user, get_user_id, verify_play_integrity
+from ..globals import (
+    user_manager,
+    knowledge_manager,
+    collection_manager,
+    user_points_manager,
+    DEFAULT_POINTS_INCREMENT
+)
 from ..lib.database import UserModel, UserPoints
 
 router = APIRouter()
+
 
 class UserResponse(BaseModel):
     status: str
     error: str
     user: UserModel
 
+
 class DeleteUserResponse(BaseModel):
     status: str
     error: str
     user: int
-    
+
+
 class UserUpdate(BaseModel):
     email: Optional[str]
     display_name: Optional[str]
     photo_url: Optional[str]
-    
-    
+
 
 @router.get("/", response_model=UserResponse)
-def get_user(user_id=Depends(get_user_id)):
+def get_user(
+    user_id=Depends(get_user_id), play_integrity_verified=Depends(verify_play_integrity)
+):
     if user := user_manager.get_user_by_uid(user_id):
         return {"status": "success", "error": "", "user": user}
     else:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
-    
+
+@router.post("/increment_points/")
+def increment_points(
+    user_id: str = Depends(get_user_id), 
+    play_integrity_verified: None = Depends(verify_play_integrity)
+) -> dict:
+    modified_count = user_points_manager.increment_user_points(user_id, DEFAULT_POINTS_INCREMENT)
+    if modified_count > 0:
+        return {"status": "success", "message": f"Incremented points by {DEFAULT_POINTS_INCREMENT}"}
+    else:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Failed to increment points")
+
 @router.get("/points", response_model=UserPoints)
-def get_user_points(user_id=Depends(get_user_id)):
+def get_user_points(
+    user_id=Depends(get_user_id), play_integrity_verified=Depends(verify_play_integrity)
+):
     if user_points := user_points_manager.get_user_points(user_id):
         return user_points.model_dump()
     else:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
-    
-    
+
+
 @router.post("/", response_model=UserResponse)
-def create_user(current_user=Depends(get_current_user)):
+def create_user(
+    current_user=Depends(get_current_user),
+    play_integrity_verified=Depends(verify_play_integrity),
+):
     try:
         user = user_manager.add_user(
             UserModel(
@@ -54,19 +80,29 @@ def create_user(current_user=Depends(get_current_user)):
     except ValueError as e:
         raise HTTPException(status.HTTP_409_CONFLICT, str(e)) from e
     except Exception as e:
-        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, f"Error Registering user, {e}") from e
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR, f"Error Registering user, {e}"
+        ) from e
+
 
 @router.put("/", response_model=UserResponse)
-def update_user(user_update: UserUpdate, user_id=Depends(get_user_id)):
+def update_user(
+    user_update: UserUpdate,
+    user_id=Depends(get_user_id),
+    play_integrity_verified=Depends(verify_play_integrity),
+):
     if not user_manager.user_exists(user_id):
         raise HTTPException(detail="User does not exist", status_code=404)
     user_update = user_update.model_dump()
     user_manager.update_user(user_id, **user_update)
     user = user_manager.get_user_by_uid(user_id)
     return {"status": "success", "error": "", "user": user}
-    
+
+
 @router.delete("/", response_model=DeleteUserResponse)
-def delete_user(user_id=Depends(get_user_id)):
+def delete_user(
+    user_id=Depends(get_user_id), play_integrity_verified=Depends(verify_play_integrity)
+):
     collections = collection_manager.get_all_by_user(user_id)
     for collection in collections:
         if not knowledge_manager.delete_collection(collection.vectordb_collection_name):
@@ -76,4 +112,3 @@ def delete_user(user_id=Depends(get_user_id)):
     if user == 0:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
     return {"status": "success", "error": "", "user": user}
-    

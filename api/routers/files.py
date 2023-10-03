@@ -3,17 +3,17 @@ import tempfile
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse
 from fastapi import Depends, HTTPException, status
-from ..auth import get_user_id
 from ..globals import collection_manager, knowledge_manager, file_manager
 from ..lib.database import FileModel
 from ..lib.utils import get_file_extension, format_url, convert_youtube_url_to_standard
 from pydantic import BaseModel
 from typing import Optional
+from ..auth import get_user_id, verify_play_integrity
+
 
 router = APIRouter()
 
 MAX_FILE_SIZE = 20 * 1024 * 1024
-
 
 
 class FileCreate(BaseModel):
@@ -37,10 +37,13 @@ class LinkFileInput(BaseModel):
 
 @router.post("/linkfile")
 def create_link_file(
-    linkfile: LinkFileInput, user_id=Depends(get_user_id)
+    linkfile: LinkFileInput,
+    user_id=Depends(get_user_id),
+    play_integrity_verified=Depends(verify_play_integrity),
 ):
-    
-    linkfile.youtube_link = convert_youtube_url_to_standard(format_url(linkfile.youtube_link))
+    linkfile.youtube_link = convert_youtube_url_to_standard(
+        format_url(linkfile.youtube_link)
+    )
     linkfile.web_link = format_url(linkfile.web_link)
 
     collection = collection_manager.get_collection_by_name_and_user(
@@ -61,13 +64,10 @@ def create_link_file(
             status_code=status.HTTP_400_BAD_REQUEST,
         )
 
-    if file_manager.file_exists(
-        collection.collection_uid, user_id, linkfile.filename
-    ):
+    if file_manager.file_exists(collection.collection_uid, user_id, linkfile.filename):
         raise HTTPException(
             detail="File Already exists", status_code=status.HTTP_400_BAD_REQUEST
         )
-
 
     extension = ".yt" if linkfile.youtube_link else ".html"
 
@@ -114,6 +114,7 @@ def create_file(
     description: str = "",
     file: UploadFile = File(...),
     user_id=Depends(get_user_id),
+    play_integrity_verified=Depends(verify_play_integrity),
 ):
     try:
         if "../" in filename or "../" in file.filename:
@@ -140,13 +141,18 @@ def create_file(
         ) as temp_file:
             contents = file.file.read()
             if len(contents) > MAX_FILE_SIZE:
-                raise HTTPException(status_code=400, detail="File size exceeds the maximum limit of 20 MB")
+                raise HTTPException(
+                    status_code=400,
+                    detail="File size exceeds the maximum limit of 20 MB",
+                )
             temp_file.write(contents)
             temp_file.seek(0)
 
             try:
                 contents, ids, file_bytes = knowledge_manager.load_and_injest_file(
-                    collection.vectordb_collection_name, temp_file.name, {"file": filename}
+                    collection.vectordb_collection_name,
+                    temp_file.name,
+                    {"file": filename},
                 )
             except Exception as e:
                 print(e)
@@ -180,10 +186,12 @@ def create_file(
 
 
 @router.get("/")
-def get_file(collection_name: str, user_id=Depends(get_user_id)):
-    if not collection_manager.get_collection_by_name_and_user(
-        collection_name, user_id
-    ):
+def get_file(
+    collection_name: str,
+    user_id=Depends(get_user_id),
+    play_integrity_verified=Depends(verify_play_integrity),
+):
+    if not collection_manager.get_collection_by_name_and_user(collection_name, user_id):
         raise HTTPException(detail="Collection does not exist", status_code=404)
 
     files = file_manager.get_all_files(user_id, collection_name)
@@ -202,17 +210,16 @@ def get_file(collection_name: str, user_id=Depends(get_user_id)):
 
 @router.get("/{file_name}")
 def get_file(
-    collection_name: str, file_name: str, user_id=Depends(get_user_id)
+    collection_name: str,
+    file_name: str,
+    user_id=Depends(get_user_id),
+    play_integrity_verified=Depends(verify_play_integrity),
 ):
-    if not collection_manager.collection_exists(
-        collection_name, user_id
-    ):
+    if not collection_manager.collection_exists(collection_name, user_id):
         raise HTTPException(detail="Collection does not exist", status_code=404)
 
     if file := file_manager.get_file_by_name(
-        collection_name=collection_name,
-        filename=file_name,
-        user_id=user_id
+        collection_name=collection_name, filename=file_name, user_id=user_id
     ):
         return {
             "file": {
@@ -229,7 +236,10 @@ def get_file(
 
 @router.delete("/")
 def delete_file(
-    collection_name: str, file_name: str, user_id=Depends(get_user_id)
+    collection_name: str,
+    file_name: str,
+    user_id=Depends(get_user_id),
+    play_integrity_verified=Depends(verify_play_integrity),
 ):
     collection = collection_manager.get_collection_by_name_and_user(
         collection_name, user_id
@@ -238,18 +248,16 @@ def delete_file(
         raise HTTPException(detail="Collection does not exist", status_code=404)
 
     if not file_manager.file_exists(
-        collection_uid=collection.collection_uid,
-        filename=file_name,
-        user_id=user_id
+        collection_uid=collection.collection_uid, filename=file_name, user_id=user_id
     ):
         raise HTTPException(detail="File does not exist", status_code=404)
 
     file = file_manager.get_file_by_name(
-        collection_name=collection_name,
-        filename=file_name,
-        user_id=user_id
+        collection_name=collection_name, filename=file_name, user_id=user_id
     )
-    knowledge_manager.delete_ids(collection_name=collection.vectordb_collection_name, ids=file.vector_ids)
+    knowledge_manager.delete_ids(
+        collection_name=collection.vectordb_collection_name, ids=file.vector_ids
+    )
     success = file_manager.delete_file(
         collection_name=collection_name,
         filename=file_name,
@@ -260,21 +268,26 @@ def delete_file(
 
 @router.get("/{file_name}/download")
 def download_file(
-    collection_name: str, file_name: str, user_id=Depends(get_user_id)
+    collection_name: str,
+    file_name: str,
+    user_id=Depends(get_user_id),
+    play_integrity_verified=Depends(verify_play_integrity),
 ):
-    if not collection_manager.collection_exists(
-        collection_name, user_id
-    ):
+    if not collection_manager.collection_exists(collection_name, user_id):
         raise HTTPException(detail="Collection does not exist", status_code=404)
 
     if file := file_manager.get_file_by_name(
-        collection_name=collection_name,
-        filename=file_name,
-        user_id=user_id,
-        bytes=True
+        collection_name=collection_name, filename=file_name, user_id=user_id, bytes=True
     ):
-        with tempfile.NamedTemporaryFile(delete=False, prefix=file.friendly_filename, suffix=file.filetype) as temp_file:
+        with tempfile.NamedTemporaryFile(
+            delete=False, prefix=file.friendly_filename, suffix=file.filetype
+        ) as temp_file:
             temp_file.write(file.file_bytes)
-            return FileResponse(temp_file.name, headers={"Content-Disposition": f"attachment; filename={temp_file.name}"})
+            return FileResponse(
+                temp_file.name,
+                headers={
+                    "Content-Disposition": f"attachment; filename={temp_file.name}"
+                },
+            )
     else:
         raise HTTPException(detail="File does not exist", status_code=404)

@@ -1,7 +1,7 @@
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi import Depends, HTTPException, status
-from ..auth import get_user_id
+from ..auth import get_user_id, verify_play_integrity
 from ..globals import file_manager, quiz_generator, collection_manager
 from pydantic import BaseModel
 from ..decorators import require_points_for_feature
@@ -27,6 +27,7 @@ def make_quiz(
     quiz_input: MakeQuizInput,
     user_id=Depends(get_user_id),
     _=Depends(require_points_for_feature("QUIZ")),
+    play_integrity_verified=Depends(verify_play_integrity),
 ):
     if not (
         collection := collection_manager.get_collection_by_name_and_user(
@@ -64,7 +65,11 @@ def make_quiz(
 
 
 @router.post("/evaluate", response_model=Result)
-def evaluate_quiz(user_answers: list[UserResponse], user_id=Depends(get_user_id)):
+def evaluate_quiz(
+    user_answers: list[UserResponse],
+    user_id=Depends(get_user_id),
+    play_integrity_verified=Depends(verify_play_integrity),
+):
     try:
         return quiz_generator.evaluate_quiz(user_answers)
     except Exception as e:
@@ -78,6 +83,7 @@ def make_flashcards(
     fc_input: MakeFlashCardsInput,
     user_id=Depends(get_user_id),
     _=Depends(require_points_for_feature("FLASHCARDS")),
+    play_integrity_verified=Depends(verify_play_integrity),
 ):
     if not (
         collection := collection_manager.get_collection_by_name_and_user(

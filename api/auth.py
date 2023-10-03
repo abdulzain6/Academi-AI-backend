@@ -1,8 +1,10 @@
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from firebase_admin import auth
 from .firebase import default_app
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Header, status
 import logging
+from firebase_admin import app_check
+import jwt
 
 
 security = HTTPBearer()
@@ -38,4 +40,15 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Invalid authentication credentials {str(e)}",
             headers={"WWW-Authenticate": "Bearer"},
+        ) from e
+        
+def verify_play_integrity(x_firebase_appcheck: str = Header(...)) -> None:
+    try:
+        return
+        app_check_claims = app_check.verify_token(x_firebase_appcheck)
+    except (ValueError, jwt.exceptions.DecodeError) as e:
+        print(e)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid Play Integrity token",
         ) from e

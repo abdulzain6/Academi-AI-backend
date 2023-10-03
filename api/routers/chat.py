@@ -4,7 +4,7 @@ from typing import Generator, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi import Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
-from ..auth import get_user_id
+from ..auth import get_user_id, verify_play_integrity
 from ..globals import (
     collection_manager,
     chat_manager,
@@ -44,6 +44,7 @@ def chat_collection(
     conversation_id: Optional[str] = None,
     user_id=Depends(get_user_id),
     _=Depends(require_points_for_feature("CHAT")),
+    play_integrity_verified=Depends(verify_play_integrity)
 ):
     if conversation_id and not conversation_manager.conversation_exists(
         user_id, conversation_id
@@ -93,6 +94,7 @@ def chat_collection_stream(
     conversation_id: Optional[str] = None,
     user_id=Depends(get_user_id),
     _=Depends(require_points_for_feature("CHAT")),
+    play_integrity_verified=Depends(verify_play_integrity)
 ):
     if conversation_id and not conversation_manager.conversation_exists(
         user_id, conversation_id
@@ -176,6 +178,7 @@ def chat_file_stream(
     conversation_id: Optional[str] = None,
     user_id=Depends(get_user_id),
     _=Depends(require_points_for_feature("CHAT")),
+    play_integrity_verified=Depends(verify_play_integrity)
 ):
     if conversation_id and not conversation_manager.conversation_exists(
         user_id, conversation_id
@@ -269,6 +272,7 @@ def chat_file(
     conversation_id: Optional[str] = None,
     user_id=Depends(get_user_id),
     _=Depends(require_points_for_feature("CHAT")),
+    play_integrity_verified=Depends(verify_play_integrity)
 ):
     if conversation_id and not conversation_manager.conversation_exists(
         user_id, conversation_id

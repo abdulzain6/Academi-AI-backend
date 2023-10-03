@@ -1,7 +1,10 @@
+from base64 import b64decode
 import json
 import os
 from typing import Dict
 from dotenv import load_dotenv
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.backends import default_backend
 
 load_dotenv()
 
@@ -31,7 +34,7 @@ MATHPIX_API_KEY = os.getenv("MATHPIX_API_KEY")
 REQUEST_TIMEOUT = os.getenv("REQUEST_TIMEOUT", 250)
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:10001")
 CACHE_TTL = os.getenv("CACHE_TTL", 5 * 24 * 60 * 60)
-DEFAULT_POINTS = os.getenv("DEFAULT_POINTS", 10)
+DEFAULT_POINTS = os.getenv("DEFAULT_POINTS", 15)
 FEATURE_PRICING = get_dict_from_env_var(
     "FEATURE_PRICING", 
     {
@@ -43,3 +46,4 @@ FEATURE_PRICING = get_dict_from_env_var(
         "WRITER" : 2
     }
 )
+DEFAULT_POINTS_INCREMENT = os.getenv("DEFAULT_POINTS_INCREMENT", 2)
