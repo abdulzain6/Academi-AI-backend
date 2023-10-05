@@ -5,6 +5,8 @@ from pydantic import BaseModel, Field
 class UserPoints(BaseModel):
     uid: str
     points: int
+    last_claimed: Optional[datetime] = None  # Last time the daily bonus was claimed
+    streak_count: int = 0
 class UserModel(BaseModel):
     uid: str
     email: str

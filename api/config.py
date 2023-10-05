@@ -1,10 +1,8 @@
-from base64 import b64decode
 import json
 import os
 from typing import Dict
 from dotenv import load_dotenv
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.backends import default_backend
+
 
 load_dotenv()
 
@@ -31,10 +29,10 @@ EVALUATE_URL_EXECUTOR = os.getenv("EVALUATE_URL_EXECUTOR", "http://127.0.0.1:900
 AVAILABLE_LIBRARIES_URL = os.getenv("AVAILABLE_LIBRARIES_URL", "http://127.0.0.1:9000/allowed_libraries")
 MATHPIX_APPID = os.getenv("MATHPIX_APPID")
 MATHPIX_API_KEY = os.getenv("MATHPIX_API_KEY")
-REQUEST_TIMEOUT = os.getenv("REQUEST_TIMEOUT", 250)
+REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", 250))
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:10001")
-CACHE_TTL = os.getenv("CACHE_TTL", 5 * 24 * 60 * 60)
-DEFAULT_POINTS = os.getenv("DEFAULT_POINTS", 15)
+CACHE_TTL = int(os.getenv("CACHE_TTL", 5 * 24 * 60 * 60))
+DEFAULT_POINTS = int(os.getenv("DEFAULT_POINTS", 15))
 FEATURE_PRICING = get_dict_from_env_var(
     "FEATURE_PRICING", 
     {
@@ -46,4 +44,4 @@ FEATURE_PRICING = get_dict_from_env_var(
         "WRITER" : 2
     }
 )
-DEFAULT_POINTS_INCREMENT = os.getenv("DEFAULT_POINTS_INCREMENT", 2)
+DEFAULT_POINTS_INCREMENT = int(os.getenv("DEFAULT_POINTS_INCREMENT", 2))

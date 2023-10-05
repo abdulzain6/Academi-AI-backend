@@ -7,7 +7,7 @@ from ..globals import (
     knowledge_manager,
     collection_manager,
     user_points_manager,
-    DEFAULT_POINTS_INCREMENT
+    DEFAULT_POINTS_INCREMENT,
 )
 from ..lib.database import UserModel, UserPoints
 
@@ -32,25 +32,38 @@ class UserUpdate(BaseModel):
     photo_url: Optional[str]
 
 
-@router.get("/", response_model=UserResponse)
-def get_user(
-    user_id=Depends(get_user_id), play_integrity_verified=Depends(verify_play_integrity)
-):
-    if user := user_manager.get_user_by_uid(user_id):
-        return {"status": "success", "error": "", "user": user}
-    else:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
 
 @router.post("/increment_points/")
 def increment_points(
-    user_id: str = Depends(get_user_id), 
+    user_id: str = Depends(get_user_id),
     play_integrity_verified: None = Depends(verify_play_integrity)
 ) -> dict:
+    if not user_points_manager.can_increment_from_ad(user_id):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Rate limit exceeded: Max {user_points_manager.max_ads_per_hour} ad watches per hour."
+        )
+
     modified_count = user_points_manager.increment_user_points(user_id, DEFAULT_POINTS_INCREMENT)
     if modified_count > 0:
-        return {"status": "success", "message": f"Incremented points by {DEFAULT_POINTS_INCREMENT}"}
+        return {
+            "status": "success",
+            "message": f"Incremented points by {DEFAULT_POINTS_INCREMENT}",
+        }
     else:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Failed to increment points")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Failed to increment points."
+        )
+
+@router.get("/is_daily_bonus_claimed/")
+def is_daily_bonus_claimed(
+    user_id: str = Depends(get_user_id),
+    play_integrity_verified: None = Depends(verify_play_integrity),
+) -> dict:
+    is_claimed = user_points_manager.is_daily_bonus_claimed(user_id)
+    return {"status": "success", "is_claimed": is_claimed}
+
 
 @router.get("/points", response_model=UserPoints)
 def get_user_points(
@@ -60,6 +73,30 @@ def get_user_points(
         return user_points.model_dump()
     else:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+
+
+@router.post("/claim_daily_bonus/")
+def claim_daily_bonus(
+    user_id: str = Depends(get_user_id),
+    play_integrity_verified: None = Depends(verify_play_integrity),
+) -> dict:
+    bonus_points = user_points_manager.claim_daily_bonus(user_id)
+    if bonus_points > 0:
+        return {"status": "success", "message": f"Claimed {bonus_points} bonus points"}
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Failed to claim daily bonus, Might be already claimed",
+        )
+
+
+@router.get("/streak_day/")
+def get_streak_day(
+    user_id: str = Depends(get_user_id),
+    play_integrity_verified: None = Depends(verify_play_integrity),
+) -> dict:
+    streak_day = user_points_manager.get_streak_day(user_id)
+    return {"status": "success", "streak_day": streak_day}
 
 
 @router.post("/", response_model=UserResponse)
@@ -83,7 +120,6 @@ def create_user(
         raise HTTPException(
             status.HTTP_500_INTERNAL_SERVER_ERROR, f"Error Registering user, {e}"
         ) from e
-
 
 @router.put("/", response_model=UserResponse)
 def update_user(
@@ -112,3 +148,12 @@ def delete_user(
     if user == 0:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
     return {"status": "success", "error": "", "user": user}
+
+@router.get("/", response_model=UserResponse)
+def get_user(
+    user_id=Depends(get_user_id), play_integrity_verified=Depends(verify_play_integrity)
+):
+    if user := user_manager.get_user_by_uid(user_id):
+        return {"status": "success", "error": "", "user": user}
+    else:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
