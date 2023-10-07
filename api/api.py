@@ -20,15 +20,15 @@ langchain.verbose = True
 
 app = FastAPI()
 
-app.include_router(users_router, prefix="/api/v1/users")
-app.include_router(files_router, prefix="/api/v1/files")
-app.include_router(collection_router, prefix="/api/v1/collections")
-app.include_router(presentation_router, prefix="/api/v1/presentation")
-app.include_router(chat_router, prefix="/api/v1/chat")
-app.include_router(convo_router, prefix="/api/v1/conversations")
-app.include_router(quiz_router, prefix="/api/v1/quiz")
-app.include_router(maths_solver_routers, prefix="/api/v1/maths_solver")
-app.include_router(writer_router, prefix="/api/v1/writer")
+app.include_router(users_router, prefix="/api/v1/users", tags=["user"])
+app.include_router(files_router, prefix="/api/v1/files", tags=["files"])
+app.include_router(collection_router, prefix="/api/v1/collections", tags=["collections"])
+app.include_router(presentation_router, prefix="/api/v1/presentation", tags=["presentation"])
+app.include_router(chat_router, prefix="/api/v1/chat", tags=["chat"])
+app.include_router(convo_router, prefix="/api/v1/conversations", tags=["conversations"])
+app.include_router(quiz_router, prefix="/api/v1/quiz", tags=["quiz"])
+app.include_router(maths_solver_routers, prefix="/api/v1/maths_solver", tags=["maths solver"])
+app.include_router(writer_router, prefix="/api/v1/writer", tags=["writer"])
 
 @app.middleware('http')
 async def timeout_middleware(request: Request, call_next):

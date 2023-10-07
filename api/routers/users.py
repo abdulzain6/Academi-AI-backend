@@ -8,6 +8,7 @@ from ..globals import (
     collection_manager,
     user_points_manager,
     DEFAULT_POINTS_INCREMENT,
+    referral_manager
 )
 from ..lib.database import UserModel, UserPoints
 
@@ -33,7 +34,7 @@ class UserUpdate(BaseModel):
 
 
 
-@router.post("/increment_points/")
+@router.post("/increment_points/", tags=["points", "ads"])
 def increment_points(
     user_id: str = Depends(get_user_id),
     play_integrity_verified: None = Depends(verify_play_integrity)
@@ -56,7 +57,7 @@ def increment_points(
             detail="Failed to increment points."
         )
 
-@router.get("/is_daily_bonus_claimed/")
+@router.get("/is_daily_bonus_claimed/", tags=["points", "daily bonus"])
 def is_daily_bonus_claimed(
     user_id: str = Depends(get_user_id),
     play_integrity_verified: None = Depends(verify_play_integrity),
@@ -65,7 +66,7 @@ def is_daily_bonus_claimed(
     return {"status": "success", "is_claimed": is_claimed}
 
 
-@router.get("/points", response_model=UserPoints)
+@router.get("/points", response_model=UserPoints, tags=["points", "ads"])
 def get_user_points(
     user_id=Depends(get_user_id), play_integrity_verified=Depends(verify_play_integrity)
 ):
@@ -75,7 +76,7 @@ def get_user_points(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
 
 
-@router.post("/claim_daily_bonus/")
+@router.post("/claim_daily_bonus/", tags=["points", "daily bonus"])
 def claim_daily_bonus(
     user_id: str = Depends(get_user_id),
     play_integrity_verified: None = Depends(verify_play_integrity),
@@ -90,7 +91,7 @@ def claim_daily_bonus(
         )
 
 
-@router.get("/streak_day/")
+@router.get("/streak_day/", tags=["points", "daily bonus"])
 def get_streak_day(
     user_id: str = Depends(get_user_id),
     play_integrity_verified: None = Depends(verify_play_integrity),
@@ -99,7 +100,34 @@ def get_streak_day(
     return {"status": "success", "streak_day": streak_day}
 
 
-@router.post("/", response_model=UserResponse)
+
+@router.get("/get_referral_code/", tags=["points", "referral"])
+def get_referral_code(
+    user_id: str = Depends(get_user_id),
+    play_integrity_verified: None = Depends(verify_play_integrity),
+) -> dict:
+    return {"status": "success", "referral_code": user_id}
+
+
+@router.post("/apply_referral_code/", tags=["points", "referral"])
+def apply_referral_code(
+    referral_code: str,
+    user_id: str = Depends(get_user_id),
+    play_integrity_verified: None = Depends(verify_play_integrity),
+) -> dict:
+    try:
+        referral_manager.apply_referral_code(user_id, referral_code)
+        return {"status": "success", "message": "Referral code applied successfully"}
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
+        ) from e
+
+
+
+
+
+@router.post("/", response_model=UserResponse, tags=["user"])
 def create_user(
     current_user=Depends(get_current_user),
     play_integrity_verified=Depends(verify_play_integrity),
@@ -121,7 +149,7 @@ def create_user(
             status.HTTP_500_INTERNAL_SERVER_ERROR, f"Error Registering user, {e}"
         ) from e
 
-@router.put("/", response_model=UserResponse)
+@router.put("/", response_model=UserResponse, tags=["user"])
 def update_user(
     user_update: UserUpdate,
     user_id=Depends(get_user_id),
@@ -135,7 +163,7 @@ def update_user(
     return {"status": "success", "error": "", "user": user}
 
 
-@router.delete("/", response_model=DeleteUserResponse)
+@router.delete("/", response_model=DeleteUserResponse, tags=["user"])
 def delete_user(
     user_id=Depends(get_user_id), play_integrity_verified=Depends(verify_play_integrity)
 ):
@@ -149,7 +177,7 @@ def delete_user(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
     return {"status": "success", "error": "", "user": user}
 
-@router.get("/", response_model=UserResponse)
+@router.get("/", response_model=UserResponse, tags=["user"])
 def get_user(
     user_id=Depends(get_user_id), play_integrity_verified=Depends(verify_play_integrity)
 ):

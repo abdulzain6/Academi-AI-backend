@@ -12,6 +12,8 @@ class UserModel(BaseModel):
     email: str
     display_name: Optional[str] = None
     photo_url: Optional[str] = None
+    referred_by: Optional[str] = None
+
 
 class CollectionModel(BaseModel):
     user_uid: str

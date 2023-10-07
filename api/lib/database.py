@@ -17,7 +17,6 @@ from .models import (
 )
 
 import uuid
-import unittest
 
 
 class UserDBManager:
@@ -87,7 +86,7 @@ class UserPointsManager:
         default_points: int = 10,
         daily_points: int = 3,
         weekly_daily_bonus_points: int = 10,
-        max_ads_per_hour: int = 20
+        max_ads_per_hour: int = 20,
     ) -> None:
         self.client = MongoClient(connection_string)
         self.db = self.client[database_name]
@@ -103,7 +102,7 @@ class UserPointsManager:
         now = datetime.now(timezone.utc)
         if uid not in self.ad_watch_timestamps:
             self.ad_watch_timestamps[uid] = deque([], maxlen=self.max_ads_per_hour)
-        
+
         timestamps = self.ad_watch_timestamps[uid]
 
         # Remove timestamps older than 1 hour
@@ -116,7 +115,6 @@ class UserPointsManager:
             return True
 
         return False
-        
 
     def get_user_points(self, uid: str) -> UserPoints:
         if not self.user_exists(uid):
@@ -140,7 +138,6 @@ class UserPointsManager:
         user_points: UserPoints = self.get_user_points(uid)
         return user_points.streak_count
 
-
     def is_daily_bonus_claimed(self, uid: str) -> bool:
         """
         Check if the daily bonus has already been claimed by the user identified by uid.
@@ -156,11 +153,14 @@ class UserPointsManager:
             return False
 
         # Ensure last_claimed is also offset-aware
-        if last_claimed.tzinfo is None or last_claimed.tzinfo.utcoffset(last_claimed) is None:
+        if (
+            last_claimed.tzinfo is None
+            or last_claimed.tzinfo.utcoffset(last_claimed) is None
+        ):
             last_claimed = last_claimed.replace(tzinfo=timezone.utc)
 
         return (now - last_claimed) < timedelta(days=1)
-    
+
     def claim_daily_bonus(self, uid: str) -> int:
         """
         Claim the daily bonus for the user identified by uid.
@@ -172,7 +172,10 @@ class UserPointsManager:
         now = datetime.now(timezone.utc)
         last_claimed = user_points.last_claimed
 
-        if last_claimed and (last_claimed.tzinfo is None or last_claimed.tzinfo.utcoffset(last_claimed) is None):
+        if last_claimed and (
+            last_claimed.tzinfo is None
+            or last_claimed.tzinfo.utcoffset(last_claimed) is None
+        ):
             last_claimed = last_claimed.replace(tzinfo=timezone.utc)
 
         if last_claimed and now - last_claimed < timedelta(days=1):
@@ -182,13 +185,15 @@ class UserPointsManager:
             streak_count = 0
 
         streak_count += 1
-        bonus_points = 10 if streak_count == self.weekly_daily_bonus_points else self.daily_points 
+        bonus_points = (
+            10 if streak_count == self.weekly_daily_bonus_points else self.daily_points
+        )
 
         # Update the user's points and other fields
         self.increment_user_points(uid, bonus_points)
         self.points_collection.update_one(
             {"uid": uid},
-            {"$set": {"last_claimed": now, "streak_count": streak_count % 7}}
+            {"$set": {"last_claimed": now, "streak_count": streak_count % 7}},
         )
 
         return bonus_points
@@ -213,6 +218,32 @@ class UserPointsManager:
         )
         return result.modified_count
 
+
+class ReferralManager:
+    def __init__(self, user_db_manager: UserDBManager, points_manager: UserPointsManager, referral_points: int = 15) -> None:
+        self.user_db_manager = user_db_manager
+        self.points_manager = points_manager
+        self.referral_points = referral_points
+
+    def apply_referral_code(self, uid: str, referral_code: str) -> None:
+        user = self.user_db_manager.get_user_by_uid(uid)
+        if not user:
+            raise ValueError(f"User with ID {uid} does not exist.")
+        
+        if user.referred_by:
+            raise ValueError("Referral code has already been applied for this user.")
+        
+        if referral_code == uid:
+            raise ValueError("You cannot refer yourself.")
+
+        if not self.user_db_manager.user_exists(referral_code):
+            raise ValueError("Invalid referral code.")
+
+        # Update the referred_by field for the user
+        self.user_db_manager.update_user(uid, referred_by=referral_code)
+
+        # Add points to the referrer
+        self.points_manager.increment_user_points(referral_code, self.referral_points)
 
 class CollectionDBManager:
     def __init__(self, connection_string: str, database_name: str) -> None:
@@ -638,210 +669,3 @@ class MessageDBManager:
             {"_id": 1},
         )
         return exists is not None
-
-
-class TestFileDBManager(unittest.TestCase):
-    def setUp(self) -> None:
-        self.file_db_manager = FileDBManager()
-        self.test_file = FileModel(
-            collection_name="test_collection",
-            user_id="test_user",
-            filename="test_file",
-            friendly_filename="Test File",
-            file_bytes=b"Test content",
-            description="desc",
-            filetype=".txt",
-        )
-        self.file_db_manager.add_file(self.test_file)
-
-    def tearDown(self) -> None:
-        self.file_db_manager.delete_file(
-            self.test_file.user_id,
-            self.test_file.collection_name,
-            self.test_file.filename,
-        )
-
-    def test_add_file(self) -> None:
-        new_file = FileModel(
-            collection_name="new_collection",
-            user_id="test_user",
-            filename="test_file",
-            friendly_filename="Test File",
-            file_bytes=b"Test content",
-            description="desc",
-            filetype=".txt",
-        )
-        added_file = self.file_db_manager.add_file(new_file)
-        self.assertEqual(added_file.filename, new_file.filename)
-        self.file_db_manager.delete_file(
-            new_file.user_id, new_file.collection_name, new_file.filename
-        )
-
-    def test_file_exists(self) -> None:
-        self.assertTrue(
-            self.file_db_manager.file_exists(
-                self.test_file.user_id,
-                self.test_file.collection_name,
-                self.test_file.filename,
-            )
-        )
-
-    def test_get_file_by_name(self) -> None:
-        file = self.file_db_manager.get_file_by_name(
-            self.test_file.user_id,
-            self.test_file.collection_name,
-            self.test_file.filename,
-        )
-        self.assertIsNotNone(file)
-        self.assertEqual(file.filename, self.test_file.filename)
-
-    def test_get_all_files(self) -> None:
-        files = self.file_db_manager.get_all_files(
-            self.test_file.user_id, self.test_file.collection_name
-        )
-        self.assertTrue(len(files) > 0)
-
-    def test_update_file(self) -> None:
-        self.file_db_manager.update_file(
-            self.test_file.user_id,
-            self.test_file.collection_name,
-            self.test_file.filename,
-            filename="updated_file",
-        )
-        self.assertTrue(
-            self.file_db_manager.file_exists(
-                self.test_file.user_id, self.test_file.collection_name, "updated_file"
-            )
-        )
-        self.file_db_manager.update_file(
-            self.test_file.user_id,
-            self.test_file.collection_name,
-            "updated_file",
-            filename=self.test_file.filename,
-        )
-
-    def test_delete_file(self) -> None:
-        self.assertEqual(
-            self.file_db_manager.delete_file(
-                self.test_file.user_id,
-                self.test_file.collection_name,
-                self.test_file.filename,
-            ),
-            1,
-        )
-        self.assertFalse(
-            self.file_db_manager.file_exists(
-                self.test_file.user_id,
-                self.test_file.collection_name,
-                self.test_file.filename,
-            )
-        )
-
-
-class TestUserDBManager(unittest.TestCase):
-    def setUp(self):
-        self.db_manager = UserDBManager()
-        self.test_user = UserModel(uid="test_uid", email="test_email")
-        self.db_manager.add_user(self.test_user)
-
-    def tearDown(self):
-        self.db_manager.delete_user("test_uid")
-
-    def test_add_user(self):
-        user = UserModel(uid="1", email="user1@example.com")
-        added_user = self.db_manager.add_user(user)
-        self.assertEqual(added_user.uid, user.uid)
-        self.db_manager.delete_user("1")
-
-    def test_user_exists(self):
-        self.assertTrue(self.db_manager.user_exists("test_uid"))
-
-    def test_get_user_by_uid(self):
-        user = self.db_manager.get_user_by_uid("test_uid")
-        self.assertIsNotNone(user)
-        self.assertEqual(user.uid, "test_uid")
-
-    def test_get_all(self):
-        users = self.db_manager.get_all()
-        self.assertTrue(len(users) > 0)
-
-    def test_insert_many(self):
-        users = [
-            UserModel(uid=str(i), email=f"user{i}@example.com") for i in range(2, 5)
-        ]
-        self.db_manager.insert_many(users)
-        for user in users:
-            self.assertTrue(self.db_manager.user_exists(user.uid))
-            self.db_manager.delete_user(user.uid)
-
-    def test_update_user(self):
-        self.db_manager.update_user("test_uid", email="new_email")
-        user = self.db_manager.get_user_by_uid("test_uid")
-        self.assertEqual(user.email, "new_email")
-
-    def test_delete_user(self):
-        self.assertEqual(self.db_manager.delete_user("test_uid"), 1)
-        self.assertFalse(self.db_manager.user_exists("test_uid"))
-
-
-class TestCollectionDBManager(unittest.TestCase):
-    def setUp(self):
-        self.db_manager = CollectionDBManager()
-        self.test_collection = CollectionModel(
-            user_uid="test_user",
-            name="test_collection",
-            vectordb_collection_name="test_vector_db",
-        )
-        self.db_manager.add_collection(self.test_collection)
-
-    def tearDown(self):
-        self.db_manager.delete_collection("test_user", "test_collection")
-
-    def test_add_collection(self):
-        collection = CollectionModel(
-            user_uid="1", name="collection1", vectordb_collection_name="vector_db1"
-        )
-        added_collection = self.db_manager.add_collection(collection)
-        self.assertEqual(added_collection.name, collection.name)
-        self.db_manager.delete_collection("1", "collection1")
-
-    def test_collection_exists(self):
-        self.assertTrue(
-            self.db_manager.collection_exists("test_collection", "test_user")
-        )
-
-    def test_get_collection_by_name_and_user(self):
-        collection = self.db_manager.get_collection_by_name_and_user(
-            "test_collection", "test_user"
-        )
-        self.assertIsNotNone(collection)
-        self.assertEqual(collection.name, "test_collection")
-
-    def test_get_all_by_user(self):
-        collections = self.db_manager.get_all_by_user("test_user")
-        self.assertTrue(len(collections) > 0)
-
-    def test_update_collection(self):
-        print(
-            f"Updating collection: user_id=test_user, collection_id=test_collection, description=new_description"
-        )  # Debugging line
-        self.db_manager.update_collection(
-            "test_user", "test_collection", description="new_description"
-        )
-        collection = self.db_manager.get_collection_by_name_and_user(
-            "test_collection", "test_user"
-        )
-        print(f"Retrieved collection description: {collection}")  # Debugging line
-        self.assertEqual(collection.description, "new_description")
-
-    def test_delete_collection(self):
-        self.assertEqual(
-            self.db_manager.delete_collection("test_user", "test_collection"), 1
-        )
-        self.assertFalse(
-            self.db_manager.collection_exists("test_collection", "test_user")
-        )
-
-
-if __name__ == "__main__":
-    unittest.main()

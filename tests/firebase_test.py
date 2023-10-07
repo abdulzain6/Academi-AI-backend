@@ -43,7 +43,12 @@ email = "test@example.com"
 password = "testpassword"
 
 register_user(email, password)
+register_user("zain@example.com", password)
+
 if id_token := login_with_email_and_password(email, password, "AIzaSyDykoS37Pe-40VZSwE0eD4gSY-Dm-X3wr8"):
     print("ID Token:", id_token)
+
+if id_token := login_with_email_and_password("zain@example.com", password, "AIzaSyDykoS37Pe-40VZSwE0eD4gSY-Dm-X3wr8"):
+    print("\n\n\n\nID Token:", id_token)
 
 print("\n" + "683DA5D3-D11D-43DD-9FC7-0E4FEFEAD131")

@@ -5,7 +5,8 @@ from .lib.database import (
     CollectionDBManager,
     UserDBManager,
     MessageDBManager,
-    UserPointsManager
+    UserPointsManager,
+    ReferralManager
 )
 from .lib.knowledge_manager import KnowledgeManager, ChatManager
 from .lib.presentation_maker.database import initialize_managers
@@ -96,3 +97,4 @@ writer = Writer(
     },
 )
 user_points_manager = UserPointsManager(MONGODB_URL, DATABASE_NAME, DEFAULT_POINTS)
+referral_manager = ReferralManager(user_manager, user_points_manager, DEFAULT_REFERRAL_POINTS)
