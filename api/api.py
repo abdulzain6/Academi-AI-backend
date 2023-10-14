@@ -1,5 +1,5 @@
-from .config import *
 from fastapi import FastAPI
+from .config import *
 from .routers.collections import router as collection_router
 from .routers.files import router as files_router
 from .routers.users import router as users_router
@@ -16,9 +16,10 @@ from fastapi.responses import JSONResponse
 from starlette.status import HTTP_504_GATEWAY_TIMEOUT
 import langchain
 
-langchain.verbose = True
+langchain.verbose = False
 
 app = FastAPI()
+
 
 app.include_router(users_router, prefix="/api/v1/users", tags=["user"])
 app.include_router(files_router, prefix="/api/v1/files", tags=["files"])

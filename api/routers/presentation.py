@@ -10,7 +10,7 @@ from ..globals import (
     template_manager,
 )
 from ..lib.presentation_maker.presentation_maker import PresentationInput
-from ..decorators import require_points_for_feature
+from ..decorators import openai_token_tracking_decorator, require_points_for_feature
 from pydantic import BaseModel
 
 
@@ -52,6 +52,7 @@ def get_available_templates(
 
 
 @router.post("/")
+@openai_token_tracking_decorator
 def make_presentation(
     presentation_input: MakePresentationInput,
     user_id=Depends(get_user_id),

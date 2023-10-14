@@ -2,7 +2,9 @@ from .config import FEATURE_PRICING
 from .globals import user_points_manager
 from .auth import get_user_id
 from fastapi import HTTPException, Depends
-
+from functools import wraps
+from langchain.callbacks import get_openai_callback
+from typing import Callable, Any
 
 
 def require_points_for_feature(feature_key: str):
@@ -17,3 +19,15 @@ def require_points_for_feature(feature_key: str):
 
         user_points_manager.decrement_user_points(user_id, required_points)
     return dependency
+
+
+def openai_token_tracking_decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+    @wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        with get_openai_callback() as cb:
+            response: Any = func(*args, **kwargs)    
+            print(f"Total tokens used: {cb.total_tokens}")
+            print(f"Total cost: {cb.total_cost}")
+        return response
+
+    return wrapper

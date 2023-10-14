@@ -4,7 +4,7 @@ from fastapi import Depends, HTTPException, status
 from ..auth import get_user_id, verify_play_integrity
 from ..globals import file_manager, quiz_generator, collection_manager
 from pydantic import BaseModel
-from ..decorators import require_points_for_feature
+from ..decorators import openai_token_tracking_decorator, require_points_for_feature
 from ..lib.quiz import UserResponse, Result
 
 router = APIRouter()
@@ -23,6 +23,7 @@ class MakeFlashCardsInput(BaseModel):
 
 
 @router.post("/")
+@openai_token_tracking_decorator
 def make_quiz(
     quiz_input: MakeQuizInput,
     user_id=Depends(get_user_id),

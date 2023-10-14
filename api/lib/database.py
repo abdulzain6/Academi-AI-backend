@@ -249,6 +249,9 @@ class ReferralManager:
 
         # Add points to the referrer
         self.points_manager.increment_user_points(referral_code, self.referral_points)
+    
+        self.points_manager.increment_user_points(uid, self.referral_points)
+
 
 
 class CollectionDBManager:

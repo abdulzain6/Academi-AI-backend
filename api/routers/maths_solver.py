@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi import Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 
-from ..decorators import require_points_for_feature
+from ..decorators import openai_token_tracking_decorator, require_points_for_feature
 from ..lib.models import MessagePair
 from ..lib.utils import split_into_chunks
 from ..globals import maths_solver, image_ocr, conversation_manager

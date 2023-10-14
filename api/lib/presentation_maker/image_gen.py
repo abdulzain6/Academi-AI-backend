@@ -43,7 +43,7 @@ class PexelsImageSearch:
             return cached_file_path
 
         print(f"Downloading {image_url}")
-        response = requests.get(image_url)
+        response = requests.get(image_url, timeout=5)
         img_data = BytesIO(response.content)
         with Image.open(img_data) as img:
             img = img.resize((target_width, target_height), Image.LANCZOS)
@@ -67,7 +67,7 @@ class PexelsImageSearch:
     def search_images(self, query: str, target_width: int, target_height: int, per_page: int = 15) -> Optional[Dict]:
         url = f"https://api.pexels.com/v1/search?query={query}&per_page={per_page}"
         headers = {"Authorization": self.api_key}
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=headers, timeout=5)
         data = response.json()
         if photos := data.get('photos', []):
             for photo in sorted(

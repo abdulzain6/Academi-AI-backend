@@ -4,11 +4,11 @@ from fastapi.responses import JSONResponse
 from ..auth import get_user_id, verify_play_integrity
 from ..globals import writer
 from ..lib.writer import ContentInput
-from ..decorators import require_points_for_feature
+from ..decorators import openai_token_tracking_decorator, require_points_for_feature
 
 router = APIRouter()
 
-
+@openai_token_tracking_decorator
 @router.post("/write")
 def write_content(
     input: ContentInput,

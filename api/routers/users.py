@@ -108,7 +108,6 @@ def get_referral_code(
 ) -> dict:
     return {"status": "success", "referral_code": user_id}
 
-
 @router.post("/apply_referral_code/", tags=["points", "referral"])
 def apply_referral_code(
     referral_code: str,
