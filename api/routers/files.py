@@ -64,7 +64,7 @@ def create_link_file(
             status_code=status.HTTP_400_BAD_REQUEST,
         )
 
-    if file_manager.file_exists(collection.collection_uid, user_id, linkfile.filename):
+    if file_manager.file_exists(user_id, collection.collection_uid, linkfile.filename):
         raise HTTPException(
             detail="File Already exists", status_code=status.HTTP_400_BAD_REQUEST
         )
@@ -128,7 +128,7 @@ def create_file(
         if not collection:
             raise HTTPException(detail="Collection does not exist", status_code=404)
 
-        if file_manager.file_exists(collection.collection_uid, user_id, filename):
+        if file_manager.file_exists(user_id, collection.collection_uid, filename):
             raise HTTPException(
                 detail="File Already exists", status_code=status.HTTP_400_BAD_REQUEST
             )
