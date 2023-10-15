@@ -29,7 +29,7 @@ jobs:
         run: TAG=$(echo $GITHUB_SHA | head -c7) && sed -i 's|<IMAGE>|registry.digitalocean.com/mufti-api/akalmand:'${TAG}'|' akalmand-deployment.yml
 
       - name: Save DigitalOcean kubeconfig with short-lived credentials
-        run: doctl kubernetes cluster kubeconfig save --expiry-seconds 600 <cluster-name>
+        run: doctl kubernetes cluster kubeconfig save --expiry-seconds 600 k8s-1-27-2-do-0-blr1-1686477516392
 
       - name: Deploy to DigitalOcean Kubernetes
         run: kubectl apply -f akalmand-deployment.yml
