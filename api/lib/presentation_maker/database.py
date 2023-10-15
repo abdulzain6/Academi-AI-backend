@@ -1,7 +1,8 @@
+import json
 import re
-from .pptx.util import Inches
+from pptx.util import Inches
 import os
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from typing import Optional, List, Union
 from gridfs import GridFS
 from abc import ABC, abstractmethod
@@ -10,7 +11,7 @@ from langchain.embeddings import OpenAIEmbeddings
 from langchain.schema import Document
 from qdrant_client import QdrantClient
 from qdrant_client.http import models as rest
-from .pptx import Presentation
+from pptx import Presentation
 from pymongo import MongoClient
 from pymongo.collection import Collection
 from typing import List, Union, Dict, Optional
@@ -39,10 +40,11 @@ class TemplateModel(BaseModel):
     aspect_ratio: Optional[str] = None
     color_scheme: Optional[List[str]] = None
     slides: List[SlideModel]
-    file_extension: str = ".pptx"
+    file_extension: str = "pptx"
     word_limit_para: int = 93
     word_limit_points: int = 80
     word_limit_hybrid: int = 75
+    file_name: Optional[str] = None 
 
 
 class TemplateObserver(ABC):
@@ -218,6 +220,7 @@ class PresentationTemplateWizard:
         print("Welcome to the Presentation Template Wizard!")
 
         template_name = input("Enter the template name: ")
+        file_name = input("Enter filename ")
         template_description = input("Enter a description for the template: ")
         category = input("Enter the category (optional, press Enter to skip): ") or None
         version = input("Enter the version (optional, press Enter to skip): ") or None
@@ -291,13 +294,45 @@ class PresentationTemplateWizard:
             slides=slides,
             word_limit_para=word_limit_para,
             word_limit_points=word_limit_points,
+            file_name=file_name
         )
 
-
+def load_and_validate_templates(file_path: str) -> Union[List[TemplateModel], TemplateModel, None]:
+    try:
+        with open(file_path, 'r') as f:
+            data = json.load(f)
+        
+        if isinstance(data, list):
+            templates = [TemplateModel(**item) for item in data]
+            return templates
+        elif isinstance(data, dict):
+            template = TemplateModel(**data)
+            return template
+        else:
+            print("Invalid JSON structure.")
+            return None
+    
+    except ValidationError as e:
+        print(f"Validation Error: {e}")
+        return None
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None
 
 if __name__ == "__main__":
-    path = "/home/zain/Downloads/Lesson plan.pptx"
-    manager = TemplateDBManager(os.getenv("MONGODB_URL"), "study-app")
-    wizard = PresentationTemplateWizard(path)
-    model = wizard.wizard_cli()
-    manager.create_template(model, path)
+    def load():
+        manager = TemplateDBManager(os.getenv("MONGODB_URL"), "study-app")   
+        loaded_templates = load_and_validate_templates("templates.json")
+        for template in loaded_templates:
+            manager.create_template(template, "template_dir/" + template.file_name)
+    def input_and_save(file_path):
+      #  manager = TemplateDBManager(os.getenv("MONGODB_URL"), "study-app")   
+        loaded_templates = load_and_validate_templates("templates.json")
+        model = PresentationTemplateWizard(file_path).wizard_cli()
+        templates = loaded_templates.append(model)    
+        updated_templates_json_str = json.dumps([template.dict() for template in templates], indent=4)
+        updated_json_file_path = 'templatesupdated.json'
+        with open(updated_json_file_path, 'w') as f:
+            f.write(updated_templates_json_str)
+    load()       
+    #input_and_save("/home/zain/Akalmand.ai/api/lib/presentation_maker/template_dir/Azure_Versatility.pptx")

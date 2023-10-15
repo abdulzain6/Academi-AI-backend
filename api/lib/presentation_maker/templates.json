@@ -1,0 +1,670 @@
+[
+    {
+        "template_name": "science project",
+        "template_description": "vibrant colors, clean layouts, and dedicated sections for research data, findings, and visuals. Ideal for educational and professional presentations",
+        "category": "science, students",
+        "version": null,
+        "aspect_ratio": null,
+        "color_scheme": null,
+        "slides": [
+            {
+                "slide_type": "Title Slide",
+                "page_number": 1,
+                "placeholders": [
+                    {
+                        "name": "TITLE",
+                        "description": "The title of the presentation",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    },
+                    {
+                        "name": "PRESENTOR_NAME",
+                        "description": "The name of the presentor",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    }
+                ]
+            },
+            {
+                "slide_type": "Transition Slide",
+                "page_number": 2,
+                "placeholders": [
+                    {
+                        "name": "SUBTITLE",
+                        "description": "The title of the upcoming slide.",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    }
+                ]
+            },
+            {
+                "slide_type": "Transition Slide2",
+                "page_number": 3,
+                "placeholders": [
+                    {
+                        "name": "SUBTITLE",
+                        "description": "The title of the upcoming slide.",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    }
+                ]
+            },
+            {
+                "slide_type": "Content Slide",
+                "page_number": 4,
+                "placeholders": [
+                    {
+                        "name": "TITLE_SECTION",
+                        "description": "The title of the section",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    },
+                    {
+                        "name": "CONTENT",
+                        "description": "The content of the slide",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    },
+                    {
+                        "name": "small_image_one",
+                        "description": "Write a google search query for this image that is relevant to the topic.",
+                        "is_image": true,
+                        "image_width": 213,
+                        "image_height": 205
+                    },
+                    {
+                        "name": "small_image_two",
+                        "description": "Write a google search query for this image that is relevant to the topic.",
+                        "is_image": true,
+                        "image_width": 213,
+                        "image_height": 204
+                    },
+                    {
+                        "name": "big_image",
+                        "description": "Write a google search query for this image that is relevant to the topic.",
+                        "is_image": true,
+                        "image_width": 433,
+                        "image_height": 253
+                    }
+                ]
+            },
+            {
+                "slide_type": "DOUBLE_COLUMN_CONTENT_SLIDE",
+                "page_number": 5,
+                "placeholders": [
+                    {
+                        "name": "TITLE_SECTION",
+                        "description": "The title of the slide.",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    },
+                    {
+                        "name": "SUBTITLE_SECTION",
+                        "description": "Subtitle number one, The heading for a subtopic for the slide.",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    },
+                    {
+                        "name": "SUBTITLE_SECTION_CONTENT",
+                        "description": "The content for the SUBTITLE_SECTION/ subtitle one ",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    },
+                    {
+                        "name": "SUBTITLE_SECTION2",
+                        "description": "Second subtitle for the slide. Must be different to the first",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    },
+                    {
+                        "name": "SUBTITLE_SECTION2_CONTENT",
+                        "description": "The content for the second subtitle",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    }
+                ]
+            },
+            {
+                "slide_type": "TWO_IMAGES_SLIDE",
+                "page_number": 6,
+                "placeholders": [
+                    {
+                        "name": "image_two",
+                        "description": "Write a google search query for this image that is relevant to the topic.",
+                        "is_image": true,
+                        "image_width": 479,
+                        "image_height": 539
+                    },
+                    {
+                        "name": "image_one",
+                        "description": "Write a google search query for this image that is relevant to the topic.",
+                        "is_image": true,
+                        "image_width": 480,
+                        "image_height": 539
+                    }
+                ]
+            },
+            {
+                "slide_type": "Content Slide Imageless",
+                "page_number": 7,
+                "placeholders": [
+                    {
+                        "name": "TITLE_SECTION",
+                        "description": "the title of the topic",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    },
+                    {
+                        "name": "CONTENT",
+                        "description": "the content for the slide",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    }
+                ]
+            },
+            {
+                "slide_type": "Thank you slide",
+                "page_number": 8,
+                "placeholders": []
+            }
+        ],
+        "file_extension": ".pptx",
+        "word_limit_para": 60,
+        "word_limit_points": 40,
+        "word_limit_hybrid": 75,
+        "file_name": "Science_Project.pptx"
+    },
+    {
+        "template_name": "Academic Elite",
+        "template_description": "Academic Elite is the go-to template for scholarly presentations. With a sleek design and focused layout, it's perfect for students and educators. Keywords: Student, Academic, Professional, Research, Education.",
+        "category": null,
+        "version": null,
+        "aspect_ratio": null,
+        "color_scheme": null,
+        "slides": [
+            {
+                "slide_type": "TITLE_SLIDE",
+                "page_number": 1,
+                "placeholders": [
+                    {
+                        "name": "TOPIC",
+                        "description": "The topic of the presentation",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    },
+                    {
+                        "name": "PRESENTOR_NAME",
+                        "description": "The name of the presentor",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    }
+                ]
+            },
+            {
+                "slide_type": "Content Slide",
+                "page_number": 2,
+                "placeholders": [
+                    {
+                        "name": "SECTION",
+                        "description": "The name of the section",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    },
+                    {
+                        "name": "SECTION_CONTENT",
+                        "description": "The content for the section.",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    }
+                ]
+            },
+            {
+                "slide_type": "Multi Column",
+                "page_number": 3,
+                "placeholders": [
+                    {
+                        "name": "SECTION",
+                        "description": "The name of the section",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    },
+                    {
+                        "name": "SUBSECTION_ONE",
+                        "description": "The name of the subsection number one",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    },
+                    {
+                        "name": "SUBSECTION_ONE_CONTENT",
+                        "description": "The content for subsection numner one",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    },
+                    {
+                        "name": "SUBSECTION_TWO",
+                        "description": "The name for subsection number two",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    },
+                    {
+                        "name": "SUBSECTION_TWO_CONTENT",
+                        "description": "The content for subsection number two",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    }
+                ]
+            },
+            {
+                "slide_type": "Transition Slide",
+                "page_number": 4,
+                "placeholders": [
+                    {
+                        "name": "UPCOMING_SECTION_NAME",
+                        "description": "The name for the upcoming section",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    }
+                ]
+            },
+            {
+                "slide_type": "Thank You Slide",
+                "page_number": 5,
+                "placeholders": []
+            }
+        ],
+        "file_extension": ".pptx",
+        "word_limit_para": 37,
+        "word_limit_points": 27,
+        "word_limit_hybrid": 75,
+        "file_name": "Academic_Elite.pptx"
+    },
+    {
+        "template_name": "Diagonal Triangle Template",
+        "template_description": "A basic template suitable for a variety of presentation topics.",
+        "category": "General",
+        "version": "1.0",
+        "aspect_ratio": "16:9",
+        "color_scheme": [
+            "Blue",
+            "White"
+        ],
+        "slides": [
+            {
+                "slide_type": "Title Slide",
+                "page_number": 1,
+                "placeholders": [
+                    {
+                        "name": "TITLE",
+                        "description": "The presenation title",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    },
+                    {
+                        "name": "NAME",
+                        "description": "Presentor name",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    }
+                ]
+            },
+            {
+                "slide_type": "Content Slide",
+                "page_number": 2,
+                "placeholders": [
+                    {
+                        "name": "TITLE_SECTION",
+                        "description": "Title of section",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    },
+                    {
+                        "name": "CONTENT",
+                        "description": "Content to show in the slide... (Make sure it fits a single slide)",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    }
+                ]
+            },
+            {
+                "slide_type": "Transition Slide",
+                "page_number": 3,
+                "placeholders": [
+                    {
+                        "name": "TITLE_SECTION",
+                        "description": "The section title",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    },
+                    {
+                        "name": "SUBTITLE",
+                        "description": "Subtitle for the upcoming content page.",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    }
+                ]
+            },
+            {
+                "slide_type": "Thank You Slide",
+                "page_number": 4,
+                "placeholders": []
+            }
+        ],
+        "file_extension": ".pptx",
+        "word_limit_para": 93,
+        "word_limit_points": 80,
+        "word_limit_hybrid": 75,
+        "file_name": "Diagonal_Triangle_Template.pptx"
+    },
+    {
+        "template_name": "Minimalist Elegance",
+        "template_description": "Minimalist Elegance is a sleek, beautiful template for those who appreciate simplicity. Ideal for students and creatives, it keeps the focus on your content. Keywords: Student, Minimalistic, Beautiful, Sleek, Creative.",
+        "category": null,
+        "version": null,
+        "aspect_ratio": null,
+        "color_scheme": null,
+        "slides": [
+            {
+                "slide_type": "Title Slide",
+                "page_number": 1,
+                "placeholders": [
+                    {
+                        "name": "TOPIC",
+                        "description": "The topic of the presentation",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    },
+                    {
+                        "name": "PRESENTOR_NAME",
+                        "description": "the name of the presentor",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    }
+                ]
+            },
+            {
+                "slide_type": "CONTENT_SLIDE_BIG",
+                "page_number": 2,
+                "placeholders": [
+                    {
+                        "name": "SECTION",
+                        "description": "The name of the section",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    },
+                    {
+                        "name": "SECTION_CONTENT_BIG",
+                        "description": "The content for the section, must be long.",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    }
+                ]
+            },
+            {
+                "slide_type": "TABLE_OF_CONTENTS",
+                "page_number": 3,
+                "placeholders": [
+                    {
+                        "name": "TOPIC_ONE",
+                        "description": "Topic one",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    },
+                    {
+                        "name": "TOPIC_ONE_SHORT_DESC",
+                        "description": "The short description for the topic one, must be short",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    },
+                    {
+                        "name": "TOPIC_TWO",
+                        "description": "Topic two",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    },
+                    {
+                        "name": "TOPIC_THREE",
+                        "description": "Topic three",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    },
+                    {
+                        "name": "TOPIC_THREE_SHORT_DESC",
+                        "description": "The short description for the topic three, must be short",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    },
+                    {
+                        "name": "TOPIC_TWO_SHORT_DESC",
+                        "description": "one liner description for topic two",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    }
+                ]
+            },
+            {
+                "slide_type": "DISCLAIMER_SLIDE",
+                "page_number": 4,
+                "placeholders": [
+                    {
+                        "name": "SHORT_DISCLAIMER",
+                        "description": "Short disclaimer",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    }
+                ]
+            },
+            {
+                "slide_type": "QUOTE_SLIDE",
+                "page_number": 5,
+                "placeholders": [
+                    {
+                        "name": "QUOTE",
+                        "description": "The quote",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    },
+                    {
+                        "name": "QUOTE_WRITER",
+                        "description": "The author of the quote",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    }
+                ]
+            },
+            {
+                "slide_type": "Transition Slide",
+                "page_number": 6,
+                "placeholders": [
+                    {
+                        "name": "SECTION_TITLE",
+                        "description": "The title of the upcoming section",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    },
+                    {
+                        "name": "SHORT_DESC",
+                        "description": "One liner description for the section",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    }
+                ]
+            },
+            {
+                "slide_type": "CONTENT_SLIDE_MEDIUM",
+                "page_number": 7,
+                "placeholders": [
+                    {
+                        "name": "SECTION",
+                        "description": "The section name",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    },
+                    {
+                        "name": "SECTION_CONTENT",
+                        "description": "The content for the section, must be short/medium of 30-35 words.",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    }
+                ]
+            },
+            {
+                "slide_type": "NUMBER_SLIDE",
+                "page_number": 8,
+                "placeholders": [
+                    {
+                        "name": "NUMBER",
+                        "description": "A number to amaze the audience",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    },
+                    {
+                        "name": "NUMBER_INFO",
+                        "description": "What the number is about, must be one liner",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    }
+                ]
+            },
+            {
+                "slide_type": "Thank you Slide",
+                "page_number": 9,
+                "placeholders": []
+            }
+        ],
+        "file_extension": ".pptx",
+        "word_limit_para": 120,
+        "word_limit_points": 60,
+        "word_limit_hybrid": 150,
+        "file_name": "Minimalistic_Elegance.pptx"
+    },
+    {
+        "template_name": "Azure Versatility",
+        "template_description": "Azure Versatility offers a flexible, blue-themed design ideal for presentations that require a touch of professionalism and visual harmony.",
+        "category": null,
+        "version": null,
+        "aspect_ratio": null,
+        "color_scheme": [
+            "blue"
+        ],
+        "slides": [
+            {
+                "slide_type": "INTRO_SLIDE",
+                "page_number": 1,
+                "placeholders": [
+                    {
+                        "name": "SLIDE_TOPIC",
+                        "description": "The topic of the presentation",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    },
+                    {
+                        "name": "PRESENTOR_NAME",
+                        "description": "The name of the presentor",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    }
+                ]
+            },
+            {
+                "slide_type": "CONTENT_SLIDE",
+                "page_number": 2,
+                "placeholders": [
+                    {
+                        "name": "SUBTOPIC",
+                        "description": "The subtopic for the slide",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    },
+                    {
+                        "name": "CONTENT",
+                        "description": "The content for the slide",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    }
+                ]
+            },
+            {
+                "slide_type": "HALF_CONTENT_SLIDE",
+                "page_number": 3,
+                "placeholders": [
+                    {
+                        "name": "SUBTOPIC",
+                        "description": "The subtopic for the slide",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    },
+                    {
+                        "name": "CONTENT",
+                        "description": "The content for the slide",
+                        "is_image": false,
+                        "image_width": null,
+                        "image_height": null
+                    }
+                ]
+            },
+            {
+                "slide_type": "THANKYOU_SLIDE",
+                "page_number": 4,
+                "placeholders": []
+            }
+        ],
+        "file_extension": ".pptx",
+        "word_limit_para": 70,
+        "word_limit_points": 55,
+        "word_limit_hybrid": 75,
+        "file_name": "Azure_Versatility.pptx"
+    }
+]

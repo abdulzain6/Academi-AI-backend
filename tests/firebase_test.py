@@ -3,7 +3,7 @@ from firebase_admin import credentials, auth
 import requests
 
 
-cred = credentials.Certificate("akalmand-c6ec2-firebase-adminsdk-foxc7-2d8740a83e.json")
+cred = credentials.Certificate("/home/zain/Akalmand.ai/api/creds/academi-ai-firebase-adminsdk-mg8gg-4dde2949d3.json")
 firebase_admin.initialize_app(cred)
 
 def login_with_email_and_password(email: str, password: str, api_key: str) -> str:
@@ -45,10 +45,10 @@ password = "testpassword"
 register_user(email, password)
 register_user("zain@example.com", password)
 
-if id_token := login_with_email_and_password(email, password, "AIzaSyDykoS37Pe-40VZSwE0eD4gSY-Dm-X3wr8"):
+if id_token := login_with_email_and_password(email, password, "AIzaSyBdcuZHJyUFsGpKEG3-2TPl76Ax_Ehh-6c"):
     print("ID Token:", id_token)
 
-if id_token := login_with_email_and_password("zain@example.com", password, "AIzaSyDykoS37Pe-40VZSwE0eD4gSY-Dm-X3wr8"):
+if id_token := login_with_email_and_password("zain@example.com", password, "AIzaSyBdcuZHJyUFsGpKEG3-2TPl76Ax_Ehh-6c"):
     print("\n\n\n\nID Token:", id_token)
 
 print("\n" + "683DA5D3-D11D-43DD-9FC7-0E4FEFEAD131")

@@ -5,3 +5,6 @@ temp
 *.pptx
 tests/
 .vscode/
+akalmand-deployment.yml
+commands.sh
+code-runner.yml

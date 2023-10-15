@@ -2,6 +2,7 @@ from collections import deque
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 from pymongo import MongoClient
+import pymongo
 from pymongo.collection import Collection
 from pymongo.errors import BulkWriteError
 from gridfs import GridFS, NoFile
@@ -160,41 +161,36 @@ class UserPointsManager:
             last_claimed = last_claimed.replace(tzinfo=timezone.utc)
 
         return (now - last_claimed) < timedelta(days=1)
-
     def claim_daily_bonus(self, uid: str) -> int:
-        """
-        Claim the daily bonus for the user identified by uid.
+        try:
+            user_points = self.get_user_points(uid)
+        except pymongo.errors.PyMongoError as e:
+            raise ValueError("Database operation failed") from e
 
-        Returns:
-            The number of points added.
-        """
-        user_points: UserPoints = self.get_user_points(uid)
+        if not user_points:
+            raise ValueError()
+
         now = datetime.now(timezone.utc)
-        last_claimed = user_points.last_claimed
+        last_claimed: Optional[datetime] = user_points.last_claimed
 
-        if last_claimed and (
-            last_claimed.tzinfo is None
-            or last_claimed.tzinfo.utcoffset(last_claimed) is None
-        ):
+        if last_claimed and last_claimed.tzinfo is None:
             last_claimed = last_claimed.replace(tzinfo=timezone.utc)
 
         if last_claimed and now - last_claimed < timedelta(days=1):
-            return 0  # Bonus already claimed today
+            return 0
 
-        if last_claimed and now - last_claimed >= timedelta(days=2):
-            streak_count = 0
-
+        streak_count: int = user_points.streak_count if last_claimed and now - last_claimed < timedelta(days=2) else 0
         streak_count += 1
-        bonus_points = (
-            10 if streak_count == self.weekly_daily_bonus_points else self.daily_points
-        )
+        bonus_points = 10 if streak_count == self.weekly_daily_bonus_points else self.daily_points
 
-        # Update the user's points and other fields
-        self.increment_user_points(uid, bonus_points)
-        self.points_collection.update_one(
-            {"uid": uid},
-            {"$set": {"last_claimed": now, "streak_count": streak_count % 7}},
-        )
+        try:
+            self.increment_user_points(uid, bonus_points)
+            self.points_collection.update_one(
+                {"uid": uid},
+                {"$set": {"last_claimed": now, "streak_count": streak_count % 7}}
+            )
+        except pymongo.errors.PyMongoError as exc:
+            raise ValueError("Database operation failed") from exc
 
         return bonus_points
 

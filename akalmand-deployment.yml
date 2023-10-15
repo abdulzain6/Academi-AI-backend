@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "86"
+  creationTimestamp: "2023-09-03T08:00:27Z"
+  generation: 88
+  labels:
+    app: akalmand
+  name: akalmand-deployment
+  namespace: default
+  resourceVersion: "36373614"
+  uid: 7af343ef-4fab-4df7-94f0-a1835e0c8db9
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: akalmand
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/restartedAt: "2023-10-15T11:01:54Z"
+      creationTimestamp: null
+      labels:
+        app: akalmand
+    spec:
+      containers:
+      - env:
+        - name: MONGODB_URL
+          valueFrom:
+            secretKeyRef:
+              key: MONGODB_URL
+              name: study-app-environment-variables
+        - name: MATHPIX_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: MATHPIX_API_KEY
+              name: study-app-environment-variables
+        - name: MATHPIX_APPID
+          valueFrom:
+            secretKeyRef:
+              key: MATHPIX_APPID
+              name: study-app-environment-variables
+        - name: OPENAI_APIKEY
+          valueFrom:
+            secretKeyRef:
+              key: OPENAI_APIKEY
+              name: study-app-environment-variables
+        - name: DATABASE_NAME
+          value: study-app
+        - name: QDRANT_URL
+          value: http://qdrant-study.default.svc.cluster.local:6333
+        - name: UNSTRUCTURED_URL
+          value: http://unstructured-study-service.default.svc.cluster.local:8000/general/v0/general
+        - name: MAIN_URL_EXECUTOR
+          value: http://code-runner-service.default.svc.cluster.local:8000/
+        - name: EVALUATE_URL_EXECUTOR
+          value: http://code-runner-service.default.svc.cluster.local:8000/evaluate
+        - name: AVAILABLE_LIBRARIES_URL
+          value: http://code-runner-service.default.svc.cluster.local:8000/allowed_libraries
+        - name: REDIS_URL
+          value: redis://redis-stack-service.default.svc.cluster.local:6379
+        image: registry.digitalocean.com/mufti-api/akalmand
+        imagePullPolicy: Always
+        name: akalmand
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+status:
+  availableReplicas: 1
+  conditions:
+  - lastTransitionTime: "2023-10-02T17:24:39Z"
+    lastUpdateTime: "2023-10-02T17:24:39Z"
+    message: Deployment has minimum availability.
+    reason: MinimumReplicasAvailable
+    status: "True"
+    type: Available
+  - lastTransitionTime: "2023-09-03T08:00:27Z"
+    lastUpdateTime: "2023-10-15T11:02:00Z"
+    message: ReplicaSet "akalmand-deployment-98c548ccf" has successfully progressed.
+    reason: NewReplicaSetAvailable
+    status: "True"
+    type: Progressing
+  observedGeneration: 88
+  readyReplicas: 1
+  replicas: 1
+  updatedReplicas: 1

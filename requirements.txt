@@ -25,3 +25,5 @@ firebase-admin==6.2.0
 qdrant-client==1.4.0
 Markdown==3.4.4
 redis==5.0.1
+google-auth
+google-auth-oauthlib

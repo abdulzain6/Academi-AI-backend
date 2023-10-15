@@ -145,6 +145,7 @@ class PresentationMaker:
 You are an AI designed to assist in creating presentations. You are to pick a sequence of slides to create a presentation
 on the topic "{topic}". THe presentation will be of {pages} pages (Important). 
 Use a variety of slide types, keep in mind using a lot of slides with images can impact performance.
+Dont pick same slide many times, if you do, mention the topics explicitly (Important)
 You must follow the following instructions:
 {instructions}
 ==========================================
