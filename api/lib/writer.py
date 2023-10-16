@@ -12,6 +12,7 @@ from langchain.prompts import (
 )
 import pdfkit
 import pypandoc
+import logging
 from retrying import retry
 
 
@@ -163,8 +164,11 @@ Follow the schema above (Important) Make sure the json is correct!
     
     @retry(stop_max_attempt_number=3)
     def get_content(self, content_input: ContentInput):
+        logging.info(f"Generating content for {content_input}.")
         html, text = self.generate_content_html(content_input)
+        logging.info(f"Making pdf for {content_input}.")
         pdf_bytes = self.html_to_pdf_bytes(html)
+        logging.info(f"Making docx for {content_input}.")
         docx_bytes = self.html_to_docx_bytes(html)
         return {
             "pdf" : pdf_bytes,

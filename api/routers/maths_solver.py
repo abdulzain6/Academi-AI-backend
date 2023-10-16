@@ -1,3 +1,4 @@
+import logging
 import queue
 import tempfile
 import threading
@@ -38,9 +39,12 @@ def solve_maths_stream(
     _=Depends(require_points_for_feature("CHAT")),
     play_integrity_verified=Depends(verify_play_integrity)
 ) -> StreamingResponse:
+    logging.info(f"Got maths solver request, {user_id}... Input: {maths_solver_input}")
+
     if conversation_id and not conversation_manager.conversation_exists(
         user_id, conversation_id
     ):
+        logging.error(f"Coversation not found {user_id}")
         raise HTTPException(
             detail="Conversation not found", status_code=status.HTTP_400_BAD_REQUEST
         )
@@ -89,7 +93,7 @@ def solve_maths_stream(
                 on_end_callback=on_end_callback,
             )
         except Exception as e:
-            print(e)
+            logging.error(f"Error in math solver {user_id}, Error: {e}")
             error_message = "The AI was not able to solve the question please make your question clearer."
             for chunk in split_into_chunks(error_message, 4):
                 callback(chunk)
@@ -107,13 +111,16 @@ def ocr_image_route(
     _=Depends(require_points_for_feature("OCR")),
     play_integrity_verified=Depends(verify_play_integrity)
 ) -> Optional[str]:
+    logging.info(f"Got ocr request, {user_id}")
+
     try:
         with tempfile.NamedTemporaryFile(delete=True) as temp_file:
             temp_file.write(file.file.read())
             temp_file_path = temp_file.name
             ocr_result = image_ocr.ocr_image(temp_file_path)
-
+        logging.info(f"Successfully ocred {user_id}")
         return ocr_result
 
     except Exception as e:
+        logging.error(f"Error in ocr {e}")
         raise HTTPException(400, f"Error: {e}") from e

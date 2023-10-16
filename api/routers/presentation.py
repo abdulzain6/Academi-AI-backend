@@ -1,3 +1,4 @@
+import logging
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
@@ -41,13 +42,15 @@ def get_available_templates(
     user_id: str = Depends(get_user_id),
     play_integrity_verified=Depends(verify_play_integrity),
 ) -> GetTemplateResponse:
+    logging.info(f"Got get ppt templates request, {user_id}")
+
     templates = template_manager.get_all_templates()
 
     formatted_templates = [
         {template.template_name.title(): template.template_description}
         for template in templates
     ]
-
+    logging.info(f"processed get ppt templates request, {user_id}")
     return GetTemplateResponse(templates=formatted_templates)
 
 
@@ -59,6 +62,8 @@ def make_presentation(
     _=Depends(require_points_for_feature("PRESENTATION")),
     play_integrity_verified=Depends(verify_play_integrity),
 ):
+    logging.info(f"Got ppt generation request, {user_id}... Input: {presentation_input}")
+
     if presentation_input.use_data:
         if presentation_input.collection_name:
             if collection := collection_manager.get_collection_by_name_and_user(
@@ -66,11 +71,13 @@ def make_presentation(
             ):
                 vectordb_collection = collection.vectordb_collection_name
             else:
+                logging.error(f"Collection does not exist, {user_id}")
                 raise HTTPException(400, "Collection does not exist.")
 
             if presentation_input.files and not verify_file_existance(
                 user_id, presentation_input.files, collection.collection_uid
             ):
+                logging.error(f"files does not exist, {user_id}")
                 raise HTTPException(400, "Some files dont exist")
 
     else:
@@ -94,8 +101,10 @@ def make_presentation(
             template_name,
         )
     except Exception as e:
+        logging.error(f"Error in making ppt, Error: {e}  User: {user_id}")
         raise HTTPException(400, str(e)) from e
 
+    logging.info(f"Presentation made successfully! {user_id}")
     return FileResponse(
         file_path,
         headers={

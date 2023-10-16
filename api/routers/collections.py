@@ -51,8 +51,10 @@ def create_collection(
     user_id=Depends(get_user_id),
     play_integrity_verified=Depends(verify_play_integrity),
 ):
+    logging.info(f"Got make collection request, {user_id}... Input: {collection}")
     try:
         if collection_manager.collection_exists(collection.name, user_id):
+            logging.error(f"Collection already exists, {user_id}")
             raise HTTPException(
                 status.HTTP_409_CONFLICT, "Collection with this name already exists"
             )
@@ -81,12 +83,15 @@ def delete_collections(
     user_id=Depends(get_user_id),
     play_integrity_verified=Depends(verify_play_integrity),
 ):
+    logging.info(f"Got delete collection request, {user_id}... Input: {collection}")
+
     if existing_collection := collection_manager.get_collection_by_name_and_user(
         collection.name, user_id
     ):
         knowledge_manager.delete_collection(
             existing_collection.vectordb_collection_name
         )
+        logging.info(f"Collection deleted {user_id}")
         return (
             StatusCollectionResponse(collection=existing_collection)
             if (
@@ -112,6 +117,8 @@ def update_collection(
     play_integrity_verified=Depends(verify_play_integrity),
 ):
     try:
+        logging.info(f"Got update collection request, {user_id}... Input: {collection_update}")
+
         if collection_update.name and collection_manager.collection_exists(
             collection_update.name, user_id
         ):
@@ -127,6 +134,8 @@ def update_collection(
             raise HTTPException(
                 status.HTTP_404_NOT_FOUND, "No collection found to update"
             )
+            
+        logging.info(f"Collection updated {user_id}")
         return UpdateCollectionResponse(updated_rows=updated_rows)
     except Exception as e:
         logging.error(f"Error updating collection, {e}")
@@ -141,24 +150,26 @@ def get_collection_by_name(
     user_id=Depends(get_user_id),
     play_integrity_verified=Depends(verify_play_integrity),
 ):
+    logging.info(f"Fetching collection: {collection_name} for user: {user_id}")
     try:
         if collection := collection_manager.get_collection_by_name_and_user(
             name=collection_name, user_id=user_id
         ):
             return StatusCollectionResponse(collection=collection)
-        else:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "Collection not found")
+        logging.warning(f"Collection: {collection_name} not found for user: {user_id}")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Collection not found")
     except Exception as e:
         logging.error(f"Error getting collection, {e}")
         raise HTTPException(
             status.HTTP_409_CONFLICT, f"Error getting collection, {e}"
         ) from e
 
-
 @router.get("/", response_model=MultipleCollectionResponse)
 def get_all_collections(
-    user_id=Depends(get_user_id), play_integrity_verified=Depends(verify_play_integrity)
+    user_id=Depends(get_user_id),
+    play_integrity_verified=Depends(verify_play_integrity),
 ):
+    logging.info(f"Fetching all collections for user: {user_id}")
     try:
         collections = collection_manager.get_all_by_user(user_id=user_id)
         return MultipleCollectionResponse(collections=collections)
@@ -168,17 +179,19 @@ def get_all_collections(
             status.HTTP_409_CONFLICT, f"Error getting collections, {e}"
         ) from e
 
-
 @router.delete("/all", response_model=DeleteCollectionResponse)
 def delete_all_collections(
-    user_id=Depends(get_user_id), play_integrity_verified=Depends(verify_play_integrity)
+    user_id=Depends(get_user_id),
+    play_integrity_verified=Depends(verify_play_integrity),
 ):
+    logging.info(f"Deleting all collections for user: {user_id}")
     try:
         collections = collection_manager.get_all_by_user(user_id)
         for collection in collections:
             if not knowledge_manager.delete_collection(
                 collection.vectordb_collection_name
             ):
+                logging.warning("Error deleting a single collection")
                 raise HTTPException(400, "ERROR DELETING COLLECTION")
 
         deleted_count = collection_manager.delete_all(user_id=user_id)

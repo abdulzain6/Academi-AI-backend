@@ -12,7 +12,6 @@ security = HTTPBearer()
 def get_user_id(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
     try:
         token = credentials.credentials
-        logging.info(f"Verifying token {token}")
         user = auth.verify_id_token(token, app=default_app)
         return user["user_id"]
         
@@ -26,7 +25,6 @@ def get_user_id(credentials: HTTPAuthorizationCredentials = Depends(security)) -
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     try:
         token = credentials.credentials
-        logging.info(f"Verifying token {token}")
         user = auth.verify_id_token(token, app=default_app)
         user_details = auth.get_user(user["user_id"])
         return {
@@ -36,6 +34,7 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
             "photo_url": user_details.photo_url,
         }
     except Exception as e:
+        logging.error(f"Error in id token. {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Invalid authentication credentials {str(e)}",
@@ -47,7 +46,7 @@ def verify_play_integrity(x_firebase_appcheck: str = Header(...)) -> None:
         return
         app_check_claims = app_check.verify_token(x_firebase_appcheck)
     except (ValueError, jwt.exceptions.DecodeError) as e:
-        print(e)
+        logging.error(f"Error in app check token. {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid Play Integrity token",

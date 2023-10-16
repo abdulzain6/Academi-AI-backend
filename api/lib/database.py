@@ -1,5 +1,6 @@
 from collections import deque
 from datetime import datetime, timedelta, timezone
+import logging
 from typing import Any, Dict, List, Optional
 from pymongo import MongoClient
 import pymongo
@@ -87,7 +88,7 @@ class UserPointsManager:
         default_points: int = 10,
         daily_points: int = 3,
         weekly_daily_bonus_points: int = 10,
-        max_ads_per_hour: int = 20,
+        max_ads_per_hour: int = 5,
     ) -> None:
         self.client = MongoClient(connection_string)
         self.db = self.client[database_name]
@@ -119,10 +120,12 @@ class UserPointsManager:
 
     def get_user_points(self, uid: str) -> UserPoints:
         if not self.user_exists(uid):
+            logging.info(f"Creating points for user, {uid}")
             self.points_collection.insert_one(
                 UserPoints(uid=uid, points=self.default_points).model_dump()
             )
-
+        
+        logging.info(f"Getting points for user, {uid}")
         data = self.points_collection.find_one({"uid": uid}, {"_id": 0})
         return UserPoints(**data)
 
@@ -163,12 +166,11 @@ class UserPointsManager:
         return (now - last_claimed) < timedelta(days=1)
     def claim_daily_bonus(self, uid: str) -> int:
         try:
+            logging.info(f"Getting points while claiming bonus for {uid}")
             user_points = self.get_user_points(uid)
         except pymongo.errors.PyMongoError as e:
+            logging.error(f"Error getting points while claiming bonus for {uid}")
             raise ValueError("Database operation failed") from e
-
-        if not user_points:
-            raise ValueError()
 
         now = datetime.now(timezone.utc)
         last_claimed: Optional[datetime] = user_points.last_claimed
@@ -184,13 +186,16 @@ class UserPointsManager:
         bonus_points = 10 if streak_count == self.weekly_daily_bonus_points else self.daily_points
 
         try:
+            logging.info(f"Incrementing points while claiming bonus for {uid}")
             self.increment_user_points(uid, bonus_points)
             self.points_collection.update_one(
                 {"uid": uid},
                 {"$set": {"last_claimed": now, "streak_count": streak_count % 7}}
             )
         except pymongo.errors.PyMongoError as exc:
+            logging.error(f"Error incrementing points while claiming bonus for {uid}")
             raise ValueError("Database operation failed") from exc
+
 
         return bonus_points
 

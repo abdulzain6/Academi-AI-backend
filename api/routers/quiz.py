@@ -6,6 +6,7 @@ from ..globals import file_manager, quiz_generator, collection_manager
 from pydantic import BaseModel
 from ..decorators import openai_token_tracking_decorator, require_points_for_feature
 from ..lib.quiz import UserResponse, Result
+import logging
 
 router = APIRouter()
 
@@ -30,11 +31,14 @@ def make_quiz(
     _=Depends(require_points_for_feature("QUIZ")),
     play_integrity_verified=Depends(verify_play_integrity),
 ):
+    logging.info(f"Got quiz generation request, {user_id}... Input: {quiz_input}")
+
     if not (
         collection := collection_manager.get_collection_by_name_and_user(
             quiz_input.collection_name, user_id
         )
     ):
+        logging.error(f"Collection {quiz_input.collection_name} does not exist, {user_id}")
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Collection not found!")
 
     if not quiz_input.file_name:
@@ -48,6 +52,7 @@ def make_quiz(
             user_id, quiz_input.collection_name, quiz_input.file_name
         )
     else:
+        logging.error(f"File not exists {user_id}")
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="File not found!")
 
     data = "\n".join([file.file_content for file in files if file])
@@ -58,10 +63,12 @@ def make_quiz(
             collection_name=quiz_input.collection_name,
         )
     except Exception as e:
+        logging.error(f"Error generating quiz, Error: {e}")
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST, detail=f"Error: {str(e)}"
         ) from e
 
+    logging.info(f"Quiz generated, {user_id}")
     return {"questions": [question.model_dump() for question in questions]}
 
 
@@ -71,9 +78,11 @@ def evaluate_quiz(
     user_id=Depends(get_user_id),
     play_integrity_verified=Depends(verify_play_integrity),
 ):
+    logging.info(f"Got quiz evaluation request, {user_id}... Input: {user_answers}")
     try:
         return quiz_generator.evaluate_quiz(user_answers)
     except Exception as e:
+        logging.error(f"Error evaluating quiz, User: {user_id}, Error: {e}")
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST, detail=f"Error: {str(e)}"
         ) from e
@@ -86,11 +95,14 @@ def make_flashcards(
     _=Depends(require_points_for_feature("FLASHCARDS")),
     play_integrity_verified=Depends(verify_play_integrity),
 ):
+    logging.info(f"Got flashcard generation request, {user_id}... Input: {fc_input}")
+
     if not (
         collection := collection_manager.get_collection_by_name_and_user(
             fc_input.collection_name, user_id
         )
     ):
+        logging.error(f"Collection {fc_input.collection_name} does not exist, {user_id}")
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Collection not found!")
 
     if not fc_input.file_name:
@@ -104,6 +116,7 @@ def make_flashcards(
             user_id, fc_input.collection_name, fc_input.file_name
         )
     else:
+        logging.error(f"File not found, {user_id}")
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="File not found!")
 
     data = "\n".join([file.file_content for file in files if file])
@@ -113,7 +126,9 @@ def make_flashcards(
             fc_input.number_of_flashcards,
             collection_name=fc_input.collection_name,
         )
+        logging.info(f"Flashcards generated, {user_id}")
     except Exception as e:
+        logging.error(f"Error in flash card generation. {e}")
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST, detail=f"Error: {str(e)}"
         ) from e

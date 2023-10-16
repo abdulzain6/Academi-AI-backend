@@ -34,6 +34,7 @@ def add_conversation(
     user_id: str = Depends(get_user_id),
     play_integrity_verified=Depends(verify_play_integrity),
 ):
+    logging.info(f"Adding convo {user_id}")
     if metadata.collection_name and not collection_manager.collection_exists(
         metadata.collection_name, user_id
     ):
@@ -49,7 +50,9 @@ def add_message(
     play_integrity_verified=Depends(verify_play_integrity),
 ):
     try:
+        logging.info(f"Adding message {user_id}")
         if not message_manager.conversation_exists(user_id, request.conversation_id):
+            logging.error(f"Conversation doesnt exist {user_id}")
             raise HTTPException(400, detail="Conversation does not exist")
 
         message_manager.add_message(
@@ -69,7 +72,9 @@ def get_messages(
     user_id: str = Depends(get_user_id),
     play_integrity_verified=Depends(verify_play_integrity),
 ):
+    logging.info(f"Getting messages {user_id}")
     if not message_manager.conversation_exists(user_id, conversation_id):
+        logging.error(f"Coversation not found {user_id}")
         raise HTTPException(400, detail="Conversation does not exist")
     messages = message_manager.get_messages(user_id, conversation_id)
     return [] if messages is None else messages
@@ -80,6 +85,7 @@ def get_all_conversations(
     user_id: str = Depends(get_user_id),
     play_integrity_verified=Depends(verify_play_integrity),
 ):
+    logging.info(f"Getting all convo {user_id}")
     conversations = message_manager.get_all_conversations(user_id)
     if conversations is None:
         return UserLatestConversations(user_id=user_id, conversations=[])
@@ -92,7 +98,9 @@ def delete_conversation(
     user_id: str = Depends(get_user_id),
     play_integrity_verified=Depends(verify_play_integrity),
 ):
+    logging.info(f"Deleting convo {user_id}")
     if not message_manager.conversation_exists(user_id, conversation_id):
+        logging.error(f"Coversation not found {user_id}")
         raise HTTPException(400, detail="Conversation does not exist")
     try:
         deleted_count = message_manager.delete_conversation(user_id, conversation_id)
@@ -109,6 +117,7 @@ def delete_all_conversations(
     user_id: str = Depends(get_user_id),
     play_integrity_verified=Depends(verify_play_integrity),
 ):
+    logging.info(f"Deleting all convo {user_id}")
     try:
         deleted_count = message_manager.delete_all_conversations(user_id)
         return DeleteConversationResponse(deleted_rows=deleted_count)

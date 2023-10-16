@@ -1,4 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
+import logging
 import tempfile, time
 from .pptx.enum.shapes import MSO_SHAPE_TYPE
 from .pptx import Presentation
@@ -408,10 +409,13 @@ Lets think step by step to accomplish this.
             metadata = {"file" : presentation_input.files}
         else:
             metadata = None
-            
-        vectordata = self.query_vectorstore(sequence_part.slide_detail, presentation_input.collection_name, k=3, metadata=metadata)
-        
-        if vectordata:
+
+        if vectordata := self.query_vectorstore(
+            sequence_part.slide_detail,
+            presentation_input.collection_name,
+            k=3,
+            metadata=metadata,
+        ):
             help_text = f"""
     Take help from the following material to fill the placeholders if its empty use your knowledge:
     =====================
@@ -420,7 +424,7 @@ Lets think step by step to accomplish this.
             """
         else:
             help_text = "Use your own knowledge to fill the placeholders"
-            
+
         placeholders: Placeholders = chain.run(
             placeholders=self.format_placeholders(slide.placeholders, True),
             slide_detail=sequence_part.slide_detail,
@@ -438,9 +442,8 @@ Lets think step by step to accomplish this.
             try:
                 placeholder.placeholder_data = str(self.auto_reduce_text_by_words(placeholder.placeholder_data, word_limit_para, word_limit_points, word_limit_hybrid))                
             except Exception as e:
-                import traceback
-                traceback.print_exception(e)
-                
+                logging.error(f"Error in presentation {e}")
+
         return self.combine_placeholders(slide.placeholders, placeholders.placeholders)
 
     def remove_placeholders_and_artifacts(self, slide) -> None:
@@ -460,7 +463,7 @@ Lets think step by step to accomplish this.
                 if shape.shape_type == MSO_SHAPE_TYPE.PLACEHOLDER and (shape.has_text_frame and not shape.text):
                     shapes_to_remove.append(shape)
             except Exception as e:
-                print(f"An error occurred while processing the shape: {e}")
+                logging.error(f"An error occurred while processing the shape: {e}")
 
 
         for shape in shapes_to_remove:
@@ -504,20 +507,17 @@ Lets think step by step to accomplish this.
         template_path: str,
         template_slides: List[SlideModel],
     ) -> Presentation:
-        print("Creating a new presentation from sequence...")
 
         # Create the slide_type to layout_index mapping dynamically
         slide_type_to_layout_index = {
             slide.slide_type: slide.page_number - 1 for slide in template_slides
         }
-        print(f"Map {slide_type_to_layout_index}")
 
         # Step 1: Load Template Presentation
         prs = Presentation(template_path)
 
         # Step 2: Iterate Through the Sequence
         for slide_part in sequence.slide_sequence:
-            print(f"Processing slide type: {slide_part.slide_type}")
 
             if slide_model := next(
                 (
@@ -528,21 +528,17 @@ Lets think step by step to accomplish this.
                 None,
             ):
                 index_to_duplicate = slide_model.page_number - 1
-                print(f"Index to duplicate: {index_to_duplicate}")
 
                 # Use the mapping to get the layout index
                 layout_index = slide_type_to_layout_index.get(slide_part.slide_type, 0)
-                print(f"Layout index: {layout_index}")
 
                 # Debugging: Slide Count Before Duplication
-                print(f"Slide Count Before Duplication: {len(prs.slides)}")
 
                 self.duplicate_slide_with_temp_img(
                     prs, index_to_duplicate, layout_index
                 )
 
                 # Debugging: Slide Count After Duplication
-                print(f"Slide Count After Duplication: {len(prs.slides)}")
 
         # Step 3: Delete All Original Slides
         for i in range(len(prs.slides) - len(sequence.slide_sequence) - 1, -1, -1):
@@ -556,7 +552,6 @@ Lets think step by step to accomplish this.
         slide_content_obtained = False  # Flag to check if slide content was successfully obtained
 
         try:
-            print(f"Filling in placeholders for slide: {i + 1}")
             template_slide = self.get_slide_by_type(slide_part.slide_type, template_slides)
             
             for _ in range(3):
@@ -565,18 +560,18 @@ Lets think step by step to accomplish this.
                     slide_content_obtained = True  # Set the flag to True if content is obtained
                     break
                 except Exception as e:
-                    print(e)
+                    logging.error(f"Error in presentation {e}")
 
             if not slide_content_obtained:
-                print(f"Failed to get content for slide {i + 1}. Deleting the slide.")
+                logging.error(f"Failed to get content for slide {i + 1}. Deleting the slide.")
                 del prs.slides[i]  # Delete the slide
                 return
 
             presentation_slide = prs.slides[i]
-            print(f"Got content for {i + 1}")
             self.replace_placeholders_in_single_slide(presentation_slide, slide_content)
         except Exception as e:
-            print("Error, ", e)
+            logging.error(f"Error in presentation {e}")
+
 
     def fill_presentation_with_content(
         self,
@@ -585,7 +580,6 @@ Lets think step by step to accomplish this.
         presentation_input: PresentationInput,
         template: TemplateModel
     ) -> None:
-        print("Filling in placeholders...")
         threads = []
         for i, slide_part in enumerate(sequence.slide_sequence):
             thread = Thread(target=self.fill_single_slide, args=(i, slide_part, prs, template.slides, presentation_input, sequence, template.word_limit_para, template.word_limit_points, template.word_limit_hybrid))
@@ -595,11 +589,10 @@ Lets think step by step to accomplish this.
         for thread in threads:
             thread.join()
 
-        print("Completed filling in placeholders.")
 
     @retry(stop_max_attempt_number=3)
     def make_presentation(self, presentation_input: PresentationInput, template_name: str = None) -> str:
-        print("Fetching best template...")
+        logging.info("Fetching best template...")
         start_time = time.time()
         if not template_name:
             template = self.get_best_template(presentation_input.topic)
@@ -612,7 +605,7 @@ Lets think step by step to accomplish this.
             raise ValueError("Template Not found!")
 
         for _ in range(3):
-            print("Creating and validating slide sequence...")
+            logging.info("Creating and validating slide sequence...")
             with contextlib.suppress(Exception):
                 sequence = self.create_sequence(template, presentation_input)
                 if self.validate_slides(template, sequence):
@@ -620,7 +613,6 @@ Lets think step by step to accomplish this.
         else:
             raise NoValidSequenceException("Couldn't find the best sequence")
 
-        print("Sorting the slide sequence...")
         sequence.slide_sequence = sorted(
             sequence.slide_sequence, key=lambda x: x.page_number if x else 0
         )
@@ -636,7 +628,7 @@ Lets think step by step to accomplish this.
             prs.save(temp_file.name)
             temp_file_path = temp_file.name  # Store the path for returning
         
-        print("Presentation saved successfully. Time taken: ", time.time() - start_time)
+        logging.info("Presentation saved successfully. Time taken: ", time.time() - start_time)
         
         return temp_file_path
 
@@ -705,7 +697,6 @@ Lets think step by step to accomplish this.
                     def download_image(placeholder):
                         nonlocal shapes_to_add
                         images = self.replace_images_in_shape(shape, [placeholder], pixel)
-                        print("Downloaded image")
                         shapes_to_add.extend(images)
 
                     with ThreadPoolExecutor() as executor:
@@ -713,7 +704,7 @@ Lets think step by step to accomplish this.
 
                     shapes_to_remove.append(shape)
             except Exception as e:
-                print(e)
+                logging.error(f"Error in presentation {e}")
 
                     
         with ThreadPoolExecutor(max_workers=len(slide.shapes)) as executor:
@@ -726,7 +717,7 @@ Lets think step by step to accomplish this.
             try:
                 new_shape = slide.shapes.add_picture(temp_file_name, left, top, width, height)
             except Exception as e:
-                print(f"An error occurred while adding the picture: {e}")
+                logging.error(f"An error occurred while adding the picture: {e}")
   
     def get_slide_by_type(self, type: str, slides: list[SlideModel]) -> SlideModel:
         for slide in slides:

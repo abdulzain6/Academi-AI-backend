@@ -220,7 +220,6 @@ Lets think step by step to help the student following all rules.
             **{"streaming": stream,
                 "model_name" : model_name,
         })
-        print("Messages: ", self.format_messages(chat_history, 700, llm))
         agent = self.make_agent(
             llm=llm,
             chat_history_messages=self.format_messages(chat_history, 700, llm)

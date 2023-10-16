@@ -15,8 +15,11 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from starlette.status import HTTP_504_GATEWAY_TIMEOUT
 import langchain
+import logging
 
 langchain.verbose = False
+logging.basicConfig(level=logging.INFO)
+
 
 app = FastAPI()
 

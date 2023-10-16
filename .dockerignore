@@ -9,3 +9,4 @@ akalmand-deployment.yml
 commands.sh
 code-runner.yml
 credentials-velero
+code_executor/

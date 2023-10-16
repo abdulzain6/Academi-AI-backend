@@ -1,3 +1,4 @@
+import logging
 import queue
 import threading
 from typing import Generator, Optional
@@ -38,55 +39,6 @@ def convert_message_pairs_to_tuples(
     return [(pair.human_message, pair.bot_response) for pair in message_pairs]
 
 
-@router.post("/chat-collection")
-def chat_collection(
-    data: ChatCollectionInput,
-    conversation_id: Optional[str] = None,
-    user_id=Depends(get_user_id),
-    _=Depends(require_points_for_feature("CHAT")),
-    play_integrity_verified=Depends(verify_play_integrity)
-):
-    if conversation_id and not conversation_manager.conversation_exists(
-        user_id, conversation_id
-    ):
-        raise HTTPException(
-            detail="Conversation not found", status_code=status.HTTP_400_BAD_REQUEST
-        )
-    if not (
-        collection := collection_manager.get_collection_by_name_and_user(
-            data.collection_name, user_id
-        )
-    ):
-        raise HTTPException(
-            detail="Collection not found", status_code=status.HTTP_400_BAD_REQUEST
-        )
-    if collection.number_of_files == 0:
-        raise HTTPException(
-            detail="Collection has no files", status_code=status.HTTP_400_BAD_REQUEST
-        )
-
-    chat_history = (
-        convert_message_pairs_to_tuples(
-            conversation_manager.get_messages(user_id, conversation_id)
-        )
-        if conversation_id
-        else data.chat_history
-    ) or []
-
-    response = chat_manager.chat(
-        collection.vectordb_collection_name,
-        data.prompt,
-        chat_history,
-        data.language,
-        False,
-        model_name=data.model,
-    )
-    if conversation_id:
-        conversation_manager.add_message(
-            user_id, conversation_id, human_message=data.prompt, bot_response=response
-        )
-    return response
-
 
 @router.post("/chat-collection-stream")
 def chat_collection_stream(
@@ -96,6 +48,7 @@ def chat_collection_stream(
     _=Depends(require_points_for_feature("CHAT")),
     play_integrity_verified=Depends(verify_play_integrity)
 ):
+    logging.info(f"Initiating chat_collection_stream, user {user_id}")
     if conversation_id and not conversation_manager.conversation_exists(
         user_id, conversation_id
     ):
@@ -161,7 +114,7 @@ def chat_collection_stream(
                 on_end_callback=on_end_callback,
             )
         except Exception as e:
-            print(e)
+            logging.error(f"Error running chat in chat_collection_stream: {e}")
             error_message = "Error in getting response"
             for chunk in split_into_chunks(error_message, 4):
                 callback(chunk)
@@ -180,6 +133,7 @@ def chat_file_stream(
     _=Depends(require_points_for_feature("CHAT")),
     play_integrity_verified=Depends(verify_play_integrity)
 ):
+    logging.info("Initiating chat_file_stream")
     if conversation_id and not conversation_manager.conversation_exists(
         user_id, conversation_id
     ):
@@ -255,7 +209,7 @@ def chat_file_stream(
                 on_end_callback=on_end_callback,
             )
         except Exception as e:
-            print(e)
+            logging.error(f"Error running chat in chat_file_stream: {e}")
             error_message = "Error in getting response"
             for chunk in split_into_chunks(error_message, 4):
                 callback(chunk)
@@ -265,62 +219,3 @@ def chat_file_stream(
 
     return StreamingResponse(data_generator())
 
-
-@router.post("/chat-file")
-def chat_file(
-    data: ChatFileInput,
-    conversation_id: Optional[str] = None,
-    user_id=Depends(get_user_id),
-    _=Depends(require_points_for_feature("CHAT")),
-    play_integrity_verified=Depends(verify_play_integrity)
-):
-    if conversation_id and not conversation_manager.conversation_exists(
-        user_id, conversation_id
-    ):
-        raise HTTPException(
-            detail="Conversation not found", status_code=status.HTTP_400_BAD_REQUEST
-        )
-
-    if not (
-        collection := collection_manager.get_collection_by_name_and_user(
-            data.collection_name, user_id
-        )
-    ):
-        raise HTTPException(
-            detail="Collection not found", status_code=status.HTTP_400_BAD_REQUEST
-        )
-    if collection.number_of_files == 0:
-        raise HTTPException(
-            detail="Collection has no files", status_code=status.HTTP_400_BAD_REQUEST
-        )
-    if not file_manager.file_exists(
-        collection_uid=collection.collection_uid,
-        user_id=user_id,
-        filename=data.file_name,
-    ):
-        raise HTTPException(
-            detail="File not found.", status_code=status.HTTP_400_BAD_REQUEST
-        )
-
-    chat_history = (
-        convert_message_pairs_to_tuples(
-            conversation_manager.get_messages(user_id, conversation_id)
-        )
-        if conversation_id
-        else data.chat_history
-    ) or []
-
-    response = chat_manager.chat(
-        collection.vectordb_collection_name,
-        data.prompt,
-        chat_history,
-        data.language,
-        False,
-        model_name=data.model,
-        filename=data.file_name,
-    )
-    if conversation_id:
-        conversation_manager.add_message(
-            user_id, conversation_id, human_message=data.prompt, bot_response=response
-        )
-    return response
