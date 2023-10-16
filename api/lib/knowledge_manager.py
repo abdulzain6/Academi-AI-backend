@@ -237,11 +237,12 @@ You are {ai_name}, an AI designed to provide information.
 You are to take the tone of a teacher.
 Talk as if you're a teacher. Use the data provided to answer user questions. 
 Only return the next message content in {language}. dont return anything else not even the name of AI.
-You must answer the human in {language} (important)"""
+You must answer the human in {language} (important)
+The help data is from files/subjects the human has provided and can be from webpages, youtube links, files, images and much more"""
             ),
             HumanMessagePromptTemplate.from_template(
                 """
-Help Data (This data is from files/collections the human has provided and can be of any type):
+Help Data (This data is from files/subjects the human has provided and can be from webpages, youtube links, files, images and much more):
 =========
 {help_data}
 =========
