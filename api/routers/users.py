@@ -91,10 +91,12 @@ def claim_daily_bonus(
     if bonus_points > 0:
         return {"status": "success", "message": f"Claimed {bonus_points} bonus points"}
     
-    logging.info(f"Daily bonus claimed already for {user_id}")
+    time_left = user_points_manager.time_until_daily_bonus(user_id)
+    human_readable_time_left = str(time_left).split('.')[0]  # Remove microseconds
+    
     raise HTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,
-        detail="Failed to claim daily bonus, Might be already claimed",
+        detail=f"Failed to claim daily bonus. Time left until next claim: {human_readable_time_left}",
     )
 
 

@@ -218,6 +218,24 @@ class UserPointsManager:
             {"uid": uid}, {"$inc": {"points": -points}}
         )
         return result.modified_count
+    
+    def time_until_daily_bonus(self, uid: str) -> timedelta:
+        user_points: UserPoints = self.get_user_points(uid)
+        now = datetime.now(timezone.utc)
+        last_claimed: Optional[datetime] = user_points.last_claimed
+
+        if last_claimed is None:
+            return timedelta(seconds=0)
+
+        if last_claimed.tzinfo is None:
+            last_claimed = last_claimed.replace(tzinfo=timezone.utc)
+
+        time_since_last_claim = now - last_claimed
+
+        if time_since_last_claim >= timedelta(days=1):
+            return timedelta(seconds=0)
+
+        return timedelta(days=1) - time_since_last_claim
 
 
 class ReferralManager:
@@ -252,7 +270,6 @@ class ReferralManager:
         self.points_manager.increment_user_points(referral_code, self.referral_points)
     
         self.points_manager.increment_user_points(uid, self.referral_points)
-
 
 
 class CollectionDBManager:
