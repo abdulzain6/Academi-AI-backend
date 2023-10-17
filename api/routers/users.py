@@ -170,7 +170,7 @@ def update_user(
     if not user_manager.user_exists(user_id):
         logging.error(f"User does not exist from {user_id}")
         raise HTTPException(detail="User does not exist", status_code=404)
-    user_update = user_update.model_dump()
+    user_update = user_update.model_dump(exclude_none=True)
     user_manager.update_user(user_id, **user_update)
     user = user_manager.get_user_by_uid(user_id)
     return {"status": "success", "error": "", "user": user}

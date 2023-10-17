@@ -126,7 +126,7 @@ def update_collection(
                 status.HTTP_400_BAD_REQUEST, "Collection name already exists"
             )
 
-        to_update = collection_update.model_dump()
+        to_update = collection_update.model_dump(exclude_none=True)
         updated_rows = collection_manager.update_collection(
             user_id=user_id, collection_name=collection_name, **to_update
         )
