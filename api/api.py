@@ -34,6 +34,11 @@ app.include_router(quiz_router, prefix="/api/v1/quiz", tags=["quiz"])
 app.include_router(maths_solver_routers, prefix="/api/v1/maths_solver", tags=["maths solver"])
 app.include_router(writer_router, prefix="/api/v1/writer", tags=["writer"])
 
+
+@app.get("/")
+def hello():
+    return "hello"
+
 @app.middleware('http')
 async def timeout_middleware(request: Request, call_next):
     try:
