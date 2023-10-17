@@ -6,14 +6,22 @@ from fastapi import HTTPException, Depends
 from functools import wraps
 from langchain.callbacks import get_openai_callback
 from typing import Callable, Any
+from inspect import isfunction
 
 
 def require_points_for_feature(feature_key: str):
     def decorator(func):
         @wraps(func)
-        def wrapper(*args, user_id: str = Depends(get_user_id), **kwargs) -> None:
+        def wrapper(*args, **kwargs):
+            
+            for key, value in kwargs.items():
+                if isfunction(value):
+                    resolved_value = value()
+                    kwargs[key] = resolved_value
+            
+            user_id = kwargs.get("user_id")
             logging.info(f"Checking points for feature: {feature_key} and user: {user_id}")
-
+            
             user_points_data = user_points_manager.get_user_points(user_id)
             user_points = user_points_data.points if user_points_data else 0
 
