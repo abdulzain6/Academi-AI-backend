@@ -29,9 +29,9 @@ class DeleteUserResponse(BaseModel):
 
 
 class UserUpdate(BaseModel):
-    email: Optional[str]
-    display_name: Optional[str]
-    photo_url: Optional[str]
+    email: Optional[str] = None
+    display_name: Optional[str] = None
+    photo_url: Optional[str] = None
 
 
 

@@ -55,11 +55,10 @@ def get_available_templates(
 
 
 @router.post("/")
-@openai_token_tracking_decorator
+@require_points_for_feature("PRESENTATION")
 def make_presentation(
     presentation_input: MakePresentationInput,
     user_id=Depends(get_user_id),
-    _=Depends(require_points_for_feature("PRESENTATION")),
     play_integrity_verified=Depends(verify_play_integrity),
 ):
     logging.info(f"Got ppt generation request, {user_id}... Input: {presentation_input}")

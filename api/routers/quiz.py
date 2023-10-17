@@ -24,11 +24,10 @@ class MakeFlashCardsInput(BaseModel):
 
 
 @router.post("/")
-@openai_token_tracking_decorator
+@require_points_for_feature("QUIZ")
 def make_quiz(
     quiz_input: MakeQuizInput,
     user_id=Depends(get_user_id),
-    _=Depends(require_points_for_feature("QUIZ")),
     play_integrity_verified=Depends(verify_play_integrity),
 ):
     logging.info(f"Got quiz generation request, {user_id}... Input: {quiz_input}")
@@ -89,10 +88,10 @@ def evaluate_quiz(
 
 
 @router.post("/flashcards")
+@require_points_for_feature("FLASHCARDS")
 def make_flashcards(
     fc_input: MakeFlashCardsInput,
     user_id=Depends(get_user_id),
-    _=Depends(require_points_for_feature("FLASHCARDS")),
     play_integrity_verified=Depends(verify_play_integrity),
 ):
     logging.info(f"Got flashcard generation request, {user_id}... Input: {fc_input}")

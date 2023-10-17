@@ -9,12 +9,11 @@ from ..decorators import openai_token_tracking_decorator, require_points_for_fea
 
 router = APIRouter()
 
-@openai_token_tracking_decorator
 @router.post("/write")
+@require_points_for_feature("WRITER")
 def write_content(
     input: ContentInput,
     user_id=Depends(get_user_id),
-    _=Depends(require_points_for_feature("WRITER")),
     play_integrity_verified=Depends(verify_play_integrity)
 ):
     logging.info(f"Writer request from {user_id}, Data: {input}")

@@ -628,7 +628,7 @@ Lets think step by step to accomplish this.
             prs.save(temp_file.name)
             temp_file_path = temp_file.name  # Store the path for returning
         
-        logging.info("Presentation saved successfully. Time taken: ", time.time() - start_time)
+        logging.info(f"Presentation saved successfully. Time taken: , {time.time() - start_time}")
         
         return temp_file_path
 

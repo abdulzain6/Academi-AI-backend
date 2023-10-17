@@ -9,26 +9,33 @@ from typing import Callable, Any
 
 
 def require_points_for_feature(feature_key: str):
-    def dependency(user_id: str = Depends(get_user_id)) -> None:
-        logging.info(f"Checking points for feature: {feature_key} and user: {user_id}")
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, user_id: str = Depends(get_user_id), **kwargs) -> None:
+            logging.info(f"Checking points for feature: {feature_key} and user: {user_id}")
 
-        user_points_data = user_points_manager.get_user_points(user_id)
-        user_points = user_points_data.points if user_points_data else 0
+            user_points_data = user_points_manager.get_user_points(user_id)
+            user_points = user_points_data.points if user_points_data else 0
 
-        required_points = FEATURE_PRICING.get(feature_key, 0)
+            required_points = FEATURE_PRICING.get(feature_key, 0)
 
-        if user_points < required_points:
-            logging.warning(
-                f"Insufficient points for user: {user_id} on feature: {feature_key}"
-            )
-            raise HTTPException(status_code=403, detail="Insufficient points")
+            if user_points < required_points:
+                logging.warning(f"Insufficient points for user: {user_id} on feature: {feature_key}")
+                raise HTTPException(status_code=403, detail="Insufficient points")
 
-        user_points_manager.decrement_user_points(user_id, required_points)
-        logging.info(
-            f"Points decremented for user: {user_id} on feature: {feature_key}"
-        )
+            user_points_manager.decrement_user_points(user_id, required_points)
+            logging.info(f"Points decremented for user: {user_id} on feature: {feature_key}")
 
-    return dependency
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                logging.error(f"An error occurred: {e}. Refunding points for user: {user_id} on feature: {feature_key}")
+                user_points_manager.increment_user_points(user_id, required_points)
+                raise e
+
+        return wrapper
+
+    return decorator
 
 
 def openai_token_tracking_decorator(func: Callable[..., Any]) -> Callable[..., Any]:

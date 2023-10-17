@@ -24,7 +24,7 @@ spec:
     spec:
       containers:
         - name: akalmand
-          image: registry.digitalocean.com/mufti-api/akalmand
+          image: registry.digitalocean.com/mufti-api/akalmand:latest
           imagePullPolicy: Always
           env:
             - name: MONGODB_URL

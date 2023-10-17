@@ -41,11 +41,11 @@ def convert_message_pairs_to_tuples(
 
 
 @router.post("/chat-collection-stream")
+@require_points_for_feature("CHAT")
 def chat_collection_stream(
     data: ChatCollectionInput,
     conversation_id: Optional[str] = None,
     user_id=Depends(get_user_id),
-    _=Depends(require_points_for_feature("CHAT")),
     play_integrity_verified=Depends(verify_play_integrity)
 ):
     logging.info(f"Initiating chat_collection_stream, user {user_id}")
@@ -126,11 +126,11 @@ def chat_collection_stream(
 
 
 @router.post("/chat-file-stream")
+@require_points_for_feature("CHAT")
 def chat_file_stream(
     data: ChatFileInput,
     conversation_id: Optional[str] = None,
     user_id=Depends(get_user_id),
-    _=Depends(require_points_for_feature("CHAT")),
     play_integrity_verified=Depends(verify_play_integrity)
 ):
     logging.info("Initiating chat_file_stream")

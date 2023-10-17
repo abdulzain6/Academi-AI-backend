@@ -54,7 +54,7 @@ def create_link_file(
         linkfile.collection_name, user_id
     )
     if not collection:
-        logging.error(f"Collection does not exist. Name: {collection} {user_id}")
+        logging.error(f"Collection does not exist. {user_id}")
         raise HTTPException(detail="Collection does not exist", status_code=404)
 
     if not linkfile.youtube_link and not linkfile.web_link:
@@ -126,7 +126,7 @@ def create_file(
     play_integrity_verified=Depends(verify_play_integrity),
 ):
     try:
-        logging.info(f"Create file request from {user_id}, collection={collection}, filename={filename}")
+        logging.info(f"Create file request from {user_id}, collection={collection_name}, filename={filename}")
         if "../" in filename or "../" in file.filename:
             logging.warning(f"{user_id} is a sus user!")
             raise HTTPException(
@@ -153,8 +153,8 @@ def create_file(
             delete=True, suffix=file_extension, mode="w+b"
         ) as temp_file:
             contents = file.file.read()
-            logging.error(f"File is too big {user_id}")
             if len(contents) > MAX_FILE_SIZE:
+                logging.error(f"File is too big {user_id}")
                 raise HTTPException(
                     status_code=400,
                     detail="File size exceeds the maximum limit of 20 MB",

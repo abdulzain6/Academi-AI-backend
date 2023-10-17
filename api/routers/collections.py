@@ -12,8 +12,8 @@ router = APIRouter()
 
 
 class CollectionUpdate(BaseModel):
-    name: Optional[str]
-    description: Optional[str]
+    name: Optional[str] = None
+    description: Optional[str] = None
 
 
 class CollectionCreate(BaseModel):

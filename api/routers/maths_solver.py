@@ -32,11 +32,11 @@ def convert_message_pairs_to_tuples(
 
 
 @router.post("/solve_maths_stream")
+@require_points_for_feature("CHAT")
 def solve_maths_stream(
     maths_solver_input: MathsSolveInput,
     conversation_id: Optional[str] = None,
     user_id: str = Depends(get_user_id),
-    _=Depends(require_points_for_feature("CHAT")),
     play_integrity_verified=Depends(verify_play_integrity)
 ) -> StreamingResponse:
     logging.info(f"Got maths solver request, {user_id}... Input: {maths_solver_input}")
@@ -105,10 +105,10 @@ def solve_maths_stream(
 
 
 @router.post("/ocr_image")
+@require_points_for_feature("OCR")
 def ocr_image_route(
     user_id: str = Depends(get_user_id),
     file: UploadFile = File(...),
-    _=Depends(require_points_for_feature("OCR")),
     play_integrity_verified=Depends(verify_play_integrity)
 ) -> Optional[str]:
     logging.info(f"Got ocr request, {user_id}")
