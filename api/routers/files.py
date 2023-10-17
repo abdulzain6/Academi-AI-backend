@@ -6,8 +6,8 @@ from fastapi.responses import FileResponse
 from fastapi import Depends, HTTPException, status
 from ..globals import collection_manager, knowledge_manager, file_manager
 from ..lib.database import FileModel
-from ..lib.utils import get_file_extension, format_url, convert_youtube_url_to_standard
-from pydantic import BaseModel
+from ..lib.utils import contains_emoji, get_file_extension, format_url, convert_youtube_url_to_standard
+from pydantic import BaseModel, validator
 from typing import Optional
 from ..auth import get_user_id, verify_play_integrity
 
@@ -35,6 +35,11 @@ class LinkFileInput(BaseModel):
     youtube_link: Optional[str]
     web_link: Optional[str]
 
+    @validator("filename")
+    def validate_name(cls, filename: str) -> str:
+        if contains_emoji(filename):
+            raise HTTPException(status_code=400, detail="Filename should not contain emojis")
+        return filename
 
 @router.post("/linkfile")
 def create_link_file(
@@ -125,6 +130,9 @@ def create_file(
     user_id=Depends(get_user_id),
     play_integrity_verified=Depends(verify_play_integrity),
 ):
+    if contains_emoji(filename):
+        raise HTTPException(status_code=400, detail="Filename should not contain emojis")
+    
     try:
         logging.info(f"Create file request from {user_id}, collection={collection_name}, filename={filename}")
         if "../" in filename or "../" in file.filename:
