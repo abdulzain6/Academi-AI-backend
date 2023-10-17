@@ -2,6 +2,18 @@ from urllib.parse import urlparse, parse_qs
 from typing import Union
 import os
 
+def contains_emoji(text: str) -> bool:
+    return any(
+        (
+            0x1F600 <= ord(char) <= 0x1F64F  # Emoticons
+            or 0x1F300 <= ord(char) <= 0x1F5FF  # Symbols & Pictographs
+            or 0x1F680 <= ord(char) <= 0x1F6FF  # Transport & Map Symbols
+            or 0x1F700 <= ord(char) <= 0x1F77F  # Alchemical Symbols
+            or 0x2600 <= ord(char) <= 0x26FF  # Miscellaneous Symbols
+            or 0x2700 <= ord(char) <= 0x27BF  # Dingbat Symbols
+        )
+        for char in text
+    )
 
 def get_file_extension(file_path: str):
     return os.path.splitext(file_path)[1]
@@ -12,16 +24,14 @@ def split_into_chunks(text, chunk_size):
 def format_url(url: str) -> Union[str, None]:
     if not url:
         return ""
-    
+
     # Strip out 'http://' or 'https://' if they exist
     if url.startswith("http://"):
         url = url[len("http://"):]
     elif url.startswith("https://"):
         url = url[len("https://"):]
-        
-    formatted_url = "https://" + url
-    
-    return formatted_url
+
+    return f"https://{url}"
 
 
 

@@ -2,11 +2,12 @@ import logging
 from typing import Optional
 import uuid
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 from ..auth import get_user_id, verify_play_integrity
 from ..globals import collection_manager, knowledge_manager, user_manager
 from fastapi import Depends, HTTPException, status
 from ..lib.database import CollectionModel
+from ..lib.utils import contains_emoji
 
 router = APIRouter()
 
@@ -15,10 +16,21 @@ class CollectionUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
 
+    @validator("name")
+    def validate_name(cls, name: str) -> str:
+        if contains_emoji(name):
+            raise HTTPException(status_code=400, detail="Name should not contain emojis")
+        return name
 
 class CollectionCreate(BaseModel):
     name: str
     description: str
+
+    @validator("name")
+    def validate_name(cls, name: str) -> str:
+        if contains_emoji(name):
+            raise HTTPException(status_code=400, detail="Name should not contain emojis")
+        return name
 
 
 class CollectionDelete(BaseModel):
