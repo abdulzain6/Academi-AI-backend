@@ -23,7 +23,7 @@ jobs:
         run: docker build -t registry.digitalocean.com/mufti-api/akalmand:${{ env.IMAGE_TAG }} .
 
       - name: Log in to DigitalOcean Container Registry with short-lived credentials
-        run: doctl registry login --expiry-seconds 1200
+        run: doctl registry login --expiry-seconds 3000
 
       - name: Push image to DigitalOcean Container Registry
         run: docker push registry.digitalocean.com/mufti-api/akalmand:${{ env.IMAGE_TAG }}
