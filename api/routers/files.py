@@ -219,7 +219,7 @@ def get_file(
         logging.error(f"Collection {collection_name} does not exist, {user_id}")
         raise HTTPException(detail="Collection does not exist", status_code=404)
 
-    files = file_manager.get_all_files(user_id, collection_name)
+    files = file_manager.get_all_files(user_id, collection_name)    
     files_response = [
         {
             "collection_name": collection_name,

@@ -42,7 +42,7 @@ class PresentationSequencePart(BaseModel):
         }
     )
     slide_detail: str = Field(
-        json_schema_extra={"description": "What the slide should be about."}
+        json_schema_extra={"description": "What the slide should be about. This must be unique. Don't repeat this"}
     )
     slide_type: str = Field(json_schema_extra={"description": "The type of the slide."})
 
@@ -143,10 +143,12 @@ class PresentationMaker:
             messages=[
                 SystemMessagePromptTemplate.from_template(
                     """
-You are an AI designed to assist in creating presentations. You are to pick a sequence of slides to create a presentation
-on the topic "{topic}". THe presentation will be of {pages} pages (Important). 
+You are an AI designed to assist in creating presentations. 
+You are to pick a sequence of slides to create a presentation on the topic "{topic}".
+THe presentation will be of {pages} pages (Important). 
 Use a variety of slide types, keep in mind using a lot of slides with images can impact performance.
-Dont pick same slide many times, if you do, mention the topics explicitly (Important)
+Dont pick same topic many times! Slide detail must be unique for every slide (Very Important)
+The other AI helping fill the slides dont know if others exist so the slide detail must be unique!!
 You must follow the following instructions:
 {instructions}
 ==========================================
@@ -161,6 +163,10 @@ Here are the available slides with the placeholders in them for automatic presen
 ==========================================
 {slides}
 ==========================================
+
+Must follow rules:
+    1. Dont pick same topic many times! Slide detail must be unique for every slide (Very Important)
+    2. The other AI helping fill the slides dont know if others exist so the slide detail must be unique!!
 
 Lets think step by step, Looking at the slide types and the placeholders inside them 
 Use a variety of slide types, keep in mind using a lot of slides with images can impact performance.
@@ -184,7 +190,7 @@ Do not choose slide types that are not shown to you.
         chain = LLMChain(
             prompt=prompt,
             output_parser=parser,
-            llm=ChatOpenAI(openai_api_key=self.openai_api_key, temperature=0, model="gpt-3.5-turbo", request_timeout=100),
+            llm=ChatOpenAI(openai_api_key=self.openai_api_key, temperature=0.5, model="gpt-3.5-turbo", request_timeout=100),
         )
         return chain.run(
             topic=presentation_input.topic,
@@ -368,6 +374,8 @@ Here are all the slides for the presentation:
 
 
 The slide you will generate content for is {slide_detail}. This is page {page_no} of the ppt
+Dont duplicate content!
+
 Here are the placeholders we want to fill:
 =====================
 {placeholders}
@@ -400,7 +408,7 @@ Lets think step by step to accomplish this.
             prompt=prompt,
             llm=ChatOpenAI(
                 openai_api_key=self.openai_api_key,
-                temperature=0,
+                temperature=0.5,
                 model="gpt-3.5-turbo",
                 request_timeout=100
             ),
@@ -572,7 +580,6 @@ Lets think step by step to accomplish this.
         except Exception as e:
             logging.error(f"Error in presentation {e}")
 
-
     def fill_presentation_with_content(
         self,
         prs: Presentation,
@@ -588,7 +595,6 @@ Lets think step by step to accomplish this.
 
         for thread in threads:
             thread.join()
-
 
     @retry(stop_max_attempt_number=3)
     def make_presentation(self, presentation_input: PresentationInput, template_name: str = None) -> str:

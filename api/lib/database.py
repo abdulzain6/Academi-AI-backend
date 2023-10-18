@@ -124,7 +124,7 @@ class UserPointsManager:
             self.points_collection.insert_one(
                 UserPoints(uid=uid, points=self.default_points).model_dump()
             )
-        
+
         logging.info(f"Getting points for user, {uid}")
         data = self.points_collection.find_one({"uid": uid}, {"_id": 0})
         return UserPoints(**data)
@@ -164,6 +164,7 @@ class UserPointsManager:
             last_claimed = last_claimed.replace(tzinfo=timezone.utc)
 
         return (now - last_claimed) < timedelta(days=1)
+
     def claim_daily_bonus(self, uid: str) -> int:
         try:
             logging.info(f"Getting points while claiming bonus for {uid}")
@@ -181,21 +182,26 @@ class UserPointsManager:
         if last_claimed and now - last_claimed < timedelta(days=1):
             return 0
 
-        streak_count: int = user_points.streak_count if last_claimed and now - last_claimed < timedelta(days=2) else 0
+        streak_count: int = (
+            user_points.streak_count
+            if last_claimed and now - last_claimed < timedelta(days=2)
+            else 0
+        )
         streak_count += 1
-        bonus_points = 10 if streak_count == self.weekly_daily_bonus_points else self.daily_points
+        bonus_points = (
+            10 if streak_count == self.weekly_daily_bonus_points else self.daily_points
+        )
 
         try:
             logging.info(f"Incrementing points while claiming bonus for {uid}")
             self.increment_user_points(uid, bonus_points)
             self.points_collection.update_one(
                 {"uid": uid},
-                {"$set": {"last_claimed": now, "streak_count": streak_count % 7}}
+                {"$set": {"last_claimed": now, "streak_count": streak_count % 7}},
             )
         except pymongo.errors.PyMongoError as exc:
             logging.error(f"Error incrementing points while claiming bonus for {uid}")
             raise ValueError("Database operation failed") from exc
-
 
         return bonus_points
 
@@ -218,7 +224,7 @@ class UserPointsManager:
             {"uid": uid}, {"$inc": {"points": -points}}
         )
         return result.modified_count
-    
+
     def time_until_daily_bonus(self, uid: str) -> timedelta:
         user_points: UserPoints = self.get_user_points(uid)
         now = datetime.now(timezone.utc)
@@ -268,7 +274,7 @@ class ReferralManager:
 
         # Add points to the referrer
         self.points_manager.increment_user_points(referral_code, self.referral_points)
-    
+
         self.points_manager.increment_user_points(uid, self.referral_points)
 
 
@@ -566,6 +572,7 @@ class MessageDBManager:
         connection_string: str,
         database_name: str,
         collection_dbmanager: CollectionDBManager = None,
+        file_dbmanager: FileDBManager = None,
     ) -> None:
         self.client = MongoClient(connection_string)
         self.db = self.client[database_name]
@@ -577,6 +584,13 @@ class MessageDBManager:
             )
         else:
             self.collection_dbmanager = collection_dbmanager
+
+        if not file_dbmanager:
+            self.file_dbmanager = FileDBManager(
+                connection_string, database_name, collection_dbmanager
+            )
+        else:
+            self.file_dbmanager = file_dbmanager
 
     def add_conversation(self, user_id: str, metadata: ConversationMetadata) -> str:
         conversation_id = str(uuid.uuid4())
@@ -659,6 +673,14 @@ class MessageDBManager:
                     "collection_name"
                 ] = self.collection_dbmanager.get_collection_name_by_uid(
                     metadata["collection_uid"]
+                )
+            if "file_name" in metadata and "collection_uid" in metadata:
+                metadata["file_name"] = (
+                    metadata["file_name"]
+                    if self.file_dbmanager.file_exists(
+                        user_id, metadata["collection_uid"], metadata["file_name"]
+                    )
+                    else None
                 )
             latest_conversation = LatestConversation(
                 conversation_id=conv_id,
