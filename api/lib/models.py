@@ -42,6 +42,7 @@ class ChatType(Enum):
     FILE = "FILE"
     OTHER = "OTHER"
     SOLVER = "SOLVER"
+    DELETED = "DELETED"
     
 class ConversationMetadata(BaseModel):
     collection_uid: Optional[str] = None

@@ -667,6 +667,7 @@ class MessageDBManager:
             )
             if not collection_name and metadata.chat_type in {ChatType.FILE, ChatType.COLLECTION}:
                 collection_name = "[<DELETED>]"
+                metadata.chat_type = ChatType.DELETED
 
             if self.file_dbmanager.file_exists(
                 user_id, metadata.collection_uid, metadata.file_name
@@ -674,6 +675,8 @@ class MessageDBManager:
                 file_name = metadata.file_name
             else:
                 file_name = "[<DELETED>]"
+                metadata.chat_type = ChatType.DELETED
+
 
             latest_conversation = LatestConversation(
                 conversation_id=conv_id,
