@@ -168,7 +168,6 @@ Rules:
     Use tools if you think you need help or to confirm answer.
     You must use tools to confirm your answer. (Important)
     Make sure arguments to tools are loadable by json.loads (Super important), so use double quotes!! or it will cause error
-    Reject any non math related queries! (Important)
     Use latex for maths equations and symbols (important)
 Lets think step by step to help the student following all rules.
 """),
