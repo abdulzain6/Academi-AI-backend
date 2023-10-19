@@ -680,7 +680,7 @@ class MessageDBManager:
                     if self.file_dbmanager.file_exists(
                         user_id, metadata["collection_uid"], metadata["file_name"]
                     )
-                    else None
+                    else "[<DELETED>]"
                 )
             latest_conversation = LatestConversation(
                 conversation_id=conv_id,
