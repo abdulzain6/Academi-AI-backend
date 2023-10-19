@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
-
+from enum import Enum
 class UserPoints(BaseModel):
     uid: str
     points: int
@@ -37,23 +37,40 @@ class FileModel(BaseModel):
 class MessagePair(BaseModel):
     human_message: str
     bot_response: str
-
+class ChatType(Enum):
+    COLLECTION = "COLLECTION"
+    FILE = "FILE"
+    OTHER = "OTHER"
+    SOLVER = "SOLVER"
+    
+class ConversationMetadata(BaseModel):
+    collection_uid: Optional[str] = None
+    file_name: Optional[str] = None
+    timestamp: Optional[datetime] = None
+    chat_type: ChatType = ChatType.OTHER
+    
+class ConversationResponse(BaseModel):
+    collection_name: Optional[str] = None
+    file_name: Optional[str] = None
+    timestamp: Optional[datetime] = None
+    chat_type: ChatType = ChatType.OTHER
+    
 class Conversation(BaseModel):
-    metadata: Dict[str, Any]
+    metadata: ConversationMetadata
     messages: List[MessagePair] = Field(default_factory=list)
 
+    def custom_model_dump(self):
+        data = self.model_dump(by_alias=True)
+        data['metadata']['chat_type'] = data['metadata']['chat_type'].value
+        return data
+
+    
     
 class LatestConversation(BaseModel):
-    metadata: Dict[str, Any]
+    metadata: ConversationResponse
     latest_message: Optional[MessagePair]
     conversation_id: str
 
 class UserLatestConversations(BaseModel):
     user_id: str
     conversations: List[LatestConversation] = Field(default_factory=list)
-
-class ConversationMetadata(BaseModel):
-    collection_name: Optional[str] = None
-    file_name: Optional[str] = None
-    timestamp: Optional[datetime] = None
-    extra_data: Optional[Dict[str, str]] = Field(None)

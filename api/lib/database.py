@@ -8,6 +8,8 @@ from pymongo.collection import Collection
 from pymongo.errors import BulkWriteError
 from gridfs import GridFS, NoFile
 from .models import (
+    ChatType,
+    ConversationResponse,
     UserModel,
     CollectionModel,
     FileModel,
@@ -594,23 +596,14 @@ class MessageDBManager:
 
     def add_conversation(self, user_id: str, metadata: ConversationMetadata) -> str:
         conversation_id = str(uuid.uuid4())
-
-        if metadata.collection_name:
-            collection_id = self.collection_dbmanager.resolve_collection_uid(
-                metadata.collection_name, user_id
-            )
-            metadata = metadata.model_dump()
-            if "collection_name" in metadata:
-                del metadata["collection_name"]
-
-            metadata["collection_uid"] = collection_id
-        else:
-            metadata = metadata.model_dump()
-
         conversation = Conversation(metadata=metadata)
         self.message_collection.update_one(
             {"user_id": user_id},
-            {"$set": {f"conversations.{conversation_id}": conversation.model_dump()}},
+            {
+                "$set": {
+                    f"conversations.{conversation_id}": conversation.custom_model_dump()
+                }
+            },
             upsert=True,
         )
         return conversation_id
@@ -667,24 +660,29 @@ class MessageDBManager:
                 if conv_data["messages"]
                 else None
             )
-            metadata = conv_data["metadata"]
-            if "collection_uid" in metadata:
-                metadata[
-                    "collection_name"
-                ] = self.collection_dbmanager.get_collection_name_by_uid(
-                    metadata["collection_uid"]
-                )
-            if "file_name" in metadata and "collection_uid" in metadata:
-                metadata["file_name"] = (
-                    metadata["file_name"]
-                    if self.file_dbmanager.file_exists(
-                        user_id, metadata["collection_uid"], metadata["file_name"]
-                    )
-                    else None
-                )
+
+            metadata = ConversationMetadata.model_validate(conv_data.get("metadata"))
+            collection_name = self.collection_dbmanager.get_collection_name_by_uid(
+                metadata.collection_uid
+            )
+            if not collection_name and metadata.chat_type in {ChatType.FILE, ChatType.COLLECTION}:
+                collection_name = "[<DELETED>]"
+
+            if self.file_dbmanager.file_exists(
+                user_id, metadata.collection_uid, metadata.file_name
+            ) or metadata.chat_type != ChatType.FILE:
+                file_name = metadata.file_name
+            else:
+                file_name = "[<DELETED>]"
+
             latest_conversation = LatestConversation(
                 conversation_id=conv_id,
-                metadata=metadata,
+                metadata=ConversationResponse(
+                    collection_name=collection_name,
+                    file_name=file_name,
+                    timestamp=metadata.timestamp,
+                    chat_type=metadata.chat_type,
+                ),
                 latest_message=latest_message,
             )
             latest_conversations.append(latest_conversation)
