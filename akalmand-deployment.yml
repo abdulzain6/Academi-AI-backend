@@ -42,7 +42,7 @@ spec:
                 secretKeyRef:
                   key: MATHPIX_APPID
                   name: study-app-environment-variables
-            - name: OPENAI_APIKEY
+            - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
                   key: OPENAI_APIKEY

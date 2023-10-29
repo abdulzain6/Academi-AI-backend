@@ -16,7 +16,7 @@ def get_dict_from_env_var(env_var_name: str, default: Dict = None) -> Dict:
 
 UNSTRUCTURED_API_KEY = os.getenv("UNSTRUCTURED_API_KEY", None)
 UNSTRUCTURED_URL = os.getenv("UNSTRUCTURED_URL", "http://localhost:8080/general/v0/general")
-OPENAI_API_KEY = os.getenv("OPENAI_APIKEY", "")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 MODEL_NAME = os.getenv("MODEL_NAME", "gpt-3.5-turbo")
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", None)
 QDRANT_URL = os.getenv("QDRANT_URL", "localhost")

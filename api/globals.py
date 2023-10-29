@@ -19,13 +19,8 @@ from .lib.database.purchases import (
 )
 from .lib.knowledge_manager import KnowledgeManager, ChatManager
 from .lib.presentation_maker.database import initialize_managers
-from .lib.presentation_maker.image_gen import PexelsImageSearch
-from .lib.presentation_maker.presentation_maker import PresentationMaker
-from .lib.quiz import QuizGenerator
-from .lib.maths_solver.agent import MathSolver
 from .lib.maths_solver.python_exec_client import PythonClient, Urls
 from .lib.maths_solver.ocr import ImageOCR
-from .lib.writer import Writer
 from .lib.summary_writer import SummaryWriter
 from .lib.redis_cache import RedisCache
 from langchain.chat_models import ChatOpenAI
