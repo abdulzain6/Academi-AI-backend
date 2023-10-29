@@ -9,13 +9,12 @@ from ..globals import (
     file_manager,
     template_manager,
     temp_knowledge_manager,
-    PexelsImageSearch,
     knowledge_manager,
     global_chat_model,
     global_chat_model_kwargs,
     subscription_manager
 )
-from ..lib.presentation_maker.presentation_maker import PresentationInput, PresentationMaker
+from ..lib.presentation_maker.presentation_maker import PresentationInput, PresentationMaker, PexelsImageSearch
 from ..dependencies import require_points_for_feature, use_feature_with_premium_model_check
 from langchain.chat_models import ChatOpenAI
 from pydantic import BaseModel
