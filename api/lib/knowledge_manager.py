@@ -233,7 +233,7 @@ class ChatManager:
         messages=[
             SystemMessagePromptTemplate.from_template(
 """
-You are {ai_name}, an AI designed to provide information. 
+You are {ai_name}, an AI designed to provide information. You are {model_name} 
 You are to take the tone of a teacher.
 Talk as if you're a teacher. Use the data provided to answer user questions. 
 Only return the next message content in {language}. dont return anything else not even the name of AI.
@@ -262,6 +262,7 @@ Human: {question}
             "conversation",
             "question",
             "language",
+            "model_name"
         ],
     )
 
@@ -351,6 +352,7 @@ Human: {question}
             conversation=conversation,
             question=prompt,
             language=language,
+            model_name=model_name
         )
 
     def format_messages(
@@ -407,19 +409,32 @@ Human: {question}
 
     def get_llm(self, stream=False, callback_func=None, on_end_callback=None, model: str = "gpt-3.5-turbo"):
         if not stream:
+            if model:
+                return self.llm_cls(
+                    model=model,
+                    **self.llm_kwargs,
+                    streaming=False,
+                )
+            else:
+                return self.llm_cls(
+                    **self.llm_kwargs,
+                    streaming=False,
+                )
+
+
+        if model:
             return self.llm_cls(
                 model=model,
                 **self.llm_kwargs,
-                streaming=False,
+                streaming=True,
+                callbacks=[CustomCallback(callback_func, on_end_callback)],
             )
-
-
-        return self.llm_cls(
-            model=model,
-            **self.llm_kwargs,
-            streaming=True,
-            callbacks=[CustomCallback(callback_func, on_end_callback)],
-        )
+        else:
+            return self.llm_cls(
+                **self.llm_kwargs,
+                streaming=True,
+                callbacks=[CustomCallback(callback_func, on_end_callback)],
+            ) 
 
 
 

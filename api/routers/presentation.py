@@ -2,16 +2,22 @@ import logging
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException
 from ..auth import get_user_id, verify_play_integrity
 from ..globals import (
     collection_manager,
     file_manager,
-    presentation_maker,
     template_manager,
+    temp_knowledge_manager,
+    PexelsImageSearch,
+    knowledge_manager,
+    global_chat_model,
+    global_chat_model_kwargs,
+    subscription_manager
 )
-from ..lib.presentation_maker.presentation_maker import PresentationInput
-from ..decorators import openai_token_tracking_decorator, require_points_for_feature
+from ..lib.presentation_maker.presentation_maker import PresentationInput, PresentationMaker
+from ..dependencies import require_points_for_feature, use_feature_with_premium_model_check
+from langchain.chat_models import ChatOpenAI
 from pydantic import BaseModel
 
 
@@ -61,6 +67,25 @@ def make_presentation(
     user_id=Depends(get_user_id),
     play_integrity_verified=Depends(verify_play_integrity),
 ):
+    model_name, premium_model = use_feature_with_premium_model_check("PRESENTATION", user_id=user_id)
+    if premium_model and model_name:
+        llm = global_chat_model(temperature=0.3, model=model_name, **global_chat_model_kwargs)
+    else:
+        llm = global_chat_model(temperature=0.3, **global_chat_model_kwargs)
+        
+    ppt_pages = subscription_manager.get_feature_value(user_id, "ppt_pages").main_data or 12
+    presentation_input.number_of_pages = min(presentation_input.number_of_pages, ppt_pages)
+    
+    logging.info(f"Using model {model_name} to make presentation for user {user_id}")
+    presentation_maker = PresentationMaker(
+        template_manager,
+        temp_knowledge_manager,
+        llm,
+        pexel_image_gen_cls=PexelsImageSearch,
+        image_gen_args={"image_cache_dir": "/tmp/.image_cache"},
+        vectorstore=knowledge_manager,
+    )
+    
     logging.info(f"Got ppt generation request, {user_id}... Input: {presentation_input}")
 
     if presentation_input.use_data:
@@ -104,6 +129,7 @@ def make_presentation(
         raise HTTPException(400, str(e)) from e
 
     logging.info(f"Presentation made successfully! {user_id}")
+        
     return FileResponse(
         file_path,
         headers={

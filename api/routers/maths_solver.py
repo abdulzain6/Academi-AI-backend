@@ -6,14 +6,19 @@ from typing import Generator, Optional
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi import Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
-
-from ..decorators import openai_token_tracking_decorator, require_points_for_feature
-from ..lib.models import MessagePair
+from api.lib.maths_solver.agent import MathSolver
+from ..dependencies import require_points_for_feature
+from ..lib.database.messages import MessagePair
 from ..lib.utils import split_into_chunks
-from ..globals import maths_solver, image_ocr, conversation_manager
+from ..globals import image_ocr, conversation_manager
+from ..globals import (
+    global_chat_model,
+    global_chat_model_kwargs,
+    client  
+)
 from pydantic import BaseModel
 from ..auth import get_user_id, verify_play_integrity
-
+from ..dependencies import use_feature_with_premium_model_check, use_feature
 
 
 router = APIRouter()
@@ -21,7 +26,6 @@ router = APIRouter()
 
 class MathsSolveInput(BaseModel):
     question: str
-    model_name: str = "gpt-3.5-turbo"
     chat_history: Optional[list[tuple[str, str]]] = None
 
 
@@ -37,14 +41,14 @@ def solve_maths_stream(
     maths_solver_input: MathsSolveInput,
     conversation_id: Optional[str] = None,
     user_id: str = Depends(get_user_id),
-    play_integrity_verified=Depends(verify_play_integrity)
-) -> StreamingResponse:
+    play_integrity_verified = Depends(verify_play_integrity)
+):
     logging.info(f"Got maths solver request, {user_id}... Input: {maths_solver_input}")
 
     if conversation_id and not conversation_manager.conversation_exists(
         user_id, conversation_id
     ):
-        logging.error(f"Coversation not found {user_id}")
+        logging.error(f"Conversation not found {user_id}")
         raise HTTPException(
             detail="Conversation not found", status_code=status.HTTP_400_BAD_REQUEST
         )
@@ -56,6 +60,18 @@ def solve_maths_stream(
         if conversation_id
         else maths_solver_input.chat_history
     ) or []
+    
+    model_name, premium_model = use_feature_with_premium_model_check("SOLVER", user_id=user_id)        
+    kwargs = {**global_chat_model_kwargs}
+    if model_name:
+        kwargs["model"] = model_name
+        
+    maths_solver = MathSolver(
+        client,
+        global_chat_model,
+        llm_kwargs=kwargs,
+    )
+    logging.info(f"Using model {model_name} to solve question for user {user_id}")
 
     data_queue = queue.Queue()
 
@@ -87,7 +103,6 @@ def solve_maths_stream(
                 maths_solver_input.question,
                 structured=False,
                 stream=True,
-                model_name=maths_solver_input.model_name,
                 callback=callback,
                 chat_history=chat_history,
                 on_end_callback=on_end_callback,
@@ -112,6 +127,7 @@ def ocr_image_route(
     play_integrity_verified=Depends(verify_play_integrity)
 ) -> Optional[str]:
     logging.info(f"Got ocr request, {user_id}")
+    use_feature("OCR", user_id)
 
     try:
         with tempfile.NamedTemporaryFile(delete=True) as temp_file:

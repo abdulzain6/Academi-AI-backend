@@ -1,14 +1,13 @@
-import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi import Depends, HTTPException, status
 from ..auth import get_user_id
 from ..globals import conversation_manager as message_manager
 from ..globals import collection_manager, file_manager
-from ..lib.models import UserLatestConversations, MessagePair
-from ..lib.models import ChatType, ConversationMetadata
-from pydantic import BaseModel
+from ..lib.database.messages import UserLatestConversations, MessagePair
+from ..lib.database.messages import ChatType, ConversationMetadata
 from ..auth import get_user_id, verify_play_integrity
 from typing import List, Optional
+from pydantic import BaseModel
 from datetime import datetime
 import logging
 

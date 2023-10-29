@@ -5,11 +5,12 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse
 from fastapi import Depends, HTTPException, status
 from ..globals import collection_manager, knowledge_manager, file_manager
-from ..lib.database import FileModel
+from ..lib.database.files import FileModel
 from ..lib.utils import contains_emoji, get_file_extension, format_url, convert_youtube_url_to_standard
 from pydantic import BaseModel, validator
 from typing import Optional
 from ..auth import get_user_id, verify_play_integrity
+from ..dependencies import can_add_more_data
 
 
 router = APIRouter()
@@ -40,6 +41,10 @@ class LinkFileInput(BaseModel):
         if contains_emoji(filename):
             raise HTTPException(status_code=400, detail="Filename should not contain emojis")
         return filename
+    
+    
+    
+
 
 @router.post("/linkfile")
 def create_link_file(
@@ -47,6 +52,8 @@ def create_link_file(
     user_id=Depends(get_user_id),
     play_integrity_verified=Depends(verify_play_integrity),
 ):
+    can_add_more_data(user_id, linkfile.collection_name)
+    
     logging.info(f"Create linkfile request from {user_id}, input: {linkfile}")
     linkfile.youtube_link = convert_youtube_url_to_standard(
         format_url(linkfile.youtube_link)
@@ -130,6 +137,8 @@ def create_file(
     user_id=Depends(get_user_id),
     play_integrity_verified=Depends(verify_play_integrity),
 ):
+    can_add_more_data(user_id, collection_name)
+
     if contains_emoji(filename):
         raise HTTPException(status_code=400, detail="Filename should not contain emojis")
     

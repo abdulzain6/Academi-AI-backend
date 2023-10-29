@@ -150,13 +150,12 @@ class TemplateDBManager:
 
 
 class TemplateKnowledgeManager(TemplateObserver):
-    def __init__(self, openai_api_key: str) -> None:
-        self.openai_api_key = openai_api_key
+    def __init__(self) -> None:
         self.vectorstore = self.get_vectorstore()
 
     def get_vectorstore(self) -> Qdrant:
         client = QdrantClient(location=":memory:")
-        embedding = OpenAIEmbeddings(openai_api_key=self.openai_api_key)
+        embedding = OpenAIEmbeddings()
         partial_embeddings = embedding.embed_documents(["test"])
         vector_size = len(partial_embeddings[0])
 
@@ -182,10 +181,10 @@ class TemplateKnowledgeManager(TemplateObserver):
 
 
 def initialize_managers(
-    openai_api_key: str, connection_string: str, database_name: str, local_storage_path: str = "temp"
+    connection_string: str, database_name: str, local_storage_path: str = "temp"
 ) -> tuple[TemplateDBManager, TemplateKnowledgeManager]:
     template_manager = TemplateDBManager(connection_string, database_name, local_storage_path)
-    knowledge_manager = TemplateKnowledgeManager(openai_api_key)
+    knowledge_manager = TemplateKnowledgeManager()
     templates = template_manager.get_all_templates()
     docs = [
         Document(

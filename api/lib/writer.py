@@ -93,7 +93,7 @@ Follow the schema above (Important)
         system_prompt = """
 You are an AI designed to assist people in writing {to_generate}.
 You will generate an {to_generate} for a minimum {minimum_words} words.
-You must follow the schema return nothing else.
+You must follow the schema Important!!
 Follow the plan to write the {to_generate}
 Do not mention the parts of {to_generate} as headings. For example, dont say ## Body or ## Intro etc.
 Use the features of markdown like headings, text formatting to make the document professional looking this will be stored as pdf (Important)
@@ -119,7 +119,7 @@ Here is the plan you can use to write it:
 
 Do not explictly mention intro body conclusion, the output must be good so no changes need to be made
 Lets think step by step, keeping in mind whats said above to generate the {to_generate} for the {topic} it must be of {minimum_words} words.
-Follow the schema above (Important) Make sure the json is correct!
+Follow the schema above (Important) Make sure the json is correct! You gave wrong last time!
 """   
         prompt = ChatPromptTemplate(
             messages=[

@@ -9,15 +9,16 @@ from .routers.conversations import router as convo_router
 from .routers.quiz import router as quiz_router
 from .routers.maths_solver import router as maths_solver_routers
 from .routers.writer import router as writer_router
-import asyncio
-
+from .routers.summary_writer import router as summary_router
+from .routers.subscriptions_playstore import router as playstore_sub_router
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from starlette.status import HTTP_504_GATEWAY_TIMEOUT
+import asyncio
 import langchain
 import logging
 
-langchain.verbose = False
+langchain.verbose = True
 logging.basicConfig(level=logging.INFO)
 
 
@@ -33,11 +34,10 @@ app.include_router(convo_router, prefix="/api/v1/conversations", tags=["conversa
 app.include_router(quiz_router, prefix="/api/v1/quiz", tags=["quiz"])
 app.include_router(maths_solver_routers, prefix="/api/v1/maths_solver", tags=["maths solver"])
 app.include_router(writer_router, prefix="/api/v1/writer", tags=["writer"])
+app.include_router(playstore_sub_router, prefix="/api/v1/playstore/subscriptions", tags=["playstore", "subscriptions"])
+app.include_router(summary_router, prefix="/api/v1/summary", tags=["summary"])
 
 
-@app.get("/")
-def hello():
-    return "hello"
 
 @app.middleware('http')
 async def timeout_middleware(request: Request, call_next):

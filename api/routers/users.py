@@ -10,7 +10,8 @@ from ..globals import (
     DEFAULT_POINTS_INCREMENT,
     referral_manager
 )
-from ..lib.database import UserModel, UserPoints
+from ..lib.database.users import UserModel
+from ..lib.database.points import UserPoints
 import logging
 
 router = APIRouter()

@@ -166,9 +166,7 @@ class QuizGenerator:
     @retry(stop_max_attempt_number=3)
     def generate_quiz(self, data: str, number_of_questions: int, collection_name: str = "Anything", n: int = 4) -> list[QuizQuestionResponse]:
         if data:
-            data_tokens = self.llm(**self.llm_kwargs).get_num_tokens(
-                data
-            )
+            data_tokens = 2500
             if data_tokens < 1500:
                 texts = data
             else:
@@ -290,9 +288,7 @@ The generated quiz in proper schema without useless and incomplete questions, wh
     @retry(stop_max_attempt_number=3)
     def generate_flashcards(self, data: str, number_of_flashcards: int, collection_name: str = "Anything", n: int = 4) -> list[FlashCard]:
         if data:
-            data_tokens = self.llm(**self.llm_kwargs).get_num_tokens(
-                data
-            )
+            data_tokens = 2500
             if data_tokens < 1500:
                 texts = data
             else:

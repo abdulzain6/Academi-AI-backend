@@ -12,9 +12,9 @@ from ..globals import (
     file_manager,
     conversation_manager,
 )
-from ..lib.models import MessagePair
+from ..lib.database.messages import MessagePair
 from ..lib.utils import split_into_chunks
-from ..decorators import require_points_for_feature
+from ..dependencies import can_use_premium_model, require_points_for_feature
 from pydantic import BaseModel
 
 
@@ -25,7 +25,6 @@ class ChatCollectionInput(BaseModel):
     collection_name: str
     chat_history: Optional[list[tuple[str, str]]] = None
     prompt: str
-    model: str = "gpt-3.5-turbo"
     language: str = "English"
 
 
@@ -76,6 +75,9 @@ def chat_collection_stream(
         if conversation_id
         else data.chat_history
     ) or []
+    
+    model_name, premium_model = can_use_premium_model(user_id=user_id)     
+    logging.info(f"Using model {model_name} to chat collection for user {user_id}")
 
     data_queue = queue.Queue()
 
@@ -109,7 +111,7 @@ def chat_collection_stream(
                 chat_history,
                 data.language,
                 True,
-                model_name=data.model,
+                model_name=model_name,
                 callback_func=callback,
                 on_end_callback=on_end_callback,
             )
@@ -170,7 +172,9 @@ def chat_file_stream(
         if conversation_id
         else data.chat_history
     ) or []
-
+    
+    model_name, premium_model = can_use_premium_model(user_id=user_id)     
+    logging.info(f"Using model {model_name} to chat collection for user {user_id}")
     data_queue = queue.Queue()
 
     def callback(data: str) -> None:
@@ -203,7 +207,7 @@ def chat_file_stream(
                 chat_history,
                 data.language,
                 True,
-                model_name=data.model,
+                model_name=model_name,
                 callback_func=callback,
                 filename=data.file_name,
                 on_end_callback=on_end_callback,

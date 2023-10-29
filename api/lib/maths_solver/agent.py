@@ -6,7 +6,13 @@ from langchain.agents import Tool
 from langchain.agents import AgentExecutor
 from pydantic import BaseModel, Field
 from .python_exec_client import PythonClient
-from langchain.schema import SystemMessage, BaseMessage, HumanMessage, AIMessage, LLMResult
+from langchain.schema import (
+    SystemMessage,
+    BaseMessage,
+    HumanMessage,
+    AIMessage,
+    LLMResult,
+)
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.chat_models.base import BaseChatModel
 from langchain.chains import create_extraction_chain
@@ -22,6 +28,7 @@ from langchain.schema.agent import AgentFinish
 def split_into_chunks(text, chunk_size):
     return [text[i : i + chunk_size] for i in range(0, len(text), chunk_size)]
 
+
 class CustomCallback(BaseCallbackHandler):
     def __init__(self, callback, on_end_callback) -> None:
         self.callback = callback
@@ -33,7 +40,7 @@ class CustomCallback(BaseCallbackHandler):
         self.cached = False
         if not self.cached:
             self.callback(token)
-            
+
     def on_agent_action(
         self,
         action: Any,
@@ -42,8 +49,10 @@ class CustomCallback(BaseCallbackHandler):
         parent_run_id: Optional[UUID] = None,
         **kwargs: Any,
     ) -> Any:
-        self.callback("\nAI is using a tool to perform calculations to better assist you...\n")
-        
+        self.callback(
+            "AI is using a tool to perform calculations to better assist you...\n"
+        )
+
     def on_tool_end(
         self,
         output: str,
@@ -54,7 +63,6 @@ class CustomCallback(BaseCallbackHandler):
     ) -> Any:
         """Run when tool ends running."""
         self.callback("\nAI has finished using the tool and will respond shortly...\n")
-
 
     def on_agent_finish(
         self,
@@ -68,7 +76,8 @@ class CustomCallback(BaseCallbackHandler):
         if self.cached:
             self.callback(finish.return_values.get("output", ""))
         self.callback("@@END@@")
-     
+
+
 class Solution(BaseModel):
     answer_markdown: str = Field(
         None,
@@ -136,9 +145,7 @@ Do not import libraries that are not allowed.
             return joined_matches or text.strip()
 
         def python_function(code: str):
-            result = self.python_client.evaluate_code(
-                extract_python_code(code)
-            )
+            result = self.python_client.evaluate_code(extract_python_code(code))
             try:
                 return result["result"]
             except Exception as e:
@@ -146,7 +153,9 @@ Do not import libraries that are not allowed.
 
         return [Tool("python", python_function, description)]
 
-    def make_agent(self, llm: BaseChatModel, chat_history_messages: list[BaseMessage]) -> AgentExecutor:
+    def make_agent(
+        self, llm: BaseChatModel, chat_history_messages: list[BaseMessage]
+    ) -> AgentExecutor:
         agent_kwargs = {
             "system_message": SystemMessage(
                 content="""
@@ -170,8 +179,9 @@ Rules:
     Make sure arguments to tools are loadable by json.loads (Super important), so use double quotes!! or it will cause error
     Use latex for maths equations and symbols (important)
 Lets think step by step to help the student following all rules.
-"""),
-            "extra_prompt_messages" : chat_history_messages
+"""
+            ),
+            "extra_prompt_messages": chat_history_messages,
         }
         return self.initialize_agent(
             self.make_tools(),
@@ -190,7 +200,7 @@ Lets think step by step to help the student following all rules.
     ):
         agent_obj = ModifiedOpenAIAgent.from_llm_and_tools(
             llm, tools, callback_manager=callback_manager, **agent_kwargs
-        )        
+        )
         return AgentExecutor.from_agent_and_tools(
             agent=agent_obj,
             tools=tools,
@@ -206,36 +216,36 @@ Lets think step by step to help the student following all rules.
 
     def wrap_prompt(self, prompt: str) -> str:
         return f"""{prompt} (Use Tool if applicable)"""
-    
-    def run_agent(self, prompt: str, structured: bool, stream: bool = False, callback: callable = None, on_end_callback: callable = None, model_name: str = "gpt-3.5-turbo", chat_history: list[tuple[str, str]] = None):
-        
+
+    def run_agent(
+        self,
+        prompt: str,
+        structured: bool,
+        stream: bool = False,
+        callback: callable = None,
+        on_end_callback: callable = None,
+        chat_history: list[tuple[str, str]] = None,
+    ):
         if chat_history is None:
             chat_history = []
-            
+
         if structured and stream:
             raise ValueError("Stream must be disabled for structured output")
 
-        llm = self.llm_cls(**self.llm_kwargs,
-            **{"streaming": stream,
-                "model_name" : model_name,
-        })
+        llm = self.llm_cls(**self.llm_kwargs, **{"streaming": stream})
         agent = self.make_agent(
-            llm=llm,
-            chat_history_messages=self.format_messages(chat_history, 700, llm)
+            llm=llm, chat_history_messages=self.format_messages(chat_history, 700, llm)
         )
         if stream:
             agent = self.make_agent(
-                llm=self.llm_cls(**self.llm_kwargs,
-                **{"streaming": stream,
-                   "model_name" : model_name,
-                }),
-                chat_history_messages=self.format_messages(chat_history, 700, llm)
-            ) 
+                llm=self.llm_cls(**self.llm_kwargs, **{"streaming": stream}),
+                chat_history_messages=self.format_messages(chat_history, 700, llm),
+            )
             if not callback:
                 raise ValueError("Callback not passed for streaming to")
             return agent.run(
-                self.wrap_prompt(prompt), callbacks=[CustomCallback(callback, on_end_callback)]
-
+                self.wrap_prompt(prompt),
+                callbacks=[CustomCallback(callback, on_end_callback)],
             )
         else:
             response = agent.run(self.wrap_prompt(prompt))
@@ -261,8 +271,8 @@ Lets think step by step to help the student following all rules.
 
             tokens_used = new_tokens_used
 
-            messages.extend((HumanMessage(content=human_msg), AIMessage(content=ai_msg)))
+            messages.extend(
+                (HumanMessage(content=human_msg), AIMessage(content=ai_msg))
+            )
 
         return messages
-    
-    

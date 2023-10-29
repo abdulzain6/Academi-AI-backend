@@ -12,7 +12,9 @@ security = HTTPBearer()
 def get_user_id(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
     try:
         token = credentials.credentials
+        logging.info(f"Verifying token..... {token}")
         user = auth.verify_id_token(token, app=default_app)
+        logging.info("Verified token.....")
         return user["user_id"]
         
     except Exception as e:

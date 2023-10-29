@@ -3,10 +3,12 @@ from typing import Optional
 import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, validator
+
+from api.dependencies import can_add_more_data
 from ..auth import get_user_id, verify_play_integrity
-from ..globals import collection_manager, knowledge_manager, user_manager
+from ..globals import collection_manager, knowledge_manager
 from fastapi import Depends, HTTPException, status
-from ..lib.database import CollectionModel
+from ..lib.database.collections import CollectionModel
 from ..lib.utils import contains_emoji
 
 router = APIRouter()
@@ -63,6 +65,8 @@ def create_collection(
     user_id=Depends(get_user_id),
     play_integrity_verified=Depends(verify_play_integrity),
 ):
+    can_add_more_data(user_id)
+
     logging.info(f"Got make collection request, {user_id}... Input: {collection}")
     try:
         if collection_manager.collection_exists(collection.name, user_id):

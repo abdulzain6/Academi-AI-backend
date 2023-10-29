@@ -17,7 +17,7 @@ requests
 retrying
 six
 tiktoken
-unstructured
+unstructured[all]
 uvicorn
 XlsxWriter
 youtube-transcript-api

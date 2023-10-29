@@ -2,10 +2,10 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi import Depends, HTTPException, status
 from ..auth import get_user_id, verify_play_integrity
-from ..globals import file_manager, quiz_generator, collection_manager
+from ..globals import file_manager, collection_manager, global_chat_model, global_chat_model_kwargs
 from pydantic import BaseModel
-from ..decorators import openai_token_tracking_decorator, require_points_for_feature
-from ..lib.quiz import UserResponse, Result
+from ..dependencies import require_points_for_feature, can_use_premium_model
+from ..lib.quiz import QuizGenerator, UserResponse, Result
 import logging
 
 router = APIRouter()
@@ -55,6 +55,22 @@ def make_quiz(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="File not found!")
 
     data = "\n".join([file.file_content for file in files if file])
+    
+    model_name, premium_model = can_use_premium_model(user_id=user_id)     
+    kwargs = {**global_chat_model_kwargs}
+    if model_name:
+        kwargs["model"] = model_name
+    kwargs["temperature"] = 0.5    
+    
+    logging.info(f"Using model {model_name} to make quiz for user {user_id}")
+    
+    quiz_generator = QuizGenerator(
+        file_manager,
+        None,
+        global_chat_model,
+        kwargs,
+    )
+    
     try:
         questions = quiz_generator.generate_quiz(
             data,
@@ -78,6 +94,12 @@ def evaluate_quiz(
     play_integrity_verified=Depends(verify_play_integrity),
 ):
     logging.info(f"Got quiz evaluation request, {user_id}... Input: {user_answers}")
+    quiz_generator = QuizGenerator(
+        file_manager,
+        None,
+        global_chat_model,
+        **global_chat_model_kwargs,
+    )
     try:
         return quiz_generator.evaluate_quiz(user_answers)
     except Exception as e:
@@ -119,6 +141,22 @@ def make_flashcards(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="File not found!")
 
     data = "\n".join([file.file_content for file in files if file])
+    
+    model_name, premium_model = can_use_premium_model(user_id=user_id)     
+    kwargs = {**global_chat_model_kwargs}
+    
+    if model_name:
+        kwargs["model"] = model_name
+        
+    kwargs["temperature"] = 0.5    
+    logging.info(f"Using model {model_name} to make quiz for user {user_id}")
+    
+    quiz_generator = QuizGenerator(
+        file_manager,
+        None,
+        global_chat_model,
+        kwargs,
+    )
     try:
         questions = quiz_generator.generate_flashcards(
             data,

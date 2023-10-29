@@ -15,7 +15,10 @@ from PIL import Image
 from io import BytesIO
 
 class PexelsImageSearch:
-    def __init__(self, api_key: str, image_cache_dir: str = ".image_cache"):
+    def __init__(self, api_key: str = None, image_cache_dir: str = ".image_cache"):
+        if not api_key:
+            api_key = os.getenv("PEXELS_API_KEY")
+            
         self.api_key = api_key
         self.image_cache_dir = image_cache_dir
         self.used_images: List[str] = []

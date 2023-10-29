@@ -1,11 +1,8 @@
 from concurrent.futures import ThreadPoolExecutor
-import logging
-import tempfile, time
 from .pptx.enum.shapes import MSO_SHAPE_TYPE
 from .pptx import Presentation
 from threading import Thread
 from typing import Any, Dict, Optional, List, Tuple
-from langchain.chat_models import ChatOpenAI
 from langchain.output_parsers import PydanticOutputParser
 from .exceptions import NoValidSequenceException
 from langchain.prompts import (
@@ -14,14 +11,19 @@ from langchain.prompts import (
     HumanMessagePromptTemplate,
 )
 from langchain.chains import LLMChain
-from langchain.chat_models import ChatOpenAI
 from langchain.output_parsers import PydanticOutputParser
 from .database import TemplateDBManager, TemplateKnowledgeManager, TemplateModel, PlaceholderModel, SlideModel, initialize_managers
 from pydantic import BaseModel, Field
 from .image_gen import PexelsImageSearch
 from ..knowledge_manager import KnowledgeManager
 from retrying import retry
+from langchain.chat_models.base import BaseChatModel
+from langchain.chat_models.openai import ChatOpenAI
+
+
 import re
+import logging
+import tempfile, time
 import copy, six
 import contextlib
 
@@ -94,14 +96,14 @@ class PresentationMaker:
         self,
         template_manager: TemplateDBManager,
         template_knowledge_manager: TemplateKnowledgeManager,
-        openai_api_key: str,
+        llm: BaseChatModel | ChatOpenAI,
         pexel_image_gen_cls: PexelsImageSearch,
         vectorstore: KnowledgeManager,
         image_gen_args: dict
     ) -> None:
         self.template_manager = template_manager
         self.template_knowledge_manager = template_knowledge_manager
-        self.openai_api_key = openai_api_key
+        self.llm = llm
         self.pexel_image_gen_cls = pexel_image_gen_cls
         self.image_gen_args = image_gen_args
         self.vectorstore = vectorstore
@@ -190,7 +192,7 @@ Do not choose slide types that are not shown to you.
         chain = LLMChain(
             prompt=prompt,
             output_parser=parser,
-            llm=ChatOpenAI(openai_api_key=self.openai_api_key, temperature=0.5, model="gpt-3.5-turbo", request_timeout=100),
+            llm=self.llm,
         )
         return chain.run(
             topic=presentation_input.topic,
@@ -406,12 +408,7 @@ Lets think step by step to accomplish this.
         chain = LLMChain(
             output_parser=parser,
             prompt=prompt,
-            llm=ChatOpenAI(
-                openai_api_key=self.openai_api_key,
-                temperature=0.5,
-                model="gpt-3.5-turbo",
-                request_timeout=100
-            ),
+            llm=self.llm
         )
         if presentation_input.files:
             metadata = {"file" : presentation_input.files}
