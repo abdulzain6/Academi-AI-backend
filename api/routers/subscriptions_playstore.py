@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from api.lib.database.purchases import SubscriptionType
-from ..auth import get_user_id, verify_play_integrity
+from ..auth import get_user_id, verify_play_integrity, verify_google_token
 from ..globals import subscription_checker, subscription_manager
 from pydantic import BaseModel
 
@@ -45,7 +45,7 @@ def update_subscription(
     )
     
 @router.post("/rtdn")
-async def receive_notification(notification: dict):
+def receive_notification(notification: dict, token_verified=Depends(verify_google_token)):
     print(notification)
     return {}
     

@@ -22,7 +22,9 @@ langchain.verbose = True
 logging.basicConfig(level=logging.INFO)
 
 
-app = FastAPI()
+app = FastAPI(
+    title="Academi.AI"
+)
 
 
 app.include_router(users_router, prefix="/api/v1/users", tags=["user"])
@@ -34,7 +36,7 @@ app.include_router(convo_router, prefix="/api/v1/conversations", tags=["conversa
 app.include_router(quiz_router, prefix="/api/v1/quiz", tags=["quiz"])
 app.include_router(maths_solver_routers, prefix="/api/v1/maths_solver", tags=["maths solver"])
 app.include_router(writer_router, prefix="/api/v1/writer", tags=["writer"])
-app.include_router(playstore_sub_router, prefix="/api/v1/playstore/subscriptions", tags=["playstore", "subscriptions"])
+app.include_router(playstore_sub_router, prefix="/api/v1/subscriptions/playstore", tags=["playstore", "subscriptions"])
 app.include_router(summary_router, prefix="/api/v1/summary", tags=["summary"])
 
 

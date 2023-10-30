@@ -1,9 +1,14 @@
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from firebase_admin import auth
-from .firebase import default_app
 from fastapi import Depends, HTTPException, Header, status
-import logging
 from firebase_admin import app_check
+from google.oauth2 import id_token
+from google.auth.transport import requests
+from google.oauth2 import service_account
+from .globals import credentials_path
+from .firebase import default_app
+
+import logging
 import jwt
 
 
@@ -53,3 +58,15 @@ def verify_play_integrity(x_firebase_appcheck: str = Header(...)) -> None:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid Play Integrity token",
         ) from e
+        
+def verify_google_token(id_token_header: str = Header(...)):
+    try:
+        credentials = service_account.Credentials.from_service_account_file(
+            credentials_path
+        )
+        request = requests.Request()
+        return id_token.verify_token(
+            id_token_header, request
+        )
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=str(e)) from e
