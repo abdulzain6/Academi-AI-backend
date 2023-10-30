@@ -59,7 +59,7 @@ def verify_play_integrity(x_firebase_appcheck: str = Header(...)) -> None:
             detail="Invalid Play Integrity token",
         ) from e
         
-def verify_google_token(id_token_header: str = Header(...)):
+def verify_google_token(id_token_header: str = Depends(security)):
     try:
         credentials = service_account.Credentials.from_service_account_file(
             credentials_path
