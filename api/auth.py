@@ -59,7 +59,7 @@ def verify_play_integrity(x_firebase_appcheck: str = Header(...)) -> None:
             detail="Invalid Play Integrity token",
         ) from e
         
-def verify_google_token(id_token_header: str = Depends(security)):
+def verify_google_token(id_token_header: HTTPAuthorizationCredentials = Depends(security)):
     try:
         credentials = service_account.Credentials.from_service_account_file(
             credentials_path, scopes=["https://www.googleapis.com/auth/androidpublisher"]
@@ -67,7 +67,7 @@ def verify_google_token(id_token_header: str = Depends(security)):
         request = requests.Request()
         credentials.refresh(request)
         return id_token.verify_oauth2_token(
-            id_token_header, request, audience="116719680100313782656"
+            id_token_header.credentials, request, audience="https://api.academiai.org/api/v1/subscriptions/playstore/rtdn"
         )
     except Exception as e:
         print(e)
