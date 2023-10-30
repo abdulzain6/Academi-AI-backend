@@ -25,3 +25,11 @@ def turn_on_premium_model(
         "success" : subscription_manager.toggle_feature(user_id, "MODEL", enabled)
     }
     
+@router.get("/usage-limits")
+def get_usage_limits(
+    user_id=Depends(get_user_id),
+    play_integrity_verified=Depends(verify_play_integrity),
+):
+    return {
+        "limits" : subscription_manager.get_all_feature_usage_left(user_id)
+    }

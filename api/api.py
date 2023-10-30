@@ -11,6 +11,8 @@ from .routers.maths_solver import router as maths_solver_routers
 from .routers.writer import router as writer_router
 from .routers.summary_writer import router as summary_router
 from .routers.subscriptions_playstore import router as playstore_sub_router
+from .routers.subscriptions import router as subscriptions_router
+
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from starlette.status import HTTP_504_GATEWAY_TIMEOUT
@@ -38,6 +40,7 @@ app.include_router(maths_solver_routers, prefix="/api/v1/maths_solver", tags=["m
 app.include_router(writer_router, prefix="/api/v1/writer", tags=["writer"])
 app.include_router(playstore_sub_router, prefix="/api/v1/subscriptions/playstore", tags=["playstore", "subscriptions"])
 app.include_router(summary_router, prefix="/api/v1/summary", tags=["summary"])
+app.include_router(subscriptions_router, prefix="/api/v1/subscriptions-info", tags=["subscriptions"])
 
 
 

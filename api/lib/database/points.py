@@ -74,7 +74,23 @@ class UserPointsManager:
             The streak day (integer).
         """
         user_points: UserPoints = self.get_user_points(uid)
-        return user_points.streak_count
+        now = datetime.now(timezone.utc)
+        last_claimed = user_points.last_claimed
+
+        if last_claimed is None:
+            return 1  # Assuming a streak of 1 if never claimed
+
+        # Ensure last_claimed is also offset-aware
+        if (
+            last_claimed.tzinfo is None
+            or last_claimed.tzinfo.utcoffset(last_claimed) is None
+        ):
+            last_claimed = last_claimed.replace(tzinfo=timezone.utc)
+
+        if (now - last_claimed) >= timedelta(days=1):
+            return 1  # Streak is expired, return 1
+        
+        return user_points.streak_count  # Return current streak count otherwise
 
     def is_daily_bonus_claimed(self, uid: str) -> bool:
         """

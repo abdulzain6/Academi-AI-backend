@@ -130,6 +130,7 @@ class SubscriptionManager:
             "static_features": [f.model_dump()  for f in features.static],
             "monthly_limit_features": [f.model_dump() for f in features.monthly_limit],
             "monthly_coins": features.monthly_coins.amount,
+            "last_daily_reset_date": now,
         }
         
         existing_doc = self.subscriptions.find_one({"user_id": user_id})
@@ -185,6 +186,7 @@ class SubscriptionManager:
             self.redis_client.delete(f"user_subscription:{user_id}")
             
     def get_feature_value(self, user_id: str, feature_name: str) -> Union[FeatureValueResponse, None]:
+        self.reset_all_limits(user_id)
         sub_doc = self.fetch_or_cache_subscription(user_id)
         # Check if the feature is an Incremental feature
         for feature in sub_doc["incremental_features"]:
@@ -211,6 +213,7 @@ class SubscriptionManager:
         return None  # Feature not found
 
     def use_feature(self, user_id: str, feature_name: str) -> bool:
+        self.reset_all_limits(user_id)
         sub_doc = self.fetch_or_cache_subscription(user_id)
         # Check for Incremental features
         for feature in sub_doc["incremental_features"]:
@@ -252,6 +255,7 @@ class SubscriptionManager:
         return True
 
     def can_use_feature(self, user_id: str, feature_name: str) -> Tuple[bool, Union[str, int]]:
+        self.reset_all_limits(user_id)
         sub_doc = self.fetch_or_cache_subscription(user_id)
         # Check for Incremental features
         for feature in sub_doc["incremental_features"]:
@@ -284,3 +288,53 @@ class SubscriptionManager:
                 return True  # Successfully toggled the feature
         return False  # Feature not found
     
+    def get_all_feature_usage_left(self, user_id: str) -> List[Dict[str, Union[str, int]]]:
+        self.reset_all_limits(user_id)
+        sub_doc = self.fetch_or_cache_subscription(user_id)
+        usage_left = [
+            {"name": feature["name"], "limit": feature["limit"]}
+            for feature in sub_doc["incremental_features"]
+        ]
+        usage_left.extend(
+            {"name": feature["name"], "limit": feature["limit"]}
+            for feature in sub_doc["monthly_limit_features"]
+        )
+        usage_left.extend(
+            {"name": feature["name"], "limit": feature["value"]}
+            for feature in sub_doc["static_features"]
+        )
+        return usage_left
+
+    def reset_incremental_limits(self, user_id: str, reset_no_check: bool = False) -> None:
+        sub_doc = self.fetch_or_cache_subscription(user_id)
+        now = datetime.now(timezone.utc)
+        last_reset_date = sub_doc.get("last_daily_reset_date", datetime.min.replace(tzinfo=timezone.utc))
+        last_reset_date = datetime.fromisoformat(last_reset_date)
+
+        if last_reset_date.tzinfo is None or last_reset_date.tzinfo.utcoffset(last_reset_date) is None:
+            last_reset_date = last_reset_date.replace(tzinfo=timezone.utc)
+
+        if (now - last_reset_date) >= timedelta(days=1) or reset_no_check:
+            logging.info(f"Resetting daily limits for {user_id}")
+            default_features = self.plan_features[sub_doc["subscription_type"]].incremental
+            for default_feature in default_features:
+                self.subscriptions.update_one(
+                    {"user_id": user_id},
+                    {
+                        "$set": {
+                            "incremental_features.$[elem].limit": default_feature.limit
+                        }
+                    },
+                    array_filters=[{"elem.name": {"$eq": default_feature.name}}],
+                )
+
+            self.subscriptions.update_one(
+                {"user_id": user_id}, {"$set": {"last_daily_reset_date": now}}
+            )
+            self.redis_client.delete(f"user_subscription:{user_id}")
+
+
+    def reset_all_limits(self, user_id: str, reset_no_check: bool = False) -> None:
+        self.reset_monthly_limits(user_id, reset_no_check)
+        self.reset_incremental_limits(user_id, reset_no_check)
+        self.allocate_monthly_coins(user_id, reset_no_check)

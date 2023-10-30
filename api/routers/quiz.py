@@ -4,7 +4,7 @@ from fastapi import Depends, HTTPException, status
 from ..auth import get_user_id, verify_play_integrity
 from ..globals import file_manager, collection_manager, global_chat_model, global_chat_model_kwargs
 from pydantic import BaseModel
-from ..dependencies import require_points_for_feature, can_use_premium_model
+from ..dependencies import require_points_for_feature, can_use_premium_model, use_feature_with_premium_model_check
 from ..lib.quiz import QuizGenerator, UserResponse, Result
 import logging
 
@@ -56,10 +56,11 @@ def make_quiz(
 
     data = "\n".join([file.file_content for file in files if file])
     
-    model_name, premium_model = can_use_premium_model(user_id=user_id)     
+    model_name, premium_model = use_feature_with_premium_model_check(user_id=user_id, feature_name="QUIZ")     
     kwargs = {**global_chat_model_kwargs}
     if model_name:
         kwargs["model"] = model_name
+        
     kwargs["temperature"] = 0.5    
     
     logging.info(f"Using model {model_name} to make quiz for user {user_id}")
