@@ -67,7 +67,8 @@ def verify_google_token(id_token_header: str = Depends(security)):
         request = requests.Request()
         credentials.refresh(request)
         return id_token.verify_oauth2_token(
-            id_token_header, request
+            id_token_header, request, audience="academiai.org"
         )
     except Exception as e:
+        print(e)
         raise HTTPException(status_code=401, detail=str(e)) from e
