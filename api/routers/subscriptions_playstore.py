@@ -87,19 +87,6 @@ def receive_notification(notification: Notification, token_verified=Depends(veri
         if sub_doc := subscription_manager.get_subscription_by_token(notification.purchaseToken):
             subscription_manager.enable_disable_subscription(sub_doc["user_id"], True)
             
-    elif notification.notificationType == SubscriptionStatus.SUBSCRIPTION_PURCHASED:
-        if sub_doc := subscription_manager.get_subscription_by_token(notification.purchaseToken):
-            data = subscription_checker.check_subscription(APP_PACKAGE_NAME, notification.purchaseToken)
-            subscription_state = data.get('subscriptionState', '')
-            if subscription_state == 'SUBSCRIPTION_STATE_ACTIVE':
-                if line_items := data.get('lineItems', []):
-                    if product_id := line_items[0].get('productId'):
-                        subscription_type = PRODUCT_ID_MAP[product_id]
-                        subscription_manager.apply_or_default_subscription(
-                            user_id=sub_doc["user_id"],
-                            purchase_token=notification.purchaseToken,
-                            subscription_type=subscription_type,
-                            update=True
-                        )
+
 
     return {"status": "success"}
