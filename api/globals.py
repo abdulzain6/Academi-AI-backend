@@ -74,7 +74,6 @@ subscription_manager = SubscriptionManager(
             incremental=[
                 IncrementalFeature(name="PRESENTATION", limit=2),
                 IncrementalFeature(name="QUIZ", limit=3),
-                IncrementalFeature(name="SOLVER", limit=3),
                 IncrementalFeature(name="OCR", limit=3),
             ],
             static=[StaticFeature(name="ppt_pages", value=12)],
@@ -84,8 +83,7 @@ subscription_manager = SubscriptionManager(
         SubscriptionType.LITE: SubscriptionFeatures(
             incremental=[
                 IncrementalFeature(name="PRESENTATION", limit=6),
-                IncrementalFeature(name="SOLVER", limit=10),
-                IncrementalFeature(name="OCR", limit=3),
+                IncrementalFeature(name="OCR", limit=10),
             ],
             static=[StaticFeature(name="ppt_pages", value=12)],
             monthly_limit=[],

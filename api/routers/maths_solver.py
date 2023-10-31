@@ -18,7 +18,7 @@ from ..globals import (
 )
 from pydantic import BaseModel
 from ..auth import get_user_id, verify_play_integrity
-from ..dependencies import use_feature_with_premium_model_check, use_feature
+from ..dependencies import use_feature_with_premium_model_check, use_feature, can_use_premium_model
 
 
 router = APIRouter()
@@ -61,7 +61,7 @@ def solve_maths_stream(
         else maths_solver_input.chat_history
     ) or []
     
-    model_name, premium_model = use_feature_with_premium_model_check("SOLVER", user_id=user_id)        
+    model_name, premium_model = can_use_premium_model(user_id=user_id)        
     kwargs = {**global_chat_model_kwargs}
     if model_name:
         kwargs["model"] = model_name

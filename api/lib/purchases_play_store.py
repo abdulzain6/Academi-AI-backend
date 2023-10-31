@@ -9,12 +9,11 @@ class SubscriptionChecker:
             scopes=['https://www.googleapis.com/auth/androidpublisher']
         )
 
-    def check_subscription(self, package_name: str, subscription_id: str, token: str) -> bool:
+    def check_subscription(self, package_name: str, token: str) -> bool:
         service = build('androidpublisher', 'v3', credentials=self.credentials)
         try:
             response = service.purchases().subscriptionsv2().get(
                 packageName=package_name,
-          #      subscriptionId=subscription_id,
                 token=token
             ).execute()
             print(response)

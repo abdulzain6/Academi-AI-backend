@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from api.lib.database.purchases import SubscriptionType
 from ..auth import get_user_id, verify_play_integrity, verify_google_token
 from ..globals import subscription_checker, subscription_manager
+from ..config import APP_PACKAGE_NAME
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -10,8 +11,6 @@ router = APIRouter()
 
 class SubscriptionData(BaseModel):
     purchase_token: str
-    package_name: str
-    subscription_id: str
 
 class SubscriptionUpdate(BaseModel):
     sub_type: SubscriptionType
@@ -24,8 +23,7 @@ def verify_subscription(
     play_integrity_verified=Depends(verify_play_integrity),
 ):
     if is_valid := subscription_checker.check_subscription(
-        subscription_data.package_name,
-        subscription_data.subscription_id,
+        APP_PACKAGE_NAME,
         subscription_data.purchase_token,
     ):
         return {"status": "success"}

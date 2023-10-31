@@ -50,3 +50,4 @@ DEFAULT_REFERRAL_POINTS = int(os.getenv("DEFAULT_REFERRAL_POINTS", 15))
 FILE_COLLECTION_LIMITS = {
     SubscriptionType.FREE : 4
 }
+APP_PACKAGE_NAME = "com.ainnovate.academiiai"
