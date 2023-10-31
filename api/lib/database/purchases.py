@@ -106,7 +106,15 @@ class SubscriptionManager:
         self.redis_client.setex(cache_key, 3600, json.dumps(sub_doc, cls=CustomJSONEncoder))  # Cache for 1 hour
         return sub_doc
     
-    
+    def purchase_token_exists(self, purchase_token: str) -> bool:
+        return bool(
+            sub_doc := self.subscriptions.find_one({"purchase_token": purchase_token})
+        )
+
+    def get_subscription_by_token(self, purchase_token: str) -> dict:
+        return self.subscriptions.find_one({"purchase_token": purchase_token})
+
+        
     def get_subscription_type(self, user_id: str) -> SubscriptionType:
         sub_doc = self.fetch_or_cache_subscription(user_id)
         return getattr(SubscriptionType, sub_doc["subscription_type"])
@@ -114,6 +122,7 @@ class SubscriptionManager:
     def apply_or_default_subscription(
         self,
         user_id: str,
+        purchase_token: str = "",
         subscription_type: SubscriptionType = SubscriptionType.FREE,
         subscription_provider: SubscriptionProvider = SubscriptionProvider.PLAYSTORE,
         update: bool = False
@@ -122,6 +131,7 @@ class SubscriptionManager:
         now = datetime.now(timezone.utc)
         doc = {
             "user_id": user_id,
+            "purchase_token" : purchase_token,
             "subscription_type": subscription_type,
             "subscription_provider": subscription_provider,
             "last_coin_allocation_date": now,
@@ -129,6 +139,7 @@ class SubscriptionManager:
             "incremental_features": [f.model_dump() for f in features.incremental],
             "static_features": [f.model_dump()  for f in features.static],
             "monthly_limit_features": [f.model_dump() for f in features.monthly_limit],
+            "enabled" : True,
             "monthly_coins": features.monthly_coins.amount,
             "last_daily_reset_date": now,
         }
@@ -140,8 +151,17 @@ class SubscriptionManager:
             self.subscriptions.update_one({"user_id": user_id}, {"$set": doc}, upsert=True)
             self.allocate_monthly_coins(user_id, allocate_no_check=True)
 
+    def enable_disable_subscription(self, user_id: str, enable: bool) -> None:
+        sub_doc = self.fetch_or_cache_subscription(user_id)
+        sub_doc["enabled"] = enable
+        self.redis_client.delete(f"user_subscription:{user_id}")
+        self.subscriptions.update_one({"user_id": user_id}, {"$set": sub_doc}, upsert=True)
+            
+
     def allocate_monthly_coins(self, user_id: str, allocate_no_check: bool = False) -> None:
         sub_doc = self.fetch_or_cache_subscription(user_id)
+        if not sub_doc["enabled"]:
+            return
         now = datetime.now(timezone.utc)
         last_allocation_date = sub_doc.get("last_coin_allocation_date", datetime.min.replace(tzinfo=timezone.utc))
 
@@ -160,6 +180,9 @@ class SubscriptionManager:
 
     def reset_monthly_limits(self, user_id: str, reset_no_check: bool = False) -> None:
         sub_doc = self.fetch_or_cache_subscription(user_id)
+        if not sub_doc["enabled"]:
+            return
+        
         now = datetime.now(timezone.utc)
         last_reset_date = sub_doc.get("last_monthly_reset_date", datetime.min.replace(tzinfo=timezone.utc))
         # Ensure last_reset_date is timezone-aware
@@ -307,6 +330,9 @@ class SubscriptionManager:
 
     def reset_incremental_limits(self, user_id: str, reset_no_check: bool = False) -> None:
         sub_doc = self.fetch_or_cache_subscription(user_id)
+        if not sub_doc["enabled"]:
+            return
+        
         now = datetime.now(timezone.utc)
         last_reset_date = sub_doc.get("last_daily_reset_date", datetime.min.replace(tzinfo=timezone.utc))
         last_reset_date = datetime.fromisoformat(last_reset_date)

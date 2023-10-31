@@ -9,15 +9,13 @@ class SubscriptionChecker:
             scopes=['https://www.googleapis.com/auth/androidpublisher']
         )
 
-    def check_subscription(self, package_name: str, token: str) -> bool:
+    def check_subscription(self, package_name: str, token: str) -> dict:
         service = build('androidpublisher', 'v3', credentials=self.credentials)
         try:
-            response = service.purchases().subscriptionsv2().get(
+            return service.purchases().subscriptionsv2().get(
                 packageName=package_name,
                 token=token
             ).execute()
-            print(response)
-            return response.get('expiryTimeMillis', 0) > 0
         except Exception as e:
             raise ValueError(f"Failed to check subscription: {e}") from e
 
