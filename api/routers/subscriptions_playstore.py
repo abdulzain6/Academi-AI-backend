@@ -6,6 +6,7 @@ from ..auth import get_user_id, verify_play_integrity, verify_google_token
 from ..globals import subscription_checker, subscription_manager
 from ..config import APP_PACKAGE_NAME, PRODUCT_ID_MAP
 from pydantic import BaseModel
+import logging
 
 router = APIRouter()
 
@@ -47,6 +48,7 @@ def verify_subscription(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Token already used"
         )
+    
         
     try:    
         data = subscription_checker.check_subscription(APP_PACKAGE_NAME, subscription_data.purchase_token)
@@ -61,6 +63,7 @@ def verify_subscription(
                         subscription_type=subscription_type,
                         update=True
                     )
+                    logging.info(f"{user_id} Just subscribed {subscription_data.purchase_token}")
                     return {"status" : "success"}   
     except Exception as e:
         print(e)
@@ -71,6 +74,10 @@ def verify_subscription(
     
 @router.post("/rtdn")
 def receive_notification(notification: dict, token_verified=Depends(verify_google_token)):
+    notification = notification.get("subscriptionNotification")
+    if not notification:
+        logging.warning(notification)
+        return "good"
     notification["notificationType"] = SubscriptionStatus(notification["notificationType"])
     notification = Notification.model_validate(notification)
     
@@ -82,13 +89,17 @@ def receive_notification(notification: dict, token_verified=Depends(verify_googl
                 subscription_type=SubscriptionType.FREE,
                 update=True
             )
+            logging.info(f"{sub_doc['user_id']} Just unsubscribed {notification.purchaseToken}")
+
     elif notification.notificationType in [SubscriptionStatus.SUBSCRIPTION_CANCELED, SubscriptionStatus.SUBSCRIPTION_PAUSED]:
         if sub_doc := subscription_manager.get_subscription_by_token(notification.purchaseToken):
             subscription_manager.enable_disable_subscription(sub_doc["user_id"], False)
-    
+            logging.info(f"{sub_doc['user_id']} got disabled {notification.notificationType} {notification.purchaseToken}")
+
     elif notification.notificationType == SubscriptionStatus.SUBSCRIPTION_RESTARTED:
         if sub_doc := subscription_manager.get_subscription_by_token(notification.purchaseToken):
             subscription_manager.enable_disable_subscription(sub_doc["user_id"], True)
+            logging.info(f"{sub_doc['user_id']} got enabled {notification.notificationType} {notification.purchaseToken}")
             
 
 
