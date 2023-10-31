@@ -18,21 +18,21 @@ class CollectionUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
 
-    @validator("name")
-    def validate_name(cls, name: str) -> str:
-        if contains_emoji(name):
-            raise HTTPException(status_code=400, detail="Name should not contain emojis")
-        return name
+    #@validator("name")
+    # def validate_name(cls, name: str) -> str:
+     #   if contains_emoji(name):
+      #      raise HTTPException(status_code=400, detail="Name should not contain emojis")
+       # return name
 
 class CollectionCreate(BaseModel):
     name: str
     description: str
 
-    @validator("name")
-    def validate_name(cls, name: str) -> str:
-        if contains_emoji(name):
-            raise HTTPException(status_code=400, detail="Name should not contain emojis")
-        return name
+    #@validator("name")
+    # def validate_name(cls, name: str) -> str:
+     #   if contains_emoji(name):
+      #      raise HTTPException(status_code=400, detail="Name should not contain emojis")
+       # return name
 
 
 class CollectionDelete(BaseModel):

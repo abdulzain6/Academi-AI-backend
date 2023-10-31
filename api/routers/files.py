@@ -36,13 +36,6 @@ class LinkFileInput(BaseModel):
     youtube_link: Optional[str]
     web_link: Optional[str]
 
-    @validator("filename")
-    def validate_name(cls, filename: str) -> str:
-        if contains_emoji(filename):
-            raise HTTPException(status_code=400, detail="Filename should not contain emojis")
-        return filename
-    
-    
     
 
 
@@ -138,9 +131,6 @@ def create_file(
     play_integrity_verified=Depends(verify_play_integrity),
 ):
     can_add_more_data(user_id, collection_name)
-
-    if contains_emoji(filename):
-        raise HTTPException(status_code=400, detail="Filename should not contain emojis")
     
     try:
         logging.info(f"Create file request from {user_id}, collection={collection_name}, filename={filename}")

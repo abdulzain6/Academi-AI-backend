@@ -38,6 +38,7 @@ class Notification(BaseModel):
     subscriptionId: str
 
 
+
 @router.post("/verify")
 def verify_subscription(
     subscription_data: SubscriptionData,
@@ -77,9 +78,12 @@ def receive_notification(notification: dict, token_verified=Depends(verify_googl
     notification = notification.get("subscriptionNotification")
     if not notification:
         logging.warning(notification)
-        return "good"
+        return
+    
     notification["notificationType"] = SubscriptionStatus(notification["notificationType"])
     notification = Notification.model_validate(notification)
+    
+    logging.info(f"Recieved notification {notification}")
     
     if notification.notificationType in [SubscriptionStatus.SUBSCRIPTION_EXPIRED, SubscriptionStatus.SUBSCRIPTION_REVOKED]:
         if sub_doc := subscription_manager.get_subscription_by_token(notification.purchaseToken):
