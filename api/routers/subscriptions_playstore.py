@@ -70,7 +70,10 @@ def verify_subscription(
     )
     
 @router.post("/rtdn")
-def receive_notification(notification: Notification, token_verified=Depends(verify_google_token)):
+def receive_notification(notification: dict, token_verified=Depends(verify_google_token)):
+    notification["notificationType"] = SubscriptionStatus(notification["notificationType"])
+    notification = Notification.model_validate(notification)
+    
     if notification.notificationType in [SubscriptionStatus.SUBSCRIPTION_EXPIRED, SubscriptionStatus.SUBSCRIPTION_REVOKED]:
         if sub_doc := subscription_manager.get_subscription_by_token(notification.purchaseToken):
             subscription_manager.apply_or_default_subscription(
