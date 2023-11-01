@@ -39,10 +39,22 @@ langchain.llm_cache = RedisCache(redis_=redis.from_url(REDIS_URL), ttl=CACHE_TTL
 redis_cache_manager = RedisCacheManager(redis.from_url(REDIS_URL))
 
 # Database Managers
-user_manager = UserDBManager(MONGODB_URL, DATABASE_NAME, cache_manager=RedisCacheManager(redis.from_url(REDIS_URL)))
-collection_manager = CollectionDBManager(MONGODB_URL, DATABASE_NAME, cache_manager=RedisCacheManager(redis.from_url(REDIS_URL)))
+collection_manager = CollectionDBManager(
+    MONGODB_URL,
+    DATABASE_NAME,
+    cache_manager=RedisCacheManager(redis.from_url(REDIS_URL)),
+)
+user_manager = UserDBManager(
+    MONGODB_URL,
+    DATABASE_NAME,
+    cache_manager=RedisCacheManager(redis.from_url(REDIS_URL)),
+    collection_manager=collection_manager
+)
 file_manager = FileDBManager(MONGODB_URL, DATABASE_NAME, collection_manager)
-conversation_manager = MessageDBManager(MONGODB_URL, DATABASE_NAME)
+conversation_manager = MessageDBManager(
+    MONGODB_URL, DATABASE_NAME, collection_manager, file_manager
+)
+
 knowledge_manager = KnowledgeManager(
     OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY),
     unstructured_api_key=UNSTRUCTURED_API_KEY,
@@ -105,7 +117,7 @@ subscription_manager = SubscriptionManager(
                     limit=75,
                     value="gpt-4",
                     fallback_value="gpt-3.5-turbo",
-                    enabled=True
+                    enabled=True,
                 )
             ],
             monthly_coins=MonthlyCoinsFeature(amount=2500),
@@ -115,22 +127,20 @@ subscription_manager = SubscriptionManager(
 )
 
 
-
 # llms
 
 global_chat_model = ChatOpenAI
-global_chat_model_kwargs = {"request_timeout" : 150}
+global_chat_model_kwargs = {"request_timeout": 150}
 
 
-
-#Presentation
+# Presentation
 
 template_manager, temp_knowledge_manager = initialize_managers(
     MONGODB_URL, DATABASE_NAME, local_storage_path="/tmp/ppts"
 )
 
 
-#Maths Solver
+# Maths Solver
 
 client = PythonClient(
     Urls(
@@ -152,7 +162,7 @@ image_ocr = ImageOCR(
 )
 
 
-#SUmmary Writer
+# SUmmary Writer
 
 summary_writer = SummaryWriter(
     ChatOpenAI,
