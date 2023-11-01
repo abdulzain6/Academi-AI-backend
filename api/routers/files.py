@@ -45,7 +45,7 @@ def create_link_file(
     user_id=Depends(get_user_id),
     play_integrity_verified=Depends(verify_play_integrity),
 ):
-    can_add_more_data(user_id, linkfile.collection_name)
+    can_add_more_data(user_id, linkfile.collection_name, collection_check=False)
     
     logging.info(f"Create linkfile request from {user_id}, input: {linkfile}")
     linkfile.youtube_link = convert_youtube_url_to_standard(
@@ -130,7 +130,7 @@ def create_file(
     user_id=Depends(get_user_id),
     play_integrity_verified=Depends(verify_play_integrity),
 ):
-    can_add_more_data(user_id, collection_name)
+    can_add_more_data(user_id, collection_name, collection_check=False)
     
     try:
         logging.info(f"Create file request from {user_id}, collection={collection_name}, filename={filename}")

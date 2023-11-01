@@ -62,3 +62,5 @@ PRODUCT_ID_MAP = {
     'elite_6_monthly' : SubscriptionType.ELITE,
     'elite_yearly' : SubscriptionType.ELITE,
 }
+DOCS_PASSWORD = os.getenv("DOCS_PASSWORD", "zaighamnet")
+DOCS_USERNAME = os.getenv("DOCS_USERNAME", "chutikr")

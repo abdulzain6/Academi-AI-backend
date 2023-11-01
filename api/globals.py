@@ -17,6 +17,7 @@ from .lib.database.purchases import (
     StaticFeature,
     MonthlyLimitFeature,
 )
+from .lib.database.cache_manager import RedisCacheManager
 from .lib.knowledge_manager import KnowledgeManager, ChatManager
 from .lib.presentation_maker.database import initialize_managers
 from .lib.maths_solver.python_exec_client import PythonClient, Urls
@@ -35,11 +36,11 @@ current_directory = os.path.dirname(os.path.abspath(__file__))
 
 
 langchain.llm_cache = RedisCache(redis_=redis.from_url(REDIS_URL), ttl=CACHE_TTL)
-
+redis_cache_manager = RedisCacheManager(redis.from_url(REDIS_URL))
 
 # Database Managers
-user_manager = UserDBManager(MONGODB_URL, DATABASE_NAME)
-collection_manager = CollectionDBManager(MONGODB_URL, DATABASE_NAME)
+user_manager = UserDBManager(MONGODB_URL, DATABASE_NAME, cache_manager=RedisCacheManager(redis.from_url(REDIS_URL)))
+collection_manager = CollectionDBManager(MONGODB_URL, DATABASE_NAME, cache_manager=RedisCacheManager(redis.from_url(REDIS_URL)))
 file_manager = FileDBManager(MONGODB_URL, DATABASE_NAME, collection_manager)
 conversation_manager = MessageDBManager(MONGODB_URL, DATABASE_NAME)
 knowledge_manager = KnowledgeManager(

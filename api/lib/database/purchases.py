@@ -8,7 +8,7 @@ from typing import Union
 import json
 import logging
 import redis
-from bson import ObjectId
+from bson.json_util import dumps, loads
 
 class FeatureValueResponse(BaseModel):
     name: str
@@ -58,14 +58,6 @@ class SubscriptionFeatures(BaseModel):
 
 logging.basicConfig(level=logging.INFO)
 
-
-class CustomJSONEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, ObjectId):
-            return str(obj)
-        elif isinstance(obj, datetime):
-            return obj.isoformat()
-        return json.JSONEncoder.default(self, obj)
     
 class SubscriptionManager:
     def __init__(
@@ -93,17 +85,14 @@ class SubscriptionManager:
     def fetch_or_cache_subscription(self, user_id: str) -> dict:
         cache_key = f"user_subscription:{user_id}"
         if cached_data := self.redis_client.get(cache_key):
-            sub_doc = json.loads(cached_data)
-            sub_doc['last_coin_allocation_date'] = datetime.fromisoformat(sub_doc['last_coin_allocation_date'])
-            sub_doc['last_monthly_reset_date'] = datetime.fromisoformat(sub_doc['last_monthly_reset_date'])
-            return sub_doc
-
+            return loads(cached_data)
+        
         sub_doc = self.subscriptions.find_one({"user_id": user_id})
         if not sub_doc:
             self.apply_or_default_subscription(user_id)
             sub_doc = self.subscriptions.find_one({"user_id": user_id})
 
-        self.redis_client.setex(cache_key, 3600, json.dumps(sub_doc, cls=CustomJSONEncoder))  # Cache for 1 hour
+        self.redis_client.setex(cache_key, 3600, dumps(sub_doc))  # Cache for 1 hour
         return sub_doc
     
     def purchase_token_exists(self, purchase_token: str) -> bool:
@@ -152,10 +141,8 @@ class SubscriptionManager:
             self.allocate_monthly_coins(user_id, allocate_no_check=True)
 
     def enable_disable_subscription(self, user_id: str, enable: bool) -> None:
-        sub_doc = self.fetch_or_cache_subscription(user_id)
-        sub_doc["enabled"] = enable
         self.redis_client.delete(f"user_subscription:{user_id}")
-        self.subscriptions.update_one({"user_id": user_id}, {"$set": sub_doc}, upsert=True)
+        self.subscriptions.update_one({"user_id": user_id}, {"$set": {"enabled": enable}}, upsert=True)
             
 
     def allocate_monthly_coins(self, user_id: str, allocate_no_check: bool = False) -> None:

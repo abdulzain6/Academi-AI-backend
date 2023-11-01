@@ -2,7 +2,12 @@ import logging
 
 from api.lib.database.purchases import SubscriptionType
 from .config import FEATURE_PRICING, FILE_COLLECTION_LIMITS
-from .globals import user_points_manager, subscription_manager, file_manager, collection_manager
+from .globals import (
+    user_points_manager,
+    subscription_manager,
+    file_manager,
+    collection_manager,
+)
 from fastapi import HTTPException
 from functools import wraps
 from langchain.callbacks import get_openai_callback
@@ -77,6 +82,7 @@ def use_feature_with_premium_model_check(
         return feature_gpt, used_gpt
     return None, False
 
+
 def can_use_premium_model(user_id: str) -> tuple[Optional[Union[str, int]], bool]:
     if subscription_manager.get_subscription_type(user_id) == SubscriptionType.ELITE:
         used_gpt, feature_gpt = use_feature("MODEL", user_id)
@@ -95,16 +101,26 @@ def openai_token_tracking_decorator(func: Callable[..., Any]) -> Callable[..., A
 
     return wrapper
 
-def can_add_more_data(user_id: str, collection_name: str = None):
+
+def can_add_more_data(
+    user_id: str,
+    collection_name: str = None,
+    collection_check: bool = True,
+    file_check: bool = True,
+):
     subscription = subscription_manager.get_subscription_type(user_id)
     if subscription != SubscriptionType.FREE:
         return
-    
-    if collection_name:
-        file_count = len(file_manager.get_all_files(user_id=user_id, collection_name=collection_name))
-        if file_count > FILE_COLLECTION_LIMITS[SubscriptionType.FREE]:
+
+    if collection_name and file_check:
+        file_count = len(
+            file_manager.get_all_files(user_id=user_id, collection_name=collection_name)
+        )
+        if file_count >= FILE_COLLECTION_LIMITS[SubscriptionType.FREE]:
             raise HTTPException(400, detail="File limit reached, cannot add more files")
 
-    collection_count = len(collection_manager.get_all_by_user(user_id))    
-    if collection_count > FILE_COLLECTION_LIMITS[SubscriptionType.FREE]:
-        raise HTTPException(400, detail="Collection/Subject limit reached, cannot add more")
+    collection_count = len(collection_manager.get_all_by_user(user_id))
+    if collection_count >= FILE_COLLECTION_LIMITS[SubscriptionType.FREE] and collection_check:
+        raise HTTPException(
+            400, detail="Collection/Subject limit reached, cannot add more"
+        )

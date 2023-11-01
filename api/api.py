@@ -1,4 +1,3 @@
-from fastapi import FastAPI
 from .config import *
 from .routers.collections import router as collection_router
 from .routers.files import router as files_router
@@ -12,21 +11,64 @@ from .routers.writer import router as writer_router
 from .routers.summary_writer import router as summary_router
 from .routers.subscriptions_playstore import router as playstore_sub_router
 from .routers.subscriptions import router as subscriptions_router
-
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException, status, Depends
 from fastapi.responses import JSONResponse
+from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
+from fastapi.openapi.utils import get_openapi
+from fastapi.security import HTTPBasicCredentials, HTTPBasic
 from starlette.status import HTTP_504_GATEWAY_TIMEOUT
+
 import asyncio
 import langchain
 import logging
+
+from .globals import (
+    DOCS_PASSWORD,
+    DOCS_USERNAME,
+)
+import secrets
 
 langchain.verbose = True
 logging.basicConfig(level=logging.INFO)
 
 
 app = FastAPI(
-    title="Academi.AI"
+    title="Academi.AI",
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
 )
+
+
+security = HTTPBasic()
+
+
+def get_current_username(credentials: HTTPBasicCredentials = Depends(security)):
+    correct_username = secrets.compare_digest(credentials.username, DOCS_USERNAME)
+    correct_password = secrets.compare_digest(credentials.password, DOCS_PASSWORD)
+    if not (correct_username and correct_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return credentials.username
+
+
+@app.get("/docs", include_in_schema=False)
+async def get_swagger_documentation(username: str = Depends(get_current_username)):
+    return get_swagger_ui_html(openapi_url="/openapi.json", title="docs")
+
+
+@app.get("/redoc", include_in_schema=False)
+async def get_redoc_documentation(username: str = Depends(get_current_username)):
+    return get_redoc_html(openapi_url="/openapi.json", title="docs")
+
+
+@app.get("/openapi.json", include_in_schema=False)
+async def openapi(username: str = Depends(get_current_username)):
+    return get_openapi(title=app.title, version=app.version, routes=app.routes)
+
 
 
 app.include_router(users_router, prefix="/api/v1/users", tags=["user"])
