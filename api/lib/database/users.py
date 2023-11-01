@@ -23,20 +23,14 @@ class UserDBManager:
         self,
         connection_string: str,
         database_name: str,
-        collection_manager: CollectionDBManager = None,
-        cache_manager: CacheProtocol = None
+        collection_manager: CollectionDBManager,
+        cache_manager: CacheProtocol
     ) -> None:
         self.client = MongoClient(connection_string)
         self.db = self.client[database_name]
         self.user_collection: Collection = self.db["users"]
         self.user_collection.create_index("uid", unique=True)
-        if not collection_manager:
-            self.collection_manager = CollectionDBManager(
-                connection_string, database_name
-            )
-        else:
-            self.collection_manager = collection_manager
-            
+        self.collection_manager = collection_manager    
         self.cache_manager = cache_manager
             
     def get_all_vector_ids_for_user(self, user_id: str) -> Dict[str, List[str]]:

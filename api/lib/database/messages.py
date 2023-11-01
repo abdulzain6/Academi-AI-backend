@@ -56,26 +56,15 @@ class MessageDBManager:
         self,
         connection_string: str,
         database_name: str,
-        collection_dbmanager: CollectionDBManager = None,
-        file_dbmanager: FileDBManager = None,
+        collection_dbmanager: CollectionDBManager,
+        file_dbmanager: FileDBManager,
     ) -> None:
         self.client = MongoClient(connection_string)
         self.db = self.client[database_name]
         self.message_collection: Collection = self.db["messages"]
         self.message_collection.create_index("user_id", unique=False)
-        if not collection_dbmanager:
-            self.collection_dbmanager = CollectionDBManager(
-                connection_string, database_name
-            )
-        else:
-            self.collection_dbmanager = collection_dbmanager
-
-        if not file_dbmanager:
-            self.file_dbmanager = FileDBManager(
-                connection_string, database_name, collection_dbmanager
-            )
-        else:
-            self.file_dbmanager = file_dbmanager
+        self.collection_dbmanager = collection_dbmanager
+        self.file_dbmanager = file_dbmanager
 
     def add_conversation(self, user_id: str, metadata: ConversationMetadata) -> str:
         conversation_id = str(uuid.uuid4())
