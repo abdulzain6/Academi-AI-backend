@@ -322,7 +322,6 @@ class SubscriptionManager:
         
         now = datetime.now(timezone.utc)
         last_reset_date = sub_doc.get("last_daily_reset_date", datetime.min.replace(tzinfo=timezone.utc))
-        last_reset_date = datetime.fromisoformat(last_reset_date)
 
         if last_reset_date.tzinfo is None or last_reset_date.tzinfo.utcoffset(last_reset_date) is None:
             last_reset_date = last_reset_date.replace(tzinfo=timezone.utc)
