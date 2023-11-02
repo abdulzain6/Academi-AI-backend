@@ -22,7 +22,6 @@ from .lib.knowledge_manager import KnowledgeManager, ChatManager
 from .lib.presentation_maker.database import initialize_managers
 from .lib.maths_solver.python_exec_client import PythonClient, Urls
 from .lib.maths_solver.ocr import ImageOCR
-from .lib.summary_writer import SummaryWriter
 from .lib.redis_cache import RedisCache
 from langchain.chat_models import ChatOpenAI
 from langchain.llms import OpenAI
@@ -31,7 +30,7 @@ import langchain
 import redis
 
 
-langchain.verbose = True
+langchain.verbose = False
 current_directory = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -48,11 +47,20 @@ user_manager = UserDBManager(
     MONGODB_URL,
     DATABASE_NAME,
     cache_manager=RedisCacheManager(redis.from_url(REDIS_URL)),
-    collection_manager=collection_manager
+    collection_manager=collection_manager,
 )
-file_manager = FileDBManager(MONGODB_URL, DATABASE_NAME, collection_manager)
+file_manager = FileDBManager(
+    MONGODB_URL,
+    DATABASE_NAME,
+    collection_manager,
+    cache=RedisCacheManager(redis.from_url(REDIS_URL)),
+)
 conversation_manager = MessageDBManager(
-    MONGODB_URL, DATABASE_NAME, collection_manager, file_manager
+    MONGODB_URL,
+    DATABASE_NAME,
+    collection_manager,
+    file_manager,
+    cache_manager=RedisCacheManager(redis.from_url(REDIS_URL), 50000),
 )
 
 knowledge_manager = KnowledgeManager(
@@ -159,19 +167,6 @@ image_ocr = ImageOCR(
         "request_timeout": 100,
     },
     llm_cls=OpenAI,
-)
-
-
-# SUmmary Writer
-
-summary_writer = SummaryWriter(
-    ChatOpenAI,
-    llm_kwargs={
-        "model_name": "gpt-3.5-turbo-16k",
-        "temperature": 0.3,
-        "openai_api_key": OPENAI_API_KEY,
-        "request_timeout": 250,
-    },
 )
 
 

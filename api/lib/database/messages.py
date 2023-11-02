@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 from datetime import datetime
 from .collections import CollectionDBManager
 from .files import FileDBManager
+from .cache_manager import CacheProtocol
 import uuid
 
 class MessagePair(BaseModel):
@@ -58,6 +59,7 @@ class MessageDBManager:
         database_name: str,
         collection_dbmanager: CollectionDBManager,
         file_dbmanager: FileDBManager,
+        cache_manager: CacheProtocol
     ) -> None:
         self.client = MongoClient(connection_string)
         self.db = self.client[database_name]
@@ -65,7 +67,8 @@ class MessageDBManager:
         self.message_collection.create_index("user_id", unique=False)
         self.collection_dbmanager = collection_dbmanager
         self.file_dbmanager = file_dbmanager
-
+        self.cache_manager = cache_manager
+        
     def add_conversation(self, user_id: str, metadata: ConversationMetadata) -> str:
         conversation_id = str(uuid.uuid4())
         conversation = Conversation(metadata=metadata)
@@ -78,6 +81,7 @@ class MessageDBManager:
             },
             upsert=True,
         )
+        self.cache_manager.delete(f"messages:{user_id}:{conversation_id}")
         return conversation_id
 
     def add_message(
@@ -86,6 +90,7 @@ class MessageDBManager:
         message_pair = MessagePair(
             human_message=human_message, bot_response=bot_response
         )
+        # Before updating, check if the conversation exists
         if not self.message_collection.count_documents(
             {"user_id": user_id, f"conversations.{conversation_id}": {"$exists": True}},
             limit=1,
@@ -93,7 +98,7 @@ class MessageDBManager:
             raise ValueError(
                 f"No conversation found with conversation_id: {conversation_id} for user_id: {user_id}"
             )
-
+        
         self.message_collection.update_one(
             {"user_id": user_id},
             {
@@ -102,10 +107,18 @@ class MessageDBManager:
                 }
             },
         )
+        # Invalidate cache
+        self.cache_manager.delete(f"messages:{user_id}:{conversation_id}")
+
 
     def get_messages(
         self, user_id: str, conversation_id: str
     ) -> Optional[List[MessagePair]]:
+        cached_data = self.cache_manager.get(f"messages:{user_id}:{conversation_id}")
+        
+        if cached_data is not None:
+            return [MessagePair(**message) for message in cached_data]
+
         if user_data := self.message_collection.find_one(
             {"user_id": user_id}, {"conversations": {conversation_id: 1}}
         ):
@@ -114,6 +127,7 @@ class MessageDBManager:
                 .get(conversation_id, {})
                 .get("messages", [])
             )
+            self.cache_manager.set(f"messages:{user_id}:{conversation_id}", messages)
             return [MessagePair(**message) for message in messages]
         else:
             return None
@@ -172,6 +186,7 @@ class MessageDBManager:
         result = self.message_collection.update_one(
             {"user_id": user_id}, {"$unset": {f"conversations.{conversation_id}": 1}}
         )
+        self.cache_manager.delete(f"messages:{user_id}:{conversation_id}")
         return result.modified_count
 
     def delete_all_conversations(self, user_id: str) -> int:

@@ -42,7 +42,8 @@ FEATURE_PRICING = get_dict_from_env_var(
         "OCR" : 1,
         "PRESENTATION" : 4,
         "FLASHCARDS" : 2,
-        "WRITER" : 2
+        "WRITER" : 2,
+        "SUMMARY" : 2
     }
 )
 DEFAULT_POINTS_INCREMENT = int(os.getenv("DEFAULT_POINTS_INCREMENT", 2))

@@ -3,6 +3,7 @@ from pymongo import MongoClient
 from pymongo.collection import Collection
 from gridfs import GridFS, NoFile
 from pydantic import BaseModel
+from .cache_manager import CacheProtocol
 
 class FileModel(BaseModel):
     collection_name: str
@@ -22,12 +23,14 @@ class FileDBManager:
         connection_string: str,
         database_name: str,
         collection_manager,
+        cache: CacheProtocol
     ) -> None:
         self.client = MongoClient(connection_string)
         self.db = self.client[database_name]
         self.collection_manager = collection_manager
         self.file_collection: Collection = self.db["files"]
         self.fs = GridFS(self.db)
+        self.cache = cache
 
         # Create unique index
         self.file_collection.create_index(
@@ -49,12 +52,18 @@ class FileDBManager:
         file_data["file_id"] = file_id
         file_data["collection_uid"] = collection_uid  # Use collection_uid
         self.file_collection.insert_one(file_data)
-
+        self.cache.delete(f"{file_model.user_id}:{file_model.collection_name}:{file_model.filename}")
         return file_model
 
     def get_file_by_name(
         self, user_id: str, collection_name: str, filename: str, bytes: bool = False
     ) -> Optional[FileModel]:
+
+        cache_key = f"{user_id}:{collection_name}:{filename}"
+        if cached_file := self.cache.get(cache_key):
+            return FileModel(**cached_file)
+
+        # If not cached, fetch from the database
         collection_uid = self.resolve_collection_uid(user_id, collection_name)
         if file_data := self.file_collection.find_one(
             {
@@ -66,8 +75,10 @@ class FileDBManager:
             if bytes:
                 try:
                     file_data["file_bytes"] = self.fs.get(file_data["file_id"]).read()
+                    self.cache.set(cache_key, file_data)
                 except NoFile:
                     file_data["file_bytes"] = b""
+
             return FileModel(**file_data)
 
         return None
@@ -128,7 +139,7 @@ class FileDBManager:
             },
             {"$set": kwargs},
         )
-
+        self.cache.delete(f"{user_id}:{collection_name}:{old_filename}")
         return result.modified_count
 
     def count_files_in_collection(self, user_id: str, collection_name: str) -> int:
@@ -156,6 +167,7 @@ class FileDBManager:
                     "filename": filename,
                 }
             )
+            self.cache.delete(f"{user_id}:{collection_name}:{filename}")
             return 1
 
         return 0
@@ -168,6 +180,7 @@ class FileDBManager:
         }
         cursor = self.file_collection.find(query)
         for doc in cursor:
+            self.cache.delete(f"{user_id}:{collection_name}:{doc['filename']}")
             self.fs.delete(doc["file_id"])
 
         result = self.file_collection.delete_many(query)
@@ -194,3 +207,5 @@ class FileDBManager:
             files.append(FileModel(**doc))
 
         return files
+    
+ 

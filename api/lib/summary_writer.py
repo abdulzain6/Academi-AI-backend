@@ -85,6 +85,7 @@ Follow the limit, you gave too small before.
     
     @retry(stop_max_attempt_number=3)
     def get_content(self, data: str, word_count: int):
+        word_count = max(word_count, 10)
         html, text = self.generate_content_html(data, word_count)
         pdf_bytes = self.html_to_pdf_bytes(html)
         docx_bytes = self.html_to_docx_bytes(html)

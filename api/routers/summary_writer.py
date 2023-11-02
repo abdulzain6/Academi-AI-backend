@@ -1,12 +1,14 @@
 import base64
-import logging
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+
+from api.lib.summary_writer import SummaryWriter
 from ..auth import get_user_id, verify_play_integrity
-from ..globals import collection_manager, file_manager, summary_writer
-from ..dependencies import require_points_for_feature
+from ..globals import collection_manager, file_manager, global_chat_model_kwargs, global_chat_model
+from ..dependencies import require_points_for_feature, can_use_premium_model
+from random import sample
 
 router = APIRouter()
 
@@ -17,7 +19,6 @@ class SummaryInput(BaseModel):
     file_name: Optional[str] = None
     word_count: int
 
-from random import sample
 
 def select_random_chunks(text: str, chunk_size: int, total_length: int) -> str:
     if len(text) <= chunk_size:
@@ -39,6 +40,7 @@ def select_random_chunks(text: str, chunk_size: int, total_length: int) -> str:
 
 
 @router.post("/write-summary")
+@require_points_for_feature("SUMMARY")
 def write_summary(
     input: SummaryInput,
     user_id=Depends(get_user_id),
@@ -73,9 +75,22 @@ def write_summary(
             user_id=user_id, collection_name=input.collection_name
         )
         data = "\n".join([file.file_content for file in files])
+        
+    model_name, premium_model = can_use_premium_model(user_id=user_id)     
+    kwargs = {**global_chat_model_kwargs}
+    if model_name:
+        kwargs["model"] = model_name
+        
 
+    summary_writer = SummaryWriter(
+        global_chat_model,
+        llm_kwargs={
+            "temperature": 0.3,
+            **kwargs
+        }
+)
     content = summary_writer.get_content(
-        select_random_chunks(data, 3000, 15000), input.word_count
+        select_random_chunks(data, 1000, 4000), input.word_count
     )
     content["pdf"] = base64.b64encode(content["pdf"]).decode()
     content["docx"] = base64.b64encode(content["docx"]).decode()

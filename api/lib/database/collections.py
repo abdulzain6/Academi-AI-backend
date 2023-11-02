@@ -34,7 +34,7 @@ class CollectionDBManager:
             [("name", 1), ("user_uid", 1)], unique=True
         )
         if not file_manager:
-            self.file_manager = FileDBManager(connection_string, database_name, self)
+            self.file_manager = FileDBManager(connection_string, database_name, self, cache_manager)
         else:
             self.file_manager = file_manager
 

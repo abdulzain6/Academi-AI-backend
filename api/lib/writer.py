@@ -164,6 +164,7 @@ Follow the schema above (Important) Make sure the json is correct! You gave wron
     
     @retry(stop_max_attempt_number=3)
     def get_content(self, content_input: ContentInput):
+        content_input.minimum_word_count = max(content_input.minimum_word_count, 10)
         logging.info(f"Generating content for {content_input}.")
         html, text = self.generate_content_html(content_input)
         logging.info(f"Making pdf for {content_input}.")
