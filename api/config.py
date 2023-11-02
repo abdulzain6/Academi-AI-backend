@@ -13,7 +13,7 @@ def get_dict_from_env_var(env_var_name: str, default: Dict = None) -> Dict:
     return json.loads(env_val) if env_val is not None else default
 
 
-
+SIGMOZ_URL = os.getenv("SIGMOZ_URL")
 UNSTRUCTURED_API_KEY = os.getenv("UNSTRUCTURED_API_KEY", None)
 UNSTRUCTURED_URL = os.getenv("UNSTRUCTURED_URL", "http://localhost:8080/general/v0/general")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")

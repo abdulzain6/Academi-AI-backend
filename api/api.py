@@ -1,3 +1,4 @@
+from .telemetery import FastAPIInstrumentor, tracer_provider
 from .config import *
 from .routers.collections import router as collection_router
 from .routers.files import router as files_router
@@ -21,12 +22,11 @@ from starlette.status import HTTP_504_GATEWAY_TIMEOUT
 import asyncio
 import langchain
 import logging
-
+import secrets
 from .globals import (
     DOCS_PASSWORD,
     DOCS_USERNAME,
 )
-import secrets
 
 langchain.verbose = True
 logging.basicConfig(level=logging.INFO)
@@ -39,7 +39,7 @@ app = FastAPI(
     openapi_url=None,
 )
 
-
+FastAPIInstrumentor.instrument_app(app, tracer_provider=tracer_provider)
 security = HTTPBasic()
 
 

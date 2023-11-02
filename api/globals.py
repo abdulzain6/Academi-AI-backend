@@ -1,3 +1,4 @@
+from .telemetery import *
 from .config import *
 from langchain.embeddings import OpenAIEmbeddings
 from .lib.database import (

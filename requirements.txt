@@ -27,3 +27,8 @@ Markdown
 redis
 google-auth
 google-auth-oauthlib
+opentelemetry-instrumentation-redis
+opentelemetry-instrumentation-pymongo
+opentelemetry-instrumentation-fastapi
+opentelemetry-exporter-otlp
+opentelemetry-distro
