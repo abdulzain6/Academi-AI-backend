@@ -43,4 +43,5 @@ def reset_usage_job(
         try:
             subscription_manager.reset_all_limits(user.uid)
         except Exception as e:
-            logging.error(f"Error in reseting limit for {e}. {e}")
+            logging.error(f"Error in reseting limit for {user.uid}. {e}")
+    logging.info("Successfully reset limits")

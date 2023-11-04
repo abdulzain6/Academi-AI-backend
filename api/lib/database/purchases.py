@@ -147,7 +147,7 @@ class SubscriptionManager:
 
     def allocate_monthly_coins(self, user_id: str, allocate_no_check: bool = False) -> None:
         sub_doc = self.fetch_or_cache_subscription(user_id)
-        if not sub_doc["enabled"]:
+        if not sub_doc.get("enabled", True):
             return
         now = datetime.now(timezone.utc)
         last_allocation_date = sub_doc.get("last_coin_allocation_date", datetime.min.replace(tzinfo=timezone.utc))
@@ -167,7 +167,7 @@ class SubscriptionManager:
 
     def reset_monthly_limits(self, user_id: str, reset_no_check: bool = False) -> None:
         sub_doc = self.fetch_or_cache_subscription(user_id)
-        if not sub_doc["enabled"]:
+        if not sub_doc.get("enabled", True):
             return
         
         now = datetime.now(timezone.utc)
@@ -317,9 +317,8 @@ class SubscriptionManager:
 
     def reset_incremental_limits(self, user_id: str, reset_no_check: bool = False) -> None:
         sub_doc = self.fetch_or_cache_subscription(user_id)
-        if not sub_doc["enabled"]:
+        if not sub_doc.get("enabled", True):
             return
-        
         now = datetime.now(timezone.utc)
         last_reset_date = sub_doc.get("last_daily_reset_date", datetime.min.replace(tzinfo=timezone.utc))
 
