@@ -346,6 +346,15 @@ class SubscriptionManager:
 
 
     def reset_all_limits(self, user_id: str, reset_no_check: bool = False) -> None:
-        self.reset_monthly_limits(user_id, reset_no_check)
-        self.reset_incremental_limits(user_id, reset_no_check)
-        self.allocate_monthly_coins(user_id, reset_no_check)
+        try:
+            self.reset_monthly_limits(user_id, reset_no_check)
+        except Exception as e:
+            logging.error(f"Error reseting monthly limits for {user_id} {e}")
+        try:
+            self.reset_incremental_limits(user_id, reset_no_check)
+        except Exception as e:
+            logging.error(f"Error reseting monthly limits for {user_id} {e}")
+        try:
+            self.allocate_monthly_coins(user_id, reset_no_check)
+        except Exception as e:
+            logging.error(f"Error reseting monthly limits for {user_id} {e}")
