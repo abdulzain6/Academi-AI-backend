@@ -569,7 +569,9 @@ Lets think step by step to accomplish this.
 
             if not slide_content_obtained:
                 logging.error(f"Failed to get content for slide {i + 1}. Deleting the slide.")
-                del prs.slides[i]  # Delete the slide
+                rId = prs.slides._sldIdLst[i].rId
+                prs.part.drop_rel(rId)
+                del prs.slides._sldIdLst[i]
                 return
 
             presentation_slide = prs.slides[i]
