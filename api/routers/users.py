@@ -72,7 +72,7 @@ def is_daily_bonus_claimed(
     return {"status": "success", "is_claimed": is_claimed}
 
 
-@router.get("/points", response_model=UserPoints, tags=["points", "ads"])
+@router.get("/points", tags=["points", "ads"])
 def get_user_points(
     user_id=Depends(get_user_id), play_integrity_verified=Depends(verify_play_integrity)
 ):
