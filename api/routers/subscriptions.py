@@ -1,6 +1,7 @@
+import logging
 from fastapi import APIRouter, Depends
-from ..auth import get_user_id, verify_play_integrity
-from ..globals import subscription_manager
+from ..auth import get_user_id, verify_play_integrity, verify_cronjob_request
+from ..globals import subscription_manager, user_manager
 
 router = APIRouter()
 
@@ -33,3 +34,13 @@ def get_usage_limits(
     return {
         "limits" : subscription_manager.get_all_feature_usage_left(user_id)
     }
+    
+@router.get("/reset")
+def reset_usage_job(
+    verify=Depends(verify_cronjob_request),
+):
+    for user in user_manager.get_all():
+        try:
+            subscription_manager.reset_all_limits(user.uid)
+        except Exception as e:
+            logging.error(f"Error in reseting limit for {e}. {e}")

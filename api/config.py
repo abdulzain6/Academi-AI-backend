@@ -65,3 +65,4 @@ PRODUCT_ID_MAP = {
 }
 DOCS_PASSWORD = os.getenv("DOCS_PASSWORD", "zaighamnet")
 DOCS_USERNAME = os.getenv("DOCS_USERNAME", "chutikr")
+CRONJOB_KEY = os.getenv("CRONJOB_KEY", "ABRACADABRA_KAZAMM_HEHE_@#$")

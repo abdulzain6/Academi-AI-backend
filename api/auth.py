@@ -7,6 +7,7 @@ from google.auth.transport import requests
 from google.oauth2 import service_account
 from .globals import credentials_path, redis_cache_manager
 from .firebase import default_app
+from .config import CRONJOB_KEY
 
 import logging
 import jwt
@@ -90,5 +91,13 @@ def verify_google_token(id_token_header: HTTPAuthorizationCredentials = Depends(
             id_token_header.credentials, request, audience="https://api.academiai.org/api/v1/subscriptions/playstore/rtdn"
         )
     except Exception as e:
-        print(e)
+        raise HTTPException(status_code=401, detail=str(e)) from e
+    
+def verify_cronjob_request(id_token_header: HTTPAuthorizationCredentials = Depends(security)):
+    try:
+        if id_token_header.credentials == CRONJOB_KEY:
+            return
+        else:
+            raise ValueError("Wrong key")
+    except Exception as e:
         raise HTTPException(status_code=401, detail=str(e)) from e
