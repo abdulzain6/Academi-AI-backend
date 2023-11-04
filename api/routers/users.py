@@ -8,7 +8,8 @@ from ..globals import (
     collection_manager,
     user_points_manager,
     DEFAULT_POINTS_INCREMENT,
-    referral_manager
+    referral_manager,
+    subscription_manager
 )
 from ..lib.database.users import UserModel
 from ..lib.database.points import UserPoints
@@ -77,7 +78,9 @@ def get_user_points(
 ):
     logging.info(f"Get points request from {user_id}")
     if user_points := user_points_manager.get_user_points(user_id):
-        return user_points.model_dump()
+        if model := subscription_manager.get_feature_value(user_id, "MODEL"):
+            return {"points" : user_points.model_dump(), "model" : model.model_dump()}
+        return {"points" : user_points.model_dump()}
     else:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
 
