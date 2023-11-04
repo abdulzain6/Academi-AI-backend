@@ -1,0 +1,117 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["profile"],
+  "properties": {
+    "profile": {
+      "type": "object",
+      "required": ["name", "profession", "image_url", "about", "contact_methods", "social_links", "education", "skills", "interests"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The full name of the individual."
+        },
+        "profession": {
+          "type": "string",
+          "description": "The professional title of the individual."
+        },
+        "image_url": {
+          "type": "string",
+          "description": "A URL linking to a profile image."
+        },
+        "about": {
+          "type": "string",
+          "description": "A short bio or description of the individual."
+        },
+        "contact_methods": {
+          "type": "array",
+          "description": "List of different methods to contact the individual.",
+          "items": {
+            "type": "object",
+            "required": ["detail"],
+            "properties": {
+              "detail": {
+                "type": "string",
+                "description": "A contact detail such as a phone number or email."
+              }
+            }
+          }
+        },
+        "social_links": {
+          "type": "array",
+          "description": "Social media or other online profiles of the individual.",
+          "items": {
+            "type": "object",
+            "required": ["url", "display"],
+            "properties": {
+              "url": {
+                "type": "string",
+                "description": "The URL of the social media or online profile."
+              },
+              "display": {
+                "type": "string",
+                "description": "How the URL should be displayed or labeled."
+              }
+            }
+          }
+        },
+        "education": {
+          "type": "array",
+          "description": "Educational background of the individual.",
+          "items": {
+            "type": "object",
+            "required": ["degree", "institution", "timeframe"],
+            "properties": {
+              "degree": {
+                "type": "string",
+                "description": "The degree or qualification obtained."
+              },
+              "institution": {
+                "type": "string",
+                "description": "The institution from which the degree was obtained."
+              },
+              "timeframe": {
+                "type": "string",
+                "description": "The timeframe during which the degree was completed."
+              }
+            }
+          }
+        },
+        "skills": {
+          "type": "array",
+          "description": "A list of skills possessed by the individual along with proficiency levels.",
+          "items": {
+            "type": "object",
+            "required": ["name", "level"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "The name of the skill."
+              },
+              "level": {
+                "type": "string",
+                "description": "The proficiency level of the skill, often represented as a percentage."
+              }
+            }
+          }
+        },
+        "interests": {
+          "type": "array",
+          "description": "List of personal interests or hobbies.",
+          "items": {
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "The name of the interest or hobby."
+              }
+            }
+          }
+        }
+      },
+      "description": "The profile information for an individual."
+    }
+  },
+  "description": "A representation of a person's professional profile including personal data, contact information, education, and skills."
+}

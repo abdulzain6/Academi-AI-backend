@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="resume.css">
+  <title>Resume</title>
+</head>
+
+<body>
+  <div class="container">
+    <div class="word_split wrapper">
+      {% if personal_details %}
+        <span class="word word1">{{ personal_details.first_name }}</span>
+        <span class="word word2">{{ personal_details.last_name }}</span>
+      {% endif %}
+      <span class="word word3">Personal</span>
+      <span class="word word4">Details</span>
+      <span class="word word5">Employment</span>
+      <span class="word word6">History</span>
+      <span class="word word7">Education</span>
+      <span class="word word8">Personal</span>
+      <span class="word word9">Skills</span>
+      <span class="word word10">Technical</span>
+      <span class="word word11">Skills</span>
+      <span class="word word12">Get In</span>
+      <span class="word word13">Touch</span>
+      
+      {% if personal_details %}
+        <div class="bubble1">
+          <span class="the-arrow1"></span>
+          HI! <br/> I AM {{ personal_details.first_name }}
+        </div>
+        <div class="bubble2">
+          <span class="the-arrow2"></span>
+          <img src="{{ personal_details.image_url }}" alt="{{ personal_details.first_name }}"/>
+        </div>
+        <div class="bubble3">
+          <span class="the-arrow3"></span>
+          NATIONALITY: {{ personal_details.nationality }}<br/>
+          LOCATION: {{ personal_details.location }}<br/>
+          BIRTHDAY: {{ personal_details.birthday }}<br/>
+          HOBBIES: {{ personal_details.hobbies }}<br/>
+        </div>
+      {% endif %}
+      
+      {% if employment_history %}
+        <div class="bubble4">
+          <span class="the-arrow4"></span>
+          {% for job in employment_history %}
+            {{ job.position }} {{ job.years }}<br/>
+            {{ job.details }}<br/><br/>
+          {% endfor %}
+        </div>
+      {% endif %}
+      
+      {% if education %}
+        <div class="bubble5">
+          <span class="the-arrow5"></span>
+          {% for school in education %}
+            {{ school.institution }}<br/>
+            {{ school.qualification }}<br/>
+            {{ school.date_completed }}, GPA {{ school.gpa }}<br/><br/>
+          {% endfor %}
+        </div>
+      {% endif %}
+      
+      {% if personal_skills %}
+        <div class="bubble6">
+          <span class="the-arrow6"></span>
+          {% for skill in personal_skills %}
+            {{ skill }}<br/>
+          {% endfor %}
+        </div>
+      {% endif %}
+      
+      {% if technical_skills %}
+        <div class="bubble7">
+          <span class="the-arrow7"></span>
+          {% for tech_skill in technical_skills %}
+            {{ tech_skill }}<br/>
+          {% endfor %}
+        </div>
+      {% endif %}
+      
+      {% if contact %}
+        <div class="bubble8">
+          <span class="the-arrow8"></span>
+          {% if contact.phone %} PHONE: {{ contact.phone }}<br/> {% endif %}
+          {% if contact.email %} EMAIL: {{ contact.email }}<br/> {% endif %}
+          {% if contact.website %} WEBSITE: {{ contact.website }}<br/> {% endif %}
+          {% for name, url in contact.socials.items() %}
+            {{ name|upper }}: {{ url }}<br/>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+  </div><!-- end container -->
+  
+</body>
+
+</html>

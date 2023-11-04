@@ -1,0 +1,79 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "profile": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Full name of the person." },
+        "first_name": { "type": "string", "description": "First name of the person." },
+        "last_name": { "type": "string", "description": "Last name of the person." },
+        "image_url": { "type": "string", "description": "URL of the person's image." },
+        "contact_methods": {
+          "type": "array",
+          "description": "List of contact methods.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "detail": { "type": "string", "description": "A contact detail like email, phone, or address." }
+            },
+            "required": ["detail"]
+          }
+        },
+        "employment": {
+          "type": "array",
+          "description": "Employment history.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "dates": { "type": "string", "description": "Dates of employment." },
+              "company": { "type": "string", "description": "Name of the company." },
+              "title": { "type": "string", "description": "Job title." },
+              "description": { "type": "string", "description": "Description of job responsibilities and achievements." }
+            },
+            "required": ["dates", "company", "title", "description"]
+          }
+        },
+        "technical_skills": {
+          "type": "array",
+          "description": "List of technical skills.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string", "description": "Name of the skill." }
+            },
+            "required": ["name"]
+          }
+        },
+        "references": {
+          "type": "array",
+          "description": "List of professional references.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string", "description": "Full name of the reference." },
+              "company": { "type": "string", "description": "Name of the reference's company." },
+              "title": { "type": "string", "description": "Job title of the reference." },
+              "phone": { "type": "string", "description": "Phone number of the reference." },
+              "email": { "type": "string", "description": "Email address of the reference." }
+            },
+            "required": ["name", "company", "title", "phone", "email"]
+          }
+        },
+        "personal_interests": {
+          "type": "array",
+          "description": "List of personal interests.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string", "description": "Name of the interest." }
+            },
+            "required": ["name"]
+          }
+        }
+      },
+      "required": ["name", "contact_methods", "employment", "technical_skills", "references", "personal_interests"]
+    }
+  },
+  "required": ["profile"]
+}

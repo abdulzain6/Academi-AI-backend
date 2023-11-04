@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="resume.css">
+  <title>{{ profile.name if profile.name }}'s Resume</title>
+</head>
+<body>
+  <link
+    href='https://fonts.googleapis.com/css?family=Lora:400,700,400italic|Open+Sans:300,400,500,700|Waiting+for+the+Sunrise|Shadows+Into+Light'
+    rel='stylesheet' type='text/css'>
+
+  <div class="wrapper clearfix">
+    <div class="left">
+      <div class="name-hero">
+        <div class="me-img" style="background-image: url({{ profile.image_url if profile.image_url }});"></div>
+        <div class="name-text">
+          <h1>{{ profile.first_name }} <em>{{ profile.last_name }}</em></h1>
+          {% if profile.contact_methods %}
+            {% for method in profile.contact_methods %}
+              <p>{{ method.detail }}</p>
+            {% endfor %}
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="inner">
+        {% if profile.employment %}
+          <section>
+            <h1>Employment</h1>
+            {% for job in profile.employment %}
+              <p>{{ job.dates }} <em>{{ job.company }} | {{ job.title }}</em></p>
+              <p>{{ job.description }}</p>
+            {% endfor %}
+          </section>
+        {% endif %}
+        
+        {% if profile.technical_skills %}
+          <section>
+            <h1>Technical Skills</h1>
+            <ul class="skill-set">
+              {% for skill in profile.technical_skills %}
+                <li>{{ skill.name }}</li>
+              {% endfor %}
+            </ul>
+          </section>
+        {% endif %}
+        
+        {% if profile.references %}
+          <section>
+            <h1>References</h1>
+            {% for reference in profile.references %}
+              <p>{{ reference.name }} | <em>{{ reference.company }} | {{ reference.title }}</em></p>
+              <p>{{ reference.phone }} | {{ reference.email }}</p>
+            {% endfor %}
+          </section>
+        {% endif %}
+        
+        {% if profile.personal_interests %}
+          <section>
+            <h1>Personal Interests</h1>
+            <ul class="skill-set">
+              {% for interest in profile.personal_interests %}
+                <li>{{ interest.name }}</li>
+              {% endfor %}
+            </ul>
+          </section>
+        {% endif %}
+        
+        <section>
+          <div class="handmade">
+            <p>handmade by <em>{{ profile.name }}</em></p>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

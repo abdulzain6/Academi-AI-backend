@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.3/css/all.css">
+    <link rel="stylesheet" href="resume.css">
+    <title>Generic Portfolio Template</title>
+</head>
+
+<body>
+    <div class="wrapper">
+        {% if profile %}
+        <div class="intro">
+            {% if profile.image_url %}
+            <div class="profile">
+                <div class="photo">
+                    <img src="{{ profile.image_url }}" alt="Profile Photo">
+                </div>
+            </div>
+            {% endif %}
+            <div class="bio">
+                <h1 class="name">{{ profile.name or 'Your Name' }}</h1>
+                <p class="profession">{{ profile.profession or 'Your Profession' }}</p>
+            </div>
+            {% if profile.about %}
+            <div class="intro-section about">
+                <h2 class="title">About Me</h2>
+                <p class="paragraph">{{ profile.about }}</p>
+            </div>
+            {% endif %}
+            {% if profile.contact_methods %}
+            <div class="intro-section contact">
+                <h2 class="title">Contact</h2>
+                {% for method in profile.contact_methods %}
+                <div class="info-section">
+                    <span>{{ method.detail }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% if profile.social_links %}
+            <div class="intro-section follow">
+                <h2 class="title">Follow Me</h2>
+                {% for link in profile.social_links %}
+                <div class="info-section link">
+                    <a href="{{ link.url }}" target="_blank">{{ link.display }}</a>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+        <div class="detail">
+            {% if profile.education %}
+            <div class="detail-section edu">
+                <h2 class="title">Education</h2>
+                {% for edu in profile.education %}
+                <div class="timeline-block">
+                    <h3>{{ edu.degree }}</h3>
+                    <p>{{ edu.institution }}</p>
+                    <time>{{ edu.timeframe }}</time>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% if profile.skills %}
+            <div class="detail-section skills">
+                <h2 class="title">Skills</h2>
+                <ul>
+                    {% for skill in profile.skills %}
+                    <li>
+                        <span>{{ skill.name }}</span>
+                        <div class="sb-skeleton">
+                            <div class="skillbar" style="--pgbar-length: {{ skill.level }}"></div>
+                        </div>
+                    </li> 
+                    {% endfor %}
+
+                </ul>
+            </div>
+            {% endif %}
+            {% if profile.interests %}
+            <div class="detail-section interests">
+                <h2 class="title">Interests</h2>
+                <ul>
+                    {% for interest in profile.interests %}
+                    <li>{{ interest.name }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+
+</html>

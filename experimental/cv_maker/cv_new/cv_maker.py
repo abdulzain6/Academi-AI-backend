@@ -43,7 +43,9 @@ class CVMaker:
                 shutil.copy2(source_item, destination_item)
         return temp_dir
 
-    def make_cv(self, template_name: str, template_input: dict, file_path: str = "cv.png") -> str:
+    def make_cv(
+        self, template_name: str, template_input: dict, file_path: str = "cv.png"
+    ) -> str:
         if template_name not in self.get_template_names():
             raise ValueError("Template does not exist")
 
@@ -88,63 +90,69 @@ if __name__ == "__main__":
     from template_loader import template_loader
 
     cv_maker = CVMaker(template_loader(), "/usr/bin/google-chrome")
-    resume_data = {
-        "profile": {
-            "name": "Shashank Srivastava",
-            "email": "shashank12@mnnit.ac.in",
-            "designation": "Assistant Professor",
-            "institution": "Motilal Nehru National Institute of Technology, Allahabad, Prayagraj, India",
-            "image_url": "http://mnnit.ac.in/ss/images/shashank.jpg",
-            "graduation_year": "March, 2014",
-            "education": "Doctorate, Indian Institute of Information Technology-Allahabad",
-            "about": "DUGC of Computer Science & Engineering Department",
-            "telephone": "0532-2271351",
-            "work_experience": [
-                {
-                "title": "Senior Research Fellow",
-                "company": "Indian Institute of Information Technology",
-                "year": "2010-2014",
-                "description": "Conducted advanced research in network security and published several papers in peer-reviewed journals."
-                },
-                {
-                "title": "Lecturer",
-                "company": "University of Technology",
-                "year": "2006-2010",
-                "description": "Taught undergraduate courses in computer science and supervised student projects."
-                },
-                {
-                "title": "Software Developer Intern",
-                "company": "Tech Innovations Inc.",
-                "year": "2005",
-                "description": "Developed a secure web application for internal use and contributed to various software development projects."
-                }
-            ],
-            "workshops": [
-
-            ],
-            "education_history": [
-                {
-                "institution": "Indian Institute of Information Technology-Allahabad",
-                "degree": "Doctorate",
-                "field": "Information Security",
-                "year": "2010-2014",
-                "description": "Conducted research on secure mobile agent communication and received the 'Best Thesis Award'."
-                },
-                {
-                "institution": "National Institute of Technology",
-                "degree": "Master of Technology",
-                "field": "Computer Science",
-                "year": "2006-2008",
-                "description": "Specialized in distributed systems and wrote a thesis on fault tolerance in distributed networks."
-                },
-                {
-                "institution": "Regional Engineering College",
-                "degree": "Bachelor of Technology",
-                "field": "Computer Science and Engineering",
-                "year": "2002-2006",
-                "description": "Focused on software engineering principles and completed a capstone project on database management systems."
-                }
-            ]
+    fake_data = data = {
+    "personal_details": {
+        "first_name": "Antony",
+        "last_name": "Smith",
+        "image_url": "https://dribbble.s3.amazonaws.com/users/10958/screenshots/271458/librarian.jpg",
+        "nationality": "American",
+        "location": "New York, NY",
+        "birthday": "1985-06-15",
+        "hobbies": "Painting, Hiking, Reading"
+    },
+    "employment_history": [
+        {
+            "position": "Graphic Designer",
+            "years": "2005 - 2007",
+            "details": "Involved in various design projects, focusing on branding and visual identities."
+        },
+        {
+            "position": "Creative Director",
+            "years": "2008 - Present",
+            "details": "Leading the creative team and overseeing all design and campaign projects."
+        }
+    ],
+    "education": [
+        {
+            "institution": "High School of Arts",
+            "qualification": "High School Diploma",
+            "date_completed": "May 2004",
+            "gpa": "3.5"
+        },
+        {
+            "institution": "University of Design",
+            "qualification": "Bachelor of Fine Arts",
+            "date_completed": "July 2007",
+            "gpa": "3.8"
+        }
+    ],
+    "personal_skills": [
+        "Social Commitment",
+        "Organization",
+        "Creativity",
+        "Communication",
+        "Teamwork"
+    ],
+    "technical_skills": [
+        "Photoshop",
+        "Illustrator",
+        "InDesign",
+        "Flash",
+        "Dreamweaver",
+        "XHTML/CSS",
+        "JavaScript"
+    ],
+    "contact": {
+        "phone": "+1234567890",
+        "email": "antony.smith@example.com",
+        "website": "www.antonymsmithdesigns.com",
+        "socials": {
+            "linkedin": "linkedin.com/in/antonymsmith",
+            "twitter": "@antonymdesigns",
+            "dribbble": "dribbble.com/antonymsmith",
+            # Add or remove social media accounts as needed
         }
     }
-    print(cv_maker.make_cv("SpectrumVitae", resume_data))
+}
+
+    print(cv_maker.make_cv("Elegant Spectrum", fake_data))

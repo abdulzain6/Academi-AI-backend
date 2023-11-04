@@ -1,0 +1,68 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Resume Data",
+  "description": "Schema for validating resume data",
+  "type": "object",
+  "properties": {
+    "personal_details": {
+      "type": "object",
+      "properties": {
+        "first_name": { "type": "string" },
+        "last_name": { "type": "string" },
+        "image_url": { "type": "string", "format": "uri" },
+        "nationality": { "type": "string" },
+        "location": { "type": "string" },
+        "birthday": { "type": "string", "format": "date" },
+        "hobbies": { "type": "string" }
+      },
+      "required": ["first_name", "last_name", "image_url", "nationality", "location", "birthday", "hobbies"]
+    },
+    "employment_history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "position": { "type": "string" },
+          "years": { "type": "string" },
+          "details": { "type": "string" }
+        },
+        "required": ["position", "years", "details"]
+      }
+    },
+    "education": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "institution": { "type": "string" },
+          "qualification": { "type": "string" },
+          "date_completed": { "type": "string" },
+          "gpa": { "type": "string" }
+        },
+        "required": ["institution", "qualification", "date_completed", "gpa"]
+      }
+    },
+    "personal_skills": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "technical_skills": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "contact": {
+      "type": "object",
+      "properties": {
+        "phone": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "website": { "type": "string", "format": "uri" },
+        "socials": {
+          "type": "object",
+          "additionalProperties": { "type": "string", "format": "uri" }
+        }
+      },
+      "required": ["phone", "email", "website", "socials"]
+    }
+  },
+  "required": ["personal_details", "employment_history", "education", "personal_skills", "technical_skills", "contact"]
+}
