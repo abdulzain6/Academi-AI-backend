@@ -1,0 +1,134 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "profile": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The full name of the individual."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The email address of the individual."
+        },
+        "designation": {
+          "type": "string",
+          "description": "The job title or academic position of the individual."
+        },
+        "institution": {
+          "type": "string",
+          "description": "The name of the institution or organization where the individual is employed or studies."
+        },
+        "image_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "The URL of the individual's profile image."
+        },
+        "graduation_year": {
+          "type": "string",
+          "description": "The year the individual expects to graduate or has graduated."
+        },
+        "education": {
+          "type": "string",
+          "description": "A brief description of the individual's highest level of educational attainment."
+        },
+        "about": {
+          "type": "string",
+          "description": "A short bio or description about the individual."
+        },
+        "telephone": {
+          "type": "string",
+          "description": "The individual's telephone number."
+        },
+        "work_experience": {
+          "type": "array",
+          "description": "A list of work experiences, including job titles, employers, and dates of employment.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string",
+                "description": "The title of the job position."
+              },
+              "company": {
+                "type": "string",
+                "description": "The name of the company or organization."
+              },
+              "year": {
+                "type": "string",
+                "description": "The year or range of years during which the job was held."
+              }
+            },
+            "required": ["title", "company", "year"]
+          }
+        },
+        "workshops": {
+          "type": "array",
+          "description": "A list of workshops attended by the individual.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "The name of the workshop."
+              },
+              "location": {
+                "type": "string",
+                "description": "The location where the workshop was held."
+              },
+              "year": {
+                "type": "string",
+                "description": "The year when the workshop was attended."
+              }
+            },
+            "required": ["name", "location", "year"]
+          }
+        },
+        "education_history": {
+          "type": "array",
+          "description": "A list detailing the individual's educational history.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "institution": {
+                "type": "string",
+                "description": "The name of the educational institution."
+              },
+              "degree": {
+                "type": "string",
+                "description": "The degree or qualification obtained."
+              },
+              "field": {
+                "type": "string",
+                "description": "The field of study or specialization."
+              },
+              "year": {
+                "type": "string",
+                "description": "The year or range of years during which the degree was pursued."
+              }
+            },
+            "required": ["institution", "degree", "field", "year"]
+          }
+        }
+      },
+      "required": [
+        "name",
+        "email",
+        "designation",
+        "institution",
+        "image_url",
+        "graduation_year",
+        "education",
+        "about",
+        "telephone",
+        "work_experience",
+        "workshops",
+        "education_history"
+      ]
+    }
+  },
+  "required": ["profile"]
+}

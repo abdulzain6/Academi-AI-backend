@@ -52,6 +52,9 @@ def require_points_for_feature(feature_key: str):
                     f"An error occurred: {e}. Refunding points for user: {user_id} on feature: {feature_key}"
                 )
                 user_points_manager.increment_user_points(user_id, required_points)
+                if isinstance(e, HTTPException):
+                    raise e
+                
                 raise HTTPException(500, detail=str(e))
 
         return wrapper

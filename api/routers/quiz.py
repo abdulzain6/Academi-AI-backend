@@ -99,7 +99,7 @@ def evaluate_quiz(
         file_manager,
         None,
         global_chat_model,
-        **global_chat_model_kwargs,
+        global_chat_model_kwargs,
     )
     try:
         return quiz_generator.evaluate_quiz(user_answers)

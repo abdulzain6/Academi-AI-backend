@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css">
+    <link rel="stylesheet" href="resume.css">
+    <title>{{ profile.name }} - Resume</title>
+</head>
+
+<body>
+    <div id="inner-nav"></div>
+    <div id="container">
+        <div id="profile">
+            <div id="image">
+                <img id="profile-photo" src="{{ profile.image_url }}" alt="Profile-Image">
+            </div>
+            <p id="name">{{ profile.name }}<br><span id="email">{{ profile.email }}</span></p>
+            <p id="designation">{{ profile.designation }}<br><span id="college">{{ profile.institution }}</span></p>
+            <hr width="100%">
+            <div id="about">
+                <p style="display:inline;">About</p>
+            </div>
+            <p id="year-graduation">Expected Year of Graduation<br><strong>{{ profile.graduation_year }}</strong></p>
+            <p id="education">Education<br><strong>{{ profile.education }}</strong></p>
+            <p id="more-about">More about me<br><span>{{ profile.about }}</span></p>
+            <p id="telephone">Telephone<br><strong>{{ profile.telephone }}</strong></p>
+        </div>
+        <div id="info-cards">
+            {% if profile.work_experience %}
+            <div class="card">
+                <p><i class="fas fa-briefcase stroke-transparent"></i>&nbsp;&nbsp;&nbsp;Work Experience</p>
+                <ul>
+                {% for job in profile.work_experience %}
+                    <li>
+                        <p class="tags">{{ job.title }}<br><span>{{ job.company }} | <span>{{ job.year }}</span></span></p>
+                    </li>
+                {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            
+            {% if profile.workshops %}
+            <div class="card">
+                <p><i class="fas fa-briefcase stroke-transparent"></i>&nbsp;&nbsp;&nbsp;Workshop</p>
+                <ul>
+                    {% for workshop in profile.workshops %}
+                    <li>
+                        <p class="tags">{{ workshop.name }}<br><span>{{ workshop.location }} | <span>{{ workshop.year }}</span></span></p>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+            
+            {% if profile.education_history %}
+            <div class="card">
+                <p><i class="fas fa-graduation-cap stroke-transparent"></i>&nbsp;&nbsp;&nbsp;Education</p>
+                <ul>
+                    {% for education in profile.education_history %}
+                    <li>
+                        <p class="tags">{{ education.institution }}<br><span>{{ education.degree }}, {{ education.field }} | <span>{{ education.year }}</span></span></p>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+        
+    </div>
+</body>
+
+</html>

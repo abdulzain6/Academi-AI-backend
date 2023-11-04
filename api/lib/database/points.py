@@ -19,7 +19,7 @@ class UserPointsManager:
         self,
         connection_string: str,
         database_name: str,
-        default_points: int = 10,
+        default_points: int = 15,
         daily_points: int = 3,
         weekly_daily_bonus_points: int = 10,
         max_ads_per_hour: int = 5,

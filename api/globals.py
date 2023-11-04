@@ -129,7 +129,7 @@ subscription_manager = SubscriptionManager(
                     enabled=True,
                 )
             ],
-            monthly_coins=MonthlyCoinsFeature(amount=2500),
+            monthly_coins=MonthlyCoinsFeature(amount=2000),
         ),
     },
     redis_client=redis.from_url(REDIS_URL),

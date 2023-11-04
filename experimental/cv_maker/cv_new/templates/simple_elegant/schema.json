@@ -1,0 +1,114 @@
+{
+    "$schema": "http://json-schema.org/schema#",
+    "type": "object",
+    "properties": {
+      "first_name": {
+        "type": "string"
+      },
+      "last_name": {
+        "type": "string"
+      },
+      "phone": {
+        "type": "string"
+      },
+      "email": {
+        "type": "string"
+      },
+      "website": {
+        "type": "string"
+      },
+      "location": {
+        "type": "string"
+      },
+      "image_link": {
+        "type": "string"
+      },
+      "presentation": {
+        "type": "string"
+      },
+      "experiences": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "company_name": {
+              "type": "string"
+            },
+            "start_date": {
+              "type": "string"
+            },
+            "end_date": {
+              "type": "string"
+            },
+            "current": {
+              "type": "boolean"
+            },
+            "job_title": {
+              "type": "string"
+            },
+            "job_description": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "company_name",
+            "current",
+            "end_date",
+            "job_description",
+            "job_title",
+            "start_date"
+          ]
+        }
+      },
+      "skills": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "hobbies": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "social": {
+        "type": "object",
+        "patternProperties": {
+          "^[a-zA-Z0-9]+$": {
+            "type": "object",
+            "properties": {
+              "username": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string",
+                "format": "uri"
+              }
+            },
+            "required": [
+              "url",
+              "username"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+      
+    },
+    "required": [
+      "email",
+      "experiences",
+      "first_name",
+      "hobbies",
+      "image_link",
+      "last_name",
+      "location",
+      "phone",
+      "presentation",
+      "skills",
+      "social",
+      "website"
+    ]
+  }
