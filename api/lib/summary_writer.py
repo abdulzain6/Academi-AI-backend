@@ -25,7 +25,7 @@ class SummaryWriter:
         self.llm = llm
         self.llm_kwargs = llm_kwargs
 
-    def get_markdown(self, data: str, word_count: int) -> Content:
+    def get_markdown(self, data: str, word_count: int, instructions: str) -> Content:
         parser = PydanticOutputParser(pydantic_object=Content)
         system_prompt = """
 You are an AI designed to assist people in writing summaries.
@@ -38,6 +38,13 @@ Use the features of markdown like headings, text formatting to make the document
 ===============
 {data}
 ===============
+
+
+You must Follow these instructions while writing the summary:
+===============
+{instructions}
+===============
+
 
 Schema:
 ======================
@@ -58,6 +65,7 @@ Follow the limit, you gave too small before.
             input_variables=[
                 "minimum_words",
                 "data",
+                "instructions"
             ],
             partial_variables={"format_instructions" : parser.get_format_instructions()}
         )
@@ -65,12 +73,13 @@ Follow the limit, you gave too small before.
 
         return chain.run(
             minimum_words=word_count,
-            data=data
+            data=data,
+            instructions=instructions
         )
 
-    def generate_content_html(self, data: str, word_count: int) -> tuple[str, str]:
+    def generate_content_html(self, data: str, word_count: int, instructions: str) -> tuple[str, str]:
         #plan = self.get_content_plan(content_input)
-        content = self.get_markdown(data, word_count)
+        content = self.get_markdown(data, word_count, instructions)
         return markdown(content.content_markdown), content.content_markdown
     
     def html_to_pdf_bytes(self, html: str) -> bytes:
@@ -84,9 +93,9 @@ Follow the limit, you gave too small before.
         return docx_bytes
     
     @retry(stop_max_attempt_number=3)
-    def get_content(self, data: str, word_count: int):
+    def get_content(self, data: str, word_count: int, instructions: str):
         word_count = max(word_count, 10)
-        html, text = self.generate_content_html(data, word_count)
+        html, text = self.generate_content_html(data, word_count, instructions)
         pdf_bytes = self.html_to_pdf_bytes(html)
         docx_bytes = self.html_to_docx_bytes(html)
         return {

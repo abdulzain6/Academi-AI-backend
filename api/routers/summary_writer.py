@@ -18,6 +18,7 @@ class SummaryInput(BaseModel):
     collection_name: Optional[str] = None
     file_name: Optional[str] = None
     word_count: int
+    instructions: str
 
 
 def select_random_chunks(text: str, chunk_size: int, total_length: int) -> str:
@@ -55,7 +56,7 @@ def write_summary(
         raise HTTPException(400, detail="Collection not found!")
 
     if input.file_name and not file_manager.file_exists(
-        collection_uid=collection_manager.resolve_collection_uid(input.collection_name),
+        collection_uid=collection_manager.resolve_collection_uid(input.collection_name, user_id=user_id),
         user_id=user_id,
         filename=input.file_name,
     ):
@@ -68,8 +69,8 @@ def write_summary(
             user_id=user_id,
             collection_name=input.collection_name,
             filename=input.file_name,
-            data=file.file_content,
         )
+        data = file.file_content
     else:
         files = file_manager.get_all_files(
             user_id=user_id, collection_name=input.collection_name
@@ -80,18 +81,18 @@ def write_summary(
     kwargs = {**global_chat_model_kwargs}
     if model_name:
         kwargs["model"] = model_name
-        
-
+    
     summary_writer = SummaryWriter(
         global_chat_model,
         llm_kwargs={
             "temperature": 0.3,
             **kwargs
         }
-)
-    content = summary_writer.get_content(
-        select_random_chunks(data, 1000, 4000), input.word_count
     )
+    content = summary_writer.get_content(
+        select_random_chunks(data, 1000, 5000), input.word_count, input.instructions
+    )
+
     content["pdf"] = base64.b64encode(content["pdf"]).decode()
     content["docx"] = base64.b64encode(content["docx"]).decode()
     return JSONResponse(content=content)

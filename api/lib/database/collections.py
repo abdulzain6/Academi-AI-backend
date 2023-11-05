@@ -53,6 +53,32 @@ class CollectionDBManager:
 
         return None
 
+    def get_collection_names_by_uids(self, collection_uids: List[str]) -> Dict[str, Optional[str]]:
+        collection_names = {}
+        # First, try to get as many names as possible from cache
+        for uid in collection_uids:
+            cache_key = f"collection_name:{uid}"
+            if cached_name := self.cache_manager.get(cache_key):
+                collection_names[uid] = cached_name
+                collection_uids.remove(uid)  # Remove the uid from the list as it's already cached
+
+        # If there are any uids left that weren't in the cache, fetch them from the database
+        if collection_uids:
+            cursor = self.collection_collection.find(
+                {"collection_uid": {"$in": collection_uids}},
+                {"_id": 0, "collection_uid": 1, "name": 1}
+            )
+            for doc in cursor:
+                collection_names[doc["collection_uid"]] = doc["name"]
+                self.cache_manager.set(f"collection_name:{doc['collection_uid']}", doc['name'])
+
+        # For any uids that were not found in the cache or the database, set them as None
+        for uid in collection_uids:
+            if uid not in collection_names:
+                collection_names[uid] = None
+
+        return collection_names
+
     def resolve_collection_uid(self, name: str, user_id: str) -> Optional[str]:
         cache_key = f"collection_uid:{name}:{user_id}"
         if cached_data := self.cache_manager.get(cache_key):
@@ -86,46 +112,66 @@ class CollectionDBManager:
         else:
             raise ValueError("Collection already exists")
 
-    def get_collection_by_name_and_user(
-        self, name: str, user_id: str
-    ) -> Optional[CollectionModel]:
+    def get_collection_by_name_and_user(self, name: str, user_id: str) -> Optional[CollectionModel]:
         cache_key = f"collection_by_name_and_user:{name}:{user_id}"
-        if cached_data := self.cache_manager.get(cache_key):
+        cached_data = self.cache_manager.get(cache_key)
+        if cached_data is not None:
             return CollectionModel(**cached_data)
 
-        if collection_data := self.collection_collection.find_one({"name": name}):
-            collection_data[
-                "number_of_files"
-            ] = self.file_manager.count_files_in_collection(user_id, name)
+        # Use aggregation to find the specific collection and count the number of files
+        pipeline = [
+            {"$match": {"name": name, "user_uid": user_id}},
+            {
+                "$lookup": {
+                    "from": "files",  # Ensure this matches your files collection name
+                    "localField": "collection_uid",  # This field should exist in your collections documents
+                    "foreignField": "collection_uid",  # This field should exist in your files documents
+                    "as": "files",
+                }
+            },
+            {"$addFields": {"number_of_files": {"$size": "$files"}}},
+            {"$project": {"files": 0}},  # Exclude the "files" field from the results
+        ]
+
+        try:
+            collection_data = next(self.collection_collection.aggregate(pipeline))
+        except StopIteration:
+            return None
+
+        if collection_data:
+            collection_data.pop('files', None)
             self.cache_manager.set(cache_key, collection_data)
             return CollectionModel(**collection_data)
 
         return None
 
+
     def get_all_by_user(self, user_id: str) -> List[CollectionModel]:
         cache_key = f"all_collections_by_user:{user_id}"
-        if cached_data := self.cache_manager.get(cache_key):
-            collections = []
-            for data in cached_data:
-                data["number_of_files"] = self.file_manager.count_files_in_collection(
-                    user_id, data["name"]
-                )
-                collections.append(CollectionModel(**data))
-            return collections
+        cached_data = self.cache_manager.get(cache_key)
+        if cached_data is not None:
+            return [CollectionModel(**data) for data in cached_data]
 
-        cursor = self.collection_collection.find({"user_uid": user_id})
-        essential_collections = []
-        collections = []
-        for doc in cursor:
-            essential_doc = {key: doc[key] for key in doc if key != "number_of_files"}
-            essential_collections.append(essential_doc)
-            doc["number_of_files"] = self.file_manager.count_files_in_collection(
-                user_id, essential_doc["name"]
-            )
-            collections.append(CollectionModel(**doc))
+        pipeline = [
+            {"$match": {"user_uid": user_id}},
+            {
+                "$lookup": {
+                    "from": "files",  # Make sure this is the correct name of the files collection
+                    "localField": "collection_uid",  # Verify this field exists in the collections
+                    "foreignField": "collection_uid",  # Verify this field exists in the files
+                    "as": "files",
+                }
+            },
+            {"$addFields": {"number_of_files": {"$size": "$files"}}},
+            {"$project": {"files": 0}},  # Exclude the "files" field from the results
+        ]
+        results = list(self.collection_collection.aggregate(pipeline))
 
-        self.cache_manager.set(cache_key, essential_collections)
-        return collections
+        # Cache the results after excluding the number_of_files field to save space
+        cache_data = [{k: v for k, v in doc.items() if k != "number_of_files"} for doc in results]
+        self.cache_manager.set(cache_key, cache_data)
+
+        return [CollectionModel(**doc) for doc in results]
 
     def update_collection(
         self, user_id: str, collection_name: str, **kwargs: Dict
