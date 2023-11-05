@@ -133,54 +133,41 @@ class MessageDBManager:
             return None
 
     def get_all_conversations(self, user_id: str) -> Optional[List[LatestConversation]]:
-        pipeline = [
-            {"$match": {"user_id": user_id}},  # Match the document for the specific user
-            {"$project": {
-                "conversations": {"$objectToArray": "$conversations"}
-            }},  # Convert conversations to an array
-            {"$unwind": "$conversations"},  # Unwind the array
-            {"$set": {
-                "conversation_id": "$conversations.k",  # Extract the key as conversation_id
-                "conversation_data": "$conversations.v"  # Set the value as conversation_data
-            }},
-            {"$set": {
-                "latest_message": {"$arrayElemAt": ["$conversation_data.messages", -1]},  # Get the latest message
-                "metadata": "$conversation_data.metadata",  # Set metadata
-            }},
-            {"$project": {
-                "conversation_id": 1,
-                "latest_message": 1,
-                "metadata": 1
-            }}  # Project only the fields we want
-        ]
-        conversations_cursor = self.message_collection.aggregate(pipeline)
+        if not (
+            user_data := self.message_collection.find_one(
+                {"user_id": user_id}, {"conversations": 1}
+            )
+        ):
+            return None
         latest_conversations = []
-        metadata_list = []
+        for conv_id, conv_data in user_data.get("conversations", {}).items():
+            latest_message = (
+                MessagePair(**conv_data["messages"][-1])
+                if conv_data["messages"]
+                else None
+            )
 
-        # Fetch the metadata first to batch-process collection names
-        for conv_data in conversations_cursor:
             metadata = ConversationMetadata.model_validate(conv_data.get("metadata"))
-            metadata_list.append((conv_data['conversation_id'], metadata))
-        
-        # Get all unique collection_uids
-        collection_uids = list({metadata.collection_uid for _, metadata in metadata_list})
-        
-        # Get collection names by uids
-        collection_names = self.collection_dbmanager.get_collection_names_by_uids(collection_uids)
-        
-        # Process the fetched metadata and collection names
-        for conv_id, metadata in metadata_list:
-            collection_name = collection_names.get(metadata.collection_uid, "[<DELETED>]")
-            file_name = metadata.file_name
-            
-            if metadata.chat_type == ChatType.FILE and not self.file_dbmanager.file_exists(
-                user_id, metadata.collection_uid, file_name
-            ):
-                file_name = "[<DELETED>]"
+            collection_name = self.collection_dbmanager.get_collection_name_by_uid(
+                metadata.collection_uid
+            )
+            if not collection_name and metadata.chat_type in {
+                ChatType.FILE,
+                ChatType.COLLECTION,
+            }:
+                collection_name = "[<DELETED>]"
                 metadata.chat_type = ChatType.DELETED
 
-            latest_message_data = conv_data.get('latest_message')
-            latest_message = MessagePair(**latest_message_data) if latest_message_data else None
+            if (
+                self.file_dbmanager.file_exists(
+                    user_id, metadata.collection_uid, metadata.file_name
+                )
+                or metadata.chat_type != ChatType.FILE
+            ):
+                file_name = metadata.file_name
+            else:
+                file_name = "[<DELETED>]"
+                metadata.chat_type = ChatType.DELETED
 
             latest_conversation = LatestConversation(
                 conversation_id=conv_id,
@@ -193,8 +180,7 @@ class MessageDBManager:
                 latest_message=latest_message,
             )
             latest_conversations.append(latest_conversation)
-
-        return latest_conversations or None
+        return latest_conversations
 
     def delete_conversation(self, user_id: str, conversation_id: str) -> int:
         result = self.message_collection.update_one(
