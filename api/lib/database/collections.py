@@ -147,11 +147,6 @@ class CollectionDBManager:
 
 
     def get_all_by_user(self, user_id: str) -> List[CollectionModel]:
-        cache_key = f"all_collections_by_user:{user_id}"
-        cached_data = self.cache_manager.get(cache_key)
-        if cached_data is not None:
-            return [CollectionModel(**data) for data in cached_data]
-
         pipeline = [
             {"$match": {"user_uid": user_id}},
             {
@@ -166,7 +161,6 @@ class CollectionDBManager:
             {"$project": {"files": 0}},  # Exclude the "files" field from the results
         ]
         results = list(self.collection_collection.aggregate(pipeline))
-        self.cache_manager.set(cache_key, results)
         return [CollectionModel(**doc) for doc in results]
 
     def update_collection(
