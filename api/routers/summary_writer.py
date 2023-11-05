@@ -82,6 +82,7 @@ def write_summary(
     if model_name:
         kwargs["model"] = model_name
     
+   # kwargs["model"] = "gpt-3.5-turbo-16k"
     summary_writer = SummaryWriter(
         global_chat_model,
         llm_kwargs={
@@ -90,7 +91,7 @@ def write_summary(
         }
     )
     content = summary_writer.get_content(
-        select_random_chunks(data, 1000, 5000), input.word_count, input.instructions
+        select_random_chunks(data, 1000, 4500), input.word_count, input.instructions
     )
 
     content["pdf"] = base64.b64encode(content["pdf"]).decode()

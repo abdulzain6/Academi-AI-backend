@@ -298,6 +298,18 @@ class SubscriptionManager:
                 return True  # Successfully toggled the feature
         return False  # Feature not found
     
+    def is_monthly_limit_feature_enabled(self, user_id: str, feature_name: str) -> bool:
+        """
+        Checks if the given feature is enabled for the user.
+        
+        :param user_id: The ID of the user.
+        :param feature_name: The name of the feature to check.
+        :return: True if the feature is enabled, False otherwise.
+        """
+        sub_doc = self.fetch_or_cache_subscription(user_id)
+        return next((feature.get("enabled", False) for feature in sub_doc["monthly_limit_features"] if feature["name"] == feature_name), False)
+
+    
     def get_all_feature_usage_left(self, user_id: str) -> List[Dict[str, Union[str, int]]]:
         self.reset_all_limits(user_id)
         sub_doc = self.fetch_or_cache_subscription(user_id)
