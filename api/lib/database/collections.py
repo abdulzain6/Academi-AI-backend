@@ -166,11 +166,7 @@ class CollectionDBManager:
             {"$project": {"files": 0}},  # Exclude the "files" field from the results
         ]
         results = list(self.collection_collection.aggregate(pipeline))
-
-        # Cache the results after excluding the number_of_files field to save space
-        cache_data = [{k: v for k, v in doc.items() if k != "number_of_files"} for doc in results]
-        self.cache_manager.set(cache_key, cache_data)
-
+        self.cache_manager.set(cache_key, results)
         return [CollectionModel(**doc) for doc in results]
 
     def update_collection(
