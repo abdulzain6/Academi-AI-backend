@@ -75,23 +75,22 @@ class UserPointsManager:
         """
         user_points: UserPoints = self.get_user_points(uid)
         now = datetime.now(timezone.utc)
-        last_claimed = user_points.last_claimed
+        last_claimed: Optional[datetime] = user_points.last_claimed
 
-        if last_claimed is None:
-            return 1  # Assuming a streak of 1 if never claimed
-
-        # Ensure last_claimed is also offset-aware
-        if (
-            last_claimed.tzinfo is None
-            or last_claimed.tzinfo.utcoffset(last_claimed) is None
-        ):
+        if last_claimed and last_claimed.tzinfo is None:
             last_claimed = last_claimed.replace(tzinfo=timezone.utc)
 
-        if (now - last_claimed) >= timedelta(days=1):
-            return 1  # Streak is expired, return 1
-        
-        return user_points.streak_count  # Return current streak count otherwise
+        if last_claimed and now - last_claimed < timedelta(days=1):
+            return 0
 
+        streak_count: int = (
+            user_points.streak_count
+            if last_claimed and now - last_claimed < timedelta(days=2)
+            else 0
+        )
+
+        return streak_count % 7
+    
     def is_daily_bonus_claimed(self, uid: str) -> bool:
         """
         Check if the daily bonus has already been claimed by the user identified by uid.
@@ -139,7 +138,7 @@ class UserPointsManager:
         )
         streak_count += 1
         bonus_points = (
-            10 if streak_count == self.weekly_daily_bonus_points else self.daily_points
+            self.weekly_daily_bonus_points if streak_count == 7 else self.daily_points
         )
 
         try:
