@@ -147,12 +147,13 @@ class SubscriptionManager:
         
         existing_doc = self.subscriptions.find_one({"user_id": user_id})
         if update or not existing_doc:
-            if existing_doc.get("purchase_token"):
-                raise ValueError("Token already used")
-            
-            if purchase_token in self.retrieve_tokens(user_id):
-                raise ValueError("Token already used")
-            
+            if purchase_token:
+                if existing_doc.get("purchase_token"):
+                    raise ValueError("Token already used")
+                
+                if purchase_token in self.retrieve_tokens(user_id):
+                    raise ValueError("Token already used")
+                
             self.add_token(user_id, purchase_token)
             logging.info(f"Applying/Updating subscription for {user_id} token {purchase_token}")
             self.subscriptions.update_one({"user_id": user_id}, {"$set": doc}, upsert=True)

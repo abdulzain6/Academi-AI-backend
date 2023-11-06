@@ -55,6 +55,8 @@ class RedisCache(BaseCache):
         key = self._key(prompt, llm_string)
         try:
             for idx, gen in enumerate(return_val):
+                if not gen.text:
+                    continue
                 data_str = dumps(gen)  # using custom dumps
                 self.redis.hset(key, str(idx), data_str)
 
