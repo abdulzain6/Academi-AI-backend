@@ -132,7 +132,7 @@ subscription_manager = SubscriptionManager(
             monthly_coins=MonthlyCoinsFeature(amount=2000),
         ),
     },
-    redis_client=redis.from_url(REDIS_URL),
+    cache_manager=RedisCacheManager(redis.from_url(REDIS_URL), ttl=3600),
 )
 
 

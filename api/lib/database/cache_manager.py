@@ -7,7 +7,7 @@ class CacheProtocol(Protocol):
     def get(self, key: str) -> Optional[Any]:
         ...
 
-    def set(self, key: str, value: Any) -> None:
+    def set(self, key: str, value: Any, ttl: int = None) -> None:
         ...
 
     def delete(self, key: str) -> None:

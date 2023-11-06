@@ -2,13 +2,12 @@ from datetime import datetime, timedelta, timezone
 from pydantic import BaseModel
 from pymongo import MongoClient
 from enum import Enum
-from typing import Any, Dict, List, Tuple
+from typing import Dict, List, Tuple
 from .points import UserPointsManager
 from typing import Union
-import json
-import logging
-import redis
 from bson.json_util import dumps, loads
+from .cache_manager import CacheProtocol
+import logging
 
 class FeatureValueResponse(BaseModel):
     name: str
@@ -66,7 +65,7 @@ class SubscriptionManager:
         database_name: str,
         user_points_manager: UserPointsManager,
         plan_features: Dict[SubscriptionType, SubscriptionFeatures],
-        redis_client: redis.Redis
+        cache_manager: CacheProtocol
 
     ):
         if any(sub_type not in plan_features for sub_type in SubscriptionType):
@@ -82,11 +81,11 @@ class SubscriptionManager:
         self.old_tokens.create_index("user_id", unique=True)
         self.user_points_manager = user_points_manager
         self.plan_features = plan_features
-        self.redis_client = redis_client
+        self.cache_manager = cache_manager
 
     def fetch_or_cache_subscription(self, user_id: str) -> dict:
         cache_key = f"user_subscription:{user_id}"
-        if cached_data := self.redis_client.get(cache_key):
+        if cached_data := self.cache_manager.get(cache_key):
             return loads(cached_data)
         
         sub_doc = self.subscriptions.find_one({"user_id": user_id})
@@ -94,7 +93,7 @@ class SubscriptionManager:
             self.apply_or_default_subscription(user_id)
             sub_doc = self.subscriptions.find_one({"user_id": user_id})
 
-        self.redis_client.setex(cache_key, 3600, dumps(sub_doc))  # Cache for 1 hour
+        self.cache_manager.set(cache_key, dumps(sub_doc), 3600)  # Cache for 1 hour
         return sub_doc
     
     def purchase_token_exists(self, purchase_token: str) -> bool:
@@ -158,17 +157,17 @@ class SubscriptionManager:
             self.add_token(user_id, purchase_token)
             logging.info(f"Applying/Updating subscription for {user_id} token {purchase_token}")
             self.subscriptions.update_one({"user_id": user_id}, {"$set": doc}, upsert=True)
-            self.redis_client.delete(f"user_subscription:{user_id}")
+            self.cache_manager.delete(f"user_subscription:{user_id}")
             self.allocate_monthly_coins(user_id, allocate_no_check=True)
             
     
 
     def enable_disable_subscription(self, user_id: str, enable: bool) -> None:
-        self.redis_client.delete(f"user_subscription:{user_id}")
+        self.cache_manager.delete(f"user_subscription:{user_id}")
         self.subscriptions.update_one({"user_id": user_id}, {"$set": {"enabled": enable}}, upsert=True)
             
     def cancel_uncancel_subscription(self, user_id: str, cancel: bool) -> None:
-        self.redis_client.delete(f"user_subscription:{user_id}")
+        self.cache_manager.delete(f"user_subscription:{user_id}")
         self.subscriptions.update_one({"user_id": user_id}, {"$set": {"is_cancelled": cancel}}, upsert=True)
       
 
@@ -190,7 +189,7 @@ class SubscriptionManager:
             self.subscriptions.update_one(
                 {"user_id": user_id}, {"$set": {"last_coin_allocation_date": now}}
             )
-            self.redis_client.delete(f"user_subscription:{user_id}")
+            self.cache_manager.delete(f"user_subscription:{user_id}")
 
 
     def reset_monthly_limits(self, user_id: str, reset_no_check: bool = False) -> None:
@@ -222,7 +221,7 @@ class SubscriptionManager:
             self.subscriptions.update_one(
                 {"user_id": user_id}, {"$set": {"last_monthly_reset_date": now}}
             )
-            self.redis_client.delete(f"user_subscription:{user_id}")
+            self.cache_manager.delete(f"user_subscription:{user_id}")
             
     def get_feature_value(self, user_id: str, feature_name: str) -> Union[FeatureValueResponse, None]:
         self.reset_all_limits(user_id)
@@ -267,7 +266,7 @@ class SubscriptionManager:
                     array_filters=[{"elem.name": {"$eq": feature_name}}],
                 )
                 logging.info(f"User {user_id}, plan {sub_doc['subscription_type']} used incremental feature {feature_name}. Usage left {feature['limit']}")
-                self.redis_client.delete(f"user_subscription:{user_id}")
+                self.cache_manager.delete(f"user_subscription:{user_id}")
                 return True
 
         # Check for Monthly Limit features
@@ -281,7 +280,7 @@ class SubscriptionManager:
                             array_filters=[{"elem.name": {"$eq": feature_name}}]
                         )
                         logging.info(f"User {user_id} used Monthly limit feature {feature_name}. Usage left {feature['limit']}")
-                        self.redis_client.delete(f"user_subscription:{user_id}")
+                        self.cache_manager.delete(f"user_subscription:{user_id}")
                         return True
                     else:
                         logging.info(f"User {user_id} cannot use Monthly limit feature {feature_name}. Usage left {feature['limit']}")
@@ -290,7 +289,7 @@ class SubscriptionManager:
                     logging.info(f"Feature {feature_name} is not enabled. Using fallback value.")
                     return False
         logging.info(f"User {user_id} used feature {feature_name}. Usage left Infinity")
-        self.redis_client.delete(f"user_subscription:{user_id}")
+        self.cache_manager.delete(f"user_subscription:{user_id}")
         return True
 
     def can_use_feature(self, user_id: str, feature_name: str) -> Tuple[bool, Union[str, int]]:
@@ -323,7 +322,7 @@ class SubscriptionManager:
                     {"$set": {"monthly_limit_features.$[elem].enabled": enabled}},
                     array_filters=[{"elem.name": {"$eq": feature_name}}],
                 )
-                self.redis_client.delete(f"user_subscription:{user_id}")  # Invalidate cache
+                self.cache_manager.delete(f"user_subscription:{user_id}")  # Invalidate cache
                 return True  # Successfully toggled the feature
         return False  # Feature not found
     
@@ -384,7 +383,7 @@ class SubscriptionManager:
             self.subscriptions.update_one(
                 {"user_id": user_id}, {"$set": {"last_daily_reset_date": now}}
             )
-            self.redis_client.delete(f"user_subscription:{user_id}")
+            self.cache_manager.delete(f"user_subscription:{user_id}")
 
 
     def reset_all_limits(self, user_id: str, reset_no_check: bool = False) -> None:
