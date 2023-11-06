@@ -88,12 +88,6 @@ class CollectionDBManager:
             raise ValueError("Collection already exists")
 
     def get_collection_by_name_and_user(self, name: str, user_id: str) -> Optional[CollectionModel]:
-        cache_key = f"collection_by_name_and_user:{name}:{user_id}"
-        cached_data = self.cache_manager.get(cache_key)
-        if cached_data is not None:
-            return CollectionModel(**cached_data)
-
-        # Use aggregation to find the specific collection and count the number of files
         pipeline = [
             {"$match": {"name": name, "user_uid": user_id}},
             {
@@ -113,12 +107,9 @@ class CollectionDBManager:
         except StopIteration:
             return None
 
-        if collection_data:
-            collection_data.pop('files', None)
-            self.cache_manager.set(cache_key, collection_data)
-            return CollectionModel(**collection_data)
 
-        return None
+        return CollectionModel(**collection_data)
+
 
 
     def get_all_by_user(self, user_id: str) -> List[CollectionModel]:
