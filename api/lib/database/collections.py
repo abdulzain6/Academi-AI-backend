@@ -53,31 +53,6 @@ class CollectionDBManager:
 
         return None
 
-    def get_collection_names_by_uids(self, collection_uids: List[str]) -> Dict[str, Optional[str]]:
-        collection_names = {}
-        # First, try to get as many names as possible from cache
-        for uid in collection_uids:
-            cache_key = f"collection_name:{uid}"
-            if cached_name := self.cache_manager.get(cache_key):
-                collection_names[uid] = cached_name
-                collection_uids.remove(uid)  # Remove the uid from the list as it's already cached
-
-        # If there are any uids left that weren't in the cache, fetch them from the database
-        if collection_uids:
-            cursor = self.collection_collection.find(
-                {"collection_uid": {"$in": collection_uids}},
-                {"_id": 0, "collection_uid": 1, "name": 1}
-            )
-            for doc in cursor:
-                collection_names[doc["collection_uid"]] = doc["name"]
-                self.cache_manager.set(f"collection_name:{doc['collection_uid']}", doc['name'])
-
-        # For any uids that were not found in the cache or the database, set them as None
-        for uid in collection_uids:
-            if uid not in collection_names:
-                collection_names[uid] = None
-
-        return collection_names
 
     def resolve_collection_uid(self, name: str, user_id: str) -> Optional[str]:
         cache_key = f"collection_uid:{name}:{user_id}"

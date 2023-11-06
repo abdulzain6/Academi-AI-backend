@@ -95,7 +95,7 @@ def receive_notification(notification: dict, token_verified=Depends(verify_googl
             )
             logging.info(f"{sub_doc['user_id']} Just unsubscribed {notification.purchaseToken}")
 
-    elif notification.notificationType in [SubscriptionStatus.SUBSCRIPTION_CANCELED, SubscriptionStatus.SUBSCRIPTION_PAUSED]:
+    elif notification.notificationType in [SubscriptionStatus.SUBSCRIPTION_PAUSED]:
         if sub_doc := subscription_manager.get_subscription_by_token(notification.purchaseToken):
             subscription_manager.enable_disable_subscription(sub_doc["user_id"], False)
             logging.info(f"{sub_doc['user_id']} got disabled {notification.notificationType} {notification.purchaseToken}")
