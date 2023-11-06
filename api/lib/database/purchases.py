@@ -77,7 +77,9 @@ class SubscriptionManager:
         self.client = MongoClient(connection_string)
         self.db = self.client[database_name]
         self.subscriptions = self.db["subscriptions"]
+        self.old_tokens = self.db["old_tokens"]
         self.subscriptions.create_index("user_id", unique=True)
+        self.old_tokens.create_index("user_id", unique=True)
         self.user_points_manager = user_points_manager
         self.plan_features = plan_features
         self.redis_client = redis_client
@@ -102,7 +104,17 @@ class SubscriptionManager:
 
     def get_subscription_by_token(self, purchase_token: str) -> dict:
         return self.subscriptions.find_one({"purchase_token": purchase_token})
+    
+    def add_token(self, user_id: str, token: str):
+        self.old_tokens.update_one(
+            {"user_id": user_id},
+            {"$push": {"tokens": token}},
+            upsert=True
+        )
 
+    def retrieve_tokens(self, user_id: str) -> List[str]:
+        document = self.old_tokens.find_one({"user_id": user_id})
+        return document["tokens"] if document else []
         
     def get_subscription_type(self, user_id: str) -> SubscriptionType:
         sub_doc = self.fetch_or_cache_subscription(user_id)
@@ -135,10 +147,19 @@ class SubscriptionManager:
         
         existing_doc = self.subscriptions.find_one({"user_id": user_id})
         if update or not existing_doc:
-            logging.info(f"Applying/Updating subscription for {user_id}")
-            self.redis_client.delete(f"user_subscription:{user_id}")
+            if existing_doc.get("purchase_token"):
+                raise ValueError("Token already used")
+            
+            if purchase_token in self.retrieve_tokens(user_id):
+                raise ValueError("Token already used")
+            
+            self.add_token(user_id, purchase_token)
+            logging.info(f"Applying/Updating subscription for {user_id} token {purchase_token}")
             self.subscriptions.update_one({"user_id": user_id}, {"$set": doc}, upsert=True)
+            self.redis_client.delete(f"user_subscription:{user_id}")
             self.allocate_monthly_coins(user_id, allocate_no_check=True)
+            
+    
 
     def enable_disable_subscription(self, user_id: str, enable: bool) -> None:
         self.redis_client.delete(f"user_subscription:{user_id}")
@@ -280,7 +301,7 @@ class SubscriptionManager:
         # Check for Monthly Limit features
         for feature in sub_doc["monthly_limit_features"]:
             if feature_name == feature["name"]:
-                main_data = feature["value"] if feature["limit"] > 0 else feature["fallback_value"]
+                main_data = feature["value"] if feature["limit"] > 0 and feature["enabled"] else feature["fallback_value"]
                 return (True, main_data)
 
         return (True, float("inf"))
