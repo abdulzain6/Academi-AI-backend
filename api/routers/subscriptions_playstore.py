@@ -100,11 +100,16 @@ def receive_notification(notification: dict, token_verified=Depends(verify_googl
             subscription_manager.enable_disable_subscription(sub_doc["user_id"], False)
             logging.info(f"{sub_doc['user_id']} got disabled {notification.notificationType} {notification.purchaseToken}")
 
-    elif notification.notificationType == SubscriptionStatus.SUBSCRIPTION_RESTARTED:
+    elif notification.notificationType == [SubscriptionStatus.SUBSCRIPTION_RESTARTED, SubscriptionStatus.SUBSCRIPTION_RECOVERED]:
         if sub_doc := subscription_manager.get_subscription_by_token(notification.purchaseToken):
             subscription_manager.enable_disable_subscription(sub_doc["user_id"], True)
+            subscription_manager.cancel_uncancel_subscription(sub_doc["user_id"], False)
             logging.info(f"{sub_doc['user_id']} got enabled {notification.notificationType} {notification.purchaseToken}")
             
-
+    elif notification.notificationType == SubscriptionStatus.SUBSCRIPTION_CANCELED:
+        if sub_doc := subscription_manager.get_subscription_by_token(notification.purchaseToken):
+            subscription_manager.cancel_uncancel_subscription(sub_doc["user_id"], True)
+            logging.info(f"{sub_doc['user_id']} got cancelled {notification.notificationType} {notification.purchaseToken}")
+            
 
     return {"status": "success"}

@@ -12,7 +12,8 @@ def get_subscription_plan(
     play_integrity_verified=Depends(verify_play_integrity),
 ):
     return {
-        "plan" : subscription_manager.get_subscription_type(user_id)
+        "plan" : subscription_manager.get_subscription_type(user_id),
+        "cancelled" : subscription_manager.fetch_or_cache_subscription(user_id).get("is_cancelled", False)
     }
     
 

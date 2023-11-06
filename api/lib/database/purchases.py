@@ -140,6 +140,7 @@ class SubscriptionManager:
             "incremental_features": [f.model_dump() for f in features.incremental],
             "static_features": [f.model_dump()  for f in features.static],
             "monthly_limit_features": [f.model_dump() for f in features.monthly_limit],
+            "is_cancelled" : False,
             "enabled" : True,
             "monthly_coins": features.monthly_coins.amount,
             "last_daily_reset_date": now,
@@ -166,6 +167,10 @@ class SubscriptionManager:
         self.redis_client.delete(f"user_subscription:{user_id}")
         self.subscriptions.update_one({"user_id": user_id}, {"$set": {"enabled": enable}}, upsert=True)
             
+    def cancel_uncancel_subscription(self, user_id: str, cancel: bool) -> None:
+        self.redis_client.delete(f"user_subscription:{user_id}")
+        self.subscriptions.update_one({"user_id": user_id}, {"$set": {"is_cancelled": cancel}}, upsert=True)
+      
 
     def allocate_monthly_coins(self, user_id: str, allocate_no_check: bool = False) -> None:
         sub_doc = self.fetch_or_cache_subscription(user_id)
