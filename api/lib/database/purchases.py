@@ -149,7 +149,7 @@ class SubscriptionManager:
         existing_doc = self.subscriptions.find_one({"user_id": user_id})
         if update or not existing_doc:
             if purchase_token:
-                if existing_doc.get("purchase_token"):
+                if existing_doc.get("purchase_token") and not existing_doc.get("is_cancelled", False):
                     raise ValueError("Token already used")
                 
                 if purchase_token in self.retrieve_tokens(user_id):

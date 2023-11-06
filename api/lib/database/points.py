@@ -66,13 +66,8 @@ class UserPointsManager:
     def user_exists(self, uid: str) -> bool:
         return self.points_collection.count_documents({"uid": uid}, limit=1) > 0
 
-    def get_streak_day(self, uid: str) -> int:
-        """
-        Get the streak day for the user identified by uid.
 
-        Returns:
-            The streak day (integer).
-        """
+    def get_streak_day(self, uid: str) -> int:
         user_points: UserPoints = self.get_user_points(uid)
         now = datetime.now(timezone.utc)
         last_claimed: Optional[datetime] = user_points.last_claimed
@@ -80,16 +75,19 @@ class UserPointsManager:
         if last_claimed and last_claimed.tzinfo is None:
             last_claimed = last_claimed.replace(tzinfo=timezone.utc)
 
-        if last_claimed and now - last_claimed < timedelta(days=1):
+        # If never claimed, streak is 0
+        if not last_claimed:
             return 0
 
-        streak_count: int = (
-            user_points.streak_count
-            if last_claimed and now - last_claimed < timedelta(days=2)
-            else 0
-        )
+        # Calculate the difference in days
+        days_difference = (now - last_claimed).days
 
-        return streak_count % 7
+        # If the last claim was today, return the streak count
+        if days_difference == 0:
+            return user_points.streak_count
+
+        # If the last claim was yesterday, the streak continues
+        return user_points.streak_count if days_difference == 1 else 0
     
     def is_daily_bonus_claimed(self, uid: str) -> bool:
         """
