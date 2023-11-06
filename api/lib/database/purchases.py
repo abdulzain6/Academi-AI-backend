@@ -182,7 +182,8 @@ class SubscriptionManager:
         if last_allocation_date.tzinfo is None or last_allocation_date.tzinfo.utcoffset(last_allocation_date) is None:
             last_allocation_date = last_allocation_date.replace(tzinfo=timezone.utc)
 
-        if (now - last_allocation_date) >= timedelta(days=30) or allocate_no_check:
+        #if (now - last_allocation_date) >= timedelta(days=30) or allocate_no_check:
+        if (now - last_allocation_date) >= timedelta(minutes=10) or allocate_no_check:
             monthly_coins = sub_doc["monthly_coins"]
             logging.info(f"Granting monthly {monthly_coins} coins to {user_id}")
             self.user_points_manager.increment_user_points(user_id, monthly_coins)
@@ -203,7 +204,8 @@ class SubscriptionManager:
         if last_reset_date.tzinfo is None or last_reset_date.tzinfo.utcoffset(last_reset_date) is None:
             last_reset_date = last_reset_date.replace(tzinfo=timezone.utc)
 
-        if (now - last_reset_date) >= timedelta(days=1) or reset_no_check:
+       # if (now - last_reset_date) >= timedelta(days=30) or reset_no_check:
+        if (now - last_reset_date) >= timedelta(minutes=10) or reset_no_check:
             logging.info(f"Resetting monthly limits for {user_id}")
             default_features = self.plan_features[sub_doc["subscription_type"]].monthly_limit
             for default_feature in default_features:
@@ -364,7 +366,8 @@ class SubscriptionManager:
         if last_reset_date.tzinfo is None or last_reset_date.tzinfo.utcoffset(last_reset_date) is None:
             last_reset_date = last_reset_date.replace(tzinfo=timezone.utc)
 
-        if (now - last_reset_date) >= timedelta(days=1) or reset_no_check:
+      #  if (now - last_reset_date) >= timedelta(days=1) or reset_no_check:
+        if (now - last_reset_date) >= timedelta(minutes=10) or reset_no_check:
             logging.info(f"Resetting daily limits for {user_id}")
             default_features = self.plan_features[sub_doc["subscription_type"]].incremental
             for default_feature in default_features:

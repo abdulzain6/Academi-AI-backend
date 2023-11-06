@@ -69,7 +69,9 @@ async def get_redoc_documentation(username: str = Depends(get_current_username))
 async def openapi(username: str = Depends(get_current_username)):
     return get_openapi(title=app.title, version=app.version, routes=app.routes)
 
-
+@app.get("/health")
+async def health():
+    return {"health" : "mama-mia"}
 
 app.include_router(users_router, prefix="/api/v1/users", tags=["user"])
 app.include_router(files_router, prefix="/api/v1/files", tags=["files"])
