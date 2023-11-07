@@ -72,7 +72,7 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
 
 def verify_play_integrity(x_firebase_appcheck: str = Header(...)) -> None:
     cache_key = f"app_check:{x_firebase_appcheck}"
-    #return
+    return
     
     # Check if we have a cached result for this token
     if cached_result := redis_cache_manager.get(cache_key):

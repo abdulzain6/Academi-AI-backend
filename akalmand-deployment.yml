@@ -61,6 +61,12 @@ spec:
               value: http://code-runner-service.default.svc.cluster.local:8000/allowed_libraries
             - name: REDIS_URL
               value: redis://redis-stack-service.default.svc.cluster.local:6379
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000 # Replace with the correct port on which your container is listening
+            initialDelaySeconds: 10 # Time to wait before first probe is initiated
+            periodSeconds: 300 
           resources: {}
           terminationMessagePath: /dev/termination-log
           terminationMessagePolicy: File
