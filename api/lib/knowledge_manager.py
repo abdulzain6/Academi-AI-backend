@@ -1,5 +1,6 @@
 import ipaddress
 import logging
+import random
 import re
 import socket
 from urllib.parse import urlparse
@@ -426,9 +427,12 @@ You are {ai_name}, an AI designed to provide information. You are {model_name}
 You are to take the tone of a teacher.
 You must answer the human in {language} (important)
 Talk as if you're a teacher. Use the data provided to answer user questions. 
-Use the tool to answer queetions always take the help from get data function if u dont know anything(important)
 
-Use get data tool to get context of what user is asking if you have no idea
+Use help data to answer quetions always (important)
+help data (this is from files/subjects the human has provided and can be from webpages, youtube links, files, images and much more):
+==========
+{help_data}
+==========
 
 Rules:
     You will not run unsafe code or perform harm to the server youre on. Or import potentially harmful libraries (Very Important).
@@ -445,6 +449,13 @@ Lets think step by step to help the student following all rules.
             agent_kwargs=agent_kwargs,
             max_iterations=4,
         )
+        
+    def make_unique_by_page_content(self, pages: List[Document]) -> List[Document]:
+        unique_pages = {}
+        for page in pages:
+            if page.page_content not in unique_pages:
+                unique_pages[page.page_content] = page
+        return list(unique_pages.values())
 
     def initialize_agent(
         self,
@@ -498,20 +509,33 @@ Lets think step by step to help the student following all rules.
         if filename:
             metadata["file"] = filename
 
-        def get_user_data(prompt: str):
-            similar_docs = self.query_data(
-                prompt, collection_name, metadata=metadata, k=k
+        combined = (
+            self.format_messages(
+                chat_history=chat_history,
+                tokens_limit=self.conversation_limit,
+                human_only=True,
+                llm=llm,
+                ai_name=self.ai_name,
             )
-            similar_docs = self._reduce_tokens_below_limit(
-                similar_docs, llm=llm, docs_limit=self.docs_limit
-            )
-            data = "\n".join([doc.page_content for doc in similar_docs])
-            logging.info(f"Data tokens {len(data)}")
-            return f"""
-File data:
-=====
-{data}
-======"""
+            + "\n"
+            + f"Human: {prompt}"
+        )
+        similar_docs = self.query_data(
+            combined, collection_name, metadata=metadata, k=k
+        )
+        similar_docs.extend(
+            self.query_data(prompt, collection_name, metadata=metadata, k=k)
+        )
+        similar_docs = self.make_unique_by_page_content(similar_docs)
+        similar_docs = self._reduce_tokens_below_limit(
+            similar_docs, llm=llm, docs_limit=self.docs_limit
+        )
+        
+        
+        
+        help_data = "\n".join([doc.page_content for doc in similar_docs])
+        logging.info(f"Data tokens {len(similar_docs)}")
+
         
 
         agent = self.make_agent(
@@ -523,19 +547,11 @@ File data:
                 "language": language,
                 "model_name": model_name,
                 "ai_name": self.ai_name,
+                "help_data" : help_data
             },
             extra_tools=[
-                Tool(
-                    "get_relavent_data",
-                    get_user_data,
-                    """
-Use this to get anything user asks for its their data.
-Used to get information from data user gave you to use as help material,
-this is from from webpages, youtube links, files, images and much more.
-YOu have access to these files using this function
-The function takes in a detailed prompt of what you need. You must be descriptive""",
-                )
-            ],
+                
+            ]
         )
         if not callback:
             raise ValueError("Callback not passed for streaming to work")
@@ -677,6 +693,7 @@ The function takes in a detailed prompt of what you need. You must be descriptiv
     def _reduce_tokens_below_limit(
         self, docs: list, docs_limit: int, llm: BaseChatModel
     ) -> list[Document]:
+        docs = random.shuffle(docs)
         num_docs = len(docs)
         tokens = [llm.get_num_tokens(doc.page_content) for doc in docs]
         token_count = sum(tokens[:num_docs])
