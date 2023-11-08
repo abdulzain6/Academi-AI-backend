@@ -27,6 +27,7 @@ from .lib.redis_cache import RedisCache
 from langchain.chat_models import ChatOpenAI
 from langchain.llms import OpenAI
 from .lib.purchases_play_store import SubscriptionChecker
+from .global_tools import CHAT_TOOLS
 import langchain
 import redis
 
@@ -96,7 +97,8 @@ chat_manager = ChatManager(
     docs_limit=1500,
     qdrant_api_key=QDRANT_API_KEY,
     qdrant_url=QDRANT_URL,
-    python_client=client
+    python_client=client,
+    base_tools=CHAT_TOOLS
 )
 subscription_manager = SubscriptionManager(
     connection_string=MONGODB_URL,

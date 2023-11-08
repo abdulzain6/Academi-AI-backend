@@ -524,7 +524,7 @@ The function takes in a detailed prompt of what you need. You must be descriptiv
             raise ValueError("Callback not passed for streaming to work")
         return agent.run(
             prompt + " (use my files to answer if needed)",
-            callbacks=[CustomCallback(callback, on_end_callback)],
+            callbacks=[CustomCallbackAgent(callback, on_end_callback)],
         )
 
     def chat(
