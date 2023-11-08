@@ -534,7 +534,7 @@ Lets think step by step to help the student following all rules.
         
         
         help_data = "\n".join([doc.page_content for doc in similar_docs])
-        logging.info(f"Data tokens {len(similar_docs)}")
+        #logging.info(f"Data tokens {len(similar_docs)}")
 
         
 
@@ -693,7 +693,7 @@ Lets think step by step to help the student following all rules.
     def _reduce_tokens_below_limit(
         self, docs: list, docs_limit: int, llm: BaseChatModel
     ) -> list[Document]:
-        docs = random.shuffle(docs)
+        random.shuffle(docs)
         num_docs = len(docs)
         tokens = [llm.get_num_tokens(doc.page_content) for doc in docs]
         token_count = sum(tokens[:num_docs])
