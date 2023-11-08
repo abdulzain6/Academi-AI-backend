@@ -498,7 +498,13 @@ Lets think step by step to help the student following all rules.
             similar_docs = self._reduce_tokens_below_limit(
                 similar_docs, llm=llm, docs_limit=self.docs_limit
             )
-            return "\n".join([doc.page_content for doc in similar_docs])
+            data = "\n".join([doc.page_content for doc in similar_docs])
+            return f"""
+File data:
+=====
+{data}
+======"""
+        
 
         agent = self.make_agent(
             llm=llm,
