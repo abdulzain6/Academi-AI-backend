@@ -1,4 +1,5 @@
 import ipaddress
+import logging
 import re
 import socket
 from urllib.parse import urlparse
@@ -503,6 +504,7 @@ Lets think step by step to help the student following all rules.
                 similar_docs, llm=llm, docs_limit=self.docs_limit
             )
             data = "\n".join([doc.page_content for doc in similar_docs])
+            logging.info(f"Data tokens {len(data)}")
             return f"""
 File data:
 =====

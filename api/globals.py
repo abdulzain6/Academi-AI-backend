@@ -92,7 +92,6 @@ chat_manager = ChatManager(
         "openai_api_key": OPENAI_API_KEY,
         "temperature": 0.3,
         "request_timeout": 100,
-        "max_tokens" : 4000
     },
     conversation_limit=700,
     docs_limit=1000,
