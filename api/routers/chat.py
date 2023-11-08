@@ -16,6 +16,7 @@ from ..lib.database.messages import MessagePair
 from ..lib.utils import split_into_chunks
 from ..dependencies import can_use_premium_model, require_points_for_feature
 from pydantic import BaseModel
+from langchain.callbacks import get_openai_callback
 
 
 router = APIRouter()
@@ -81,9 +82,6 @@ def chat_collection_stream(
 
     data_queue = queue.Queue()
 
-    def callback(data: str) -> None:
-        data_queue.put(data)
-
     def data_generator() -> Generator[str, None, None]:
         yield "[START]"
         while True:
@@ -97,24 +95,29 @@ def chat_collection_stream(
                 yield "[TIMEOUT]"
                 break
 
+    def callback(data: str) -> None:
+        data_queue.put(data)
+
     def on_end_callback(response: str) -> None:
         if conversation_id:
             conversation_manager.add_message(
-                user_id, conversation_id, data.prompt, response.generations[0][0].text
+                user_id, conversation_id, data.prompt, response
             )
 
     def run_chat() -> None:
         try:
-            chat_manager.chat(
-                collection.vectordb_collection_name,
-                data.prompt,
-                chat_history,
-                data.language,
-                True,
-                model_name=model_name,
-                callback_func=callback,
-                on_end_callback=on_end_callback,
-            )
+            with get_openai_callback() as cb:
+                chat_manager.run_agent(
+                    collection_name=collection.vectordb_collection_name,
+                    prompt=data.prompt,
+                    chat_history=chat_history,
+                    language=data.language,
+                    model_name=model_name,
+                    callback=callback,
+                    on_end_callback=on_end_callback,
+                )
+                print(f"Total tokens used: {cb.total_tokens}")
+                print(f"Total cost: {cb.total_cost}")
         except Exception as e:
             logging.error(f"Error running chat in chat_collection_stream: {e}")
             error_message = "Error in getting response"
@@ -177,9 +180,6 @@ def chat_file_stream(
     logging.info(f"Using model {model_name} to chat collection for user {user_id}")
     data_queue = queue.Queue()
 
-    def callback(data: str) -> None:
-        data_queue.put(data)
-
     def data_generator() -> Generator[str, None, None]:
         yield "[START]"
         while True:
@@ -193,22 +193,24 @@ def chat_file_stream(
                 yield "[TIMEOUT]"
                 break
 
+    def callback(data: str) -> None:
+        data_queue.put(data)
+
     def on_end_callback(response: str) -> None:
         if conversation_id:
             conversation_manager.add_message(
-                user_id, conversation_id, data.prompt, response.generations[0][0].text
+                user_id, conversation_id, data.prompt, response
             )
 
     def run_chat() -> None:
         try:
-            chat_manager.chat(
-                collection.vectordb_collection_name,
-                data.prompt,
-                chat_history,
-                data.language,
-                True,
+            chat_manager.run_agent(
+                collection_name=collection.vectordb_collection_name,
+                prompt=data.prompt,
+                chat_history=chat_history,
+                language=data.language,
                 model_name=model_name,
-                callback_func=callback,
+                callback=callback,
                 filename=data.file_name,
                 on_end_callback=on_end_callback,
             )

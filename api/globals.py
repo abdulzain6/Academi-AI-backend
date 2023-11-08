@@ -35,8 +35,21 @@ langchain.verbose = False
 current_directory = os.path.dirname(os.path.abspath(__file__))
 
 
+global_chat_model = ChatOpenAI
+global_chat_model_kwargs = {"request_timeout": 150}
 langchain.llm_cache = RedisCache(redis_=redis.from_url(REDIS_URL), ttl=CACHE_TTL)
 redis_cache_manager = RedisCacheManager(redis.from_url(REDIS_URL))
+
+
+#code runner
+client = PythonClient(
+    Urls(
+        main_url=MAIN_URL_EXECUTOR,
+        evaluate_url=EVALUATE_URL_EXECUTOR,
+        available_libraries_url=AVAILABLE_LIBRARIES_URL,
+    ),
+    40,
+)
 
 # Database Managers
 collection_manager = CollectionDBManager(
@@ -73,16 +86,17 @@ knowledge_manager = KnowledgeManager(
 )
 chat_manager = ChatManager(
     OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY),
-    ChatOpenAI,
+    global_chat_model,
     llm_kwargs={
         "openai_api_key": OPENAI_API_KEY,
         "temperature": 0.3,
         "request_timeout": 100,
     },
-    conversation_limit=700,
-    docs_limit=3000,
+    conversation_limit=1000,
+    docs_limit=1500,
     qdrant_api_key=QDRANT_API_KEY,
     qdrant_url=QDRANT_URL,
+    python_client=client
 )
 subscription_manager = SubscriptionManager(
     connection_string=MONGODB_URL,
@@ -136,10 +150,6 @@ subscription_manager = SubscriptionManager(
 )
 
 
-# llms
-
-global_chat_model = ChatOpenAI
-global_chat_model_kwargs = {"request_timeout": 150}
 
 
 # Presentation
@@ -150,15 +160,6 @@ template_manager, temp_knowledge_manager = initialize_managers(
 
 
 # Maths Solver
-
-client = PythonClient(
-    Urls(
-        main_url=MAIN_URL_EXECUTOR,
-        evaluate_url=EVALUATE_URL_EXECUTOR,
-        available_libraries_url=AVAILABLE_LIBRARIES_URL,
-    ),
-    40,
-)
 image_ocr = ImageOCR(
     app_id=MATHPIX_APPID,
     app_key=MATHPIX_API_KEY,

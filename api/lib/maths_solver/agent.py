@@ -159,7 +159,7 @@ Do not import libraries that are not allowed.
         agent_kwargs = {
             "system_message": SystemMessage(
                 content="""
-You are An AI designed to solve mathematical problems and assist students. 
+You are An AI designed to solve problems and assist students. 
 
 You must return (Important):
     1. The answer to the user question in markdown.
@@ -260,19 +260,19 @@ Lets think step by step to help the student following all rules.
         messages: List[BaseMessage] = []
         tokens_used: int = 0
 
-        for human_msg, ai_msg in chat_history:
+        for human_msg, ai_msg in reversed(chat_history):
             human_tokens = llm.get_num_tokens(human_msg)
             ai_tokens = llm.get_num_tokens(ai_msg)
+            if tokens_used + ai_tokens <= tokens_limit:
+                messages.append(AIMessage(content=ai_msg))
+                tokens_used += ai_tokens
+            
+            # Add the human message if it doesn't exceed the limit.
+            if tokens_used + human_tokens <= tokens_limit:
+                messages.append(HumanMessage(content=human_msg))
+                tokens_used += human_tokens
+            else:
+                break  # If we can't add a human message, we have reached the token limit.
 
-            new_tokens_used = tokens_used + human_tokens + ai_tokens
+        return list(reversed(messages))
 
-            if new_tokens_used > tokens_limit:
-                break
-
-            tokens_used = new_tokens_used
-
-            messages.extend(
-                (HumanMessage(content=human_msg), AIMessage(content=ai_msg))
-            )
-
-        return messages
