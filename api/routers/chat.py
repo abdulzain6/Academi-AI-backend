@@ -83,12 +83,12 @@ def chat_collection_stream(
     data_queue = queue.Queue()
 
     def data_generator() -> Generator[str, None, None]:
-        yield "[START]"
+       # yield "[START]"
         while True:
             try:
                 data = data_queue.get(timeout=60)
                 if data is None:
-                    yield "[END]"
+                    #yield "[END]"
                     break
                 yield data
             except queue.Empty:
@@ -181,12 +181,12 @@ def chat_file_stream(
     data_queue = queue.Queue()
 
     def data_generator() -> Generator[str, None, None]:
-        yield "[START]"
+       # yield "[START]"
         while True:
             try:
                 data = data_queue.get(timeout=60)
                 if data is None:
-                    yield "[END]"
+                    #yield "[END]"
                     break
                 yield data
             except queue.Empty:

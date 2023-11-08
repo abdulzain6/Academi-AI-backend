@@ -95,7 +95,7 @@ class CustomCallbackAgent(BaseCallbackHandler):
         **kwargs: Any,
     ) -> Any:
         self.callback(
-            "AI is using a tool/reading your files to better assist you...\n"
+            "\n*AI is using a tool/reading your files to better assist you...*\n"
         )
 
     def on_tool_end(
@@ -107,7 +107,7 @@ class CustomCallbackAgent(BaseCallbackHandler):
         **kwargs: Any,
     ) -> Any:
         """Run when tool ends running."""
-        self.callback("\nAI has finished using the tool and will respond shortly...\n")
+        self.callback("\n*AI has finished using the tool and will respond shortly...*\n")
 
     def on_agent_finish(
         self,

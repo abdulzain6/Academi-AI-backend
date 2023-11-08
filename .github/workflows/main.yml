@@ -32,7 +32,9 @@ jobs:
         run: doctl kubernetes cluster kubeconfig save --expiry-seconds 600 k8s-1-27-2-do-0-blr1-1686477516392
 
       - name: Deploy to DigitalOcean Kubernetes
-        run: kubectl set image deployment/akalmand-deployment akalmand=registry.digitalocean.com/mufti-api/akalmand:${{ env.IMAGE_TAG }} -n default && kubectl rollout restart deployment akalmand-deployment -n default
+        run: |
+          kubectl set image deployment/akalmand-deployment akalmand=registry.digitalocean.com/mufti-api/akalmand:${{ env.IMAGE_TAG }} -n default
+          kubectl rollout status deployment/akalmand-deployment -n default --timeout=600s
 
       - name: Verify deployment
         run: kubectl rollout status deployment/akalmand-deployment -n default
