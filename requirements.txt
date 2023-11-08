@@ -6,6 +6,7 @@ lxml
 numpy
 openai==0.28.1
 pdfkit
+duckduckgo-search
 Pillow
 pydantic
 pymongo
@@ -27,8 +28,11 @@ Markdown
 redis
 google-auth
 google-auth-oauthlib
-opentelemetry-instrumentation-redis
-opentelemetry-instrumentation-pymongo
-opentelemetry-instrumentation-fastapi
-opentelemetry-exporter-otlp
-opentelemetry-distro
+
+
+opentelemetry-distro==0.41b0
+opentelemetry-exporter-otlp==1.20.0
+opentelemetry-instrumentation-fastapi==0.41b0
+opentelemetry-instrumentation-pymongo==0.41b0
+opentelemetry-instrumentation-redis==0.41b0
+
