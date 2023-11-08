@@ -524,10 +524,11 @@ File data:
             },
             extra_tools=[
                 Tool(
-                    "get_info",
+                    "get_data",
                     get_user_data,
                     """Used to get information from data user gave you to use as help material,
 this is from from webpages, youtube links, files, images and much more.
+YOu have access to these files using this function
 The function takes in a detailed prompt of what you need. You must be descriptive""",
                 )
             ],
