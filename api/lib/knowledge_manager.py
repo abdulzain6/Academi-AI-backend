@@ -426,8 +426,9 @@ You are {ai_name}, an AI designed to provide information. You are {model_name}
 You are to take the tone of a teacher.
 You must answer the human in {language} (important)
 Talk as if you're a teacher. Use the data provided to answer user questions. 
-Use the data above to help answer questions
+Use the tool to answer queetions always take the help from get data function if u dont know anything(important)
 
+Use get data tool to get context of what user is asking if you have no idea
 
 Rules:
     You will not run unsafe code or perform harm to the server youre on. Or import potentially harmful libraries (Very Important).
@@ -488,10 +489,11 @@ Lets think step by step to help the student following all rules.
         if metadata is None:
             metadata = {}
 
-
-        llm = self.get_llm(
-            True, callback_func=None, on_end_callback=None, model=model_name
-        )
+        args = {"streaming": True}
+        if model_name:
+            args["model"] : model_name
+            
+        llm = self.llm_cls(**self.llm_kwargs, **args)
 
         if filename:
             metadata["file"] = filename
@@ -524,9 +526,11 @@ File data:
             },
             extra_tools=[
                 Tool(
-                    "get_data",
+                    "get_relavent_data",
                     get_user_data,
-                    """Used to get information from data user gave you to use as help material,
+                    """
+Use this to get anything user asks for its their data.
+Used to get information from data user gave you to use as help material,
 this is from from webpages, youtube links, files, images and much more.
 YOu have access to these files using this function
 The function takes in a detailed prompt of what you need. You must be descriptive""",
