@@ -428,8 +428,11 @@ You are to take the tone of a teacher.
 You must answer the human in {language} (important)
 Talk as if you're a teacher. Use the data provided to answer user questions. 
 
-Use help data to answer quetions always (important)
-help data (this is from files/subjects the human has provided and can be from webpages, youtube links, files, images and much more):
+Use files data to answer quetions always (important)
+If you have no context what the student is asking use files data to answer (Very important)
+file data is from students webpages, youtube links, files, images and much more
+
+files data (this is from students webpages, youtube links, files, subjects, images and much more):
 ==========
 {help_data}
 ==========
@@ -530,14 +533,9 @@ Lets think step by step to help the student following all rules.
         similar_docs = self._reduce_tokens_below_limit(
             similar_docs, llm=llm, docs_limit=self.docs_limit
         )
-        
-        
-        
         help_data = "\n".join([doc.page_content for doc in similar_docs])
-        #logging.info(f"Data tokens {len(similar_docs)}")
-
         
-
+        logging.info(f"Data tokens {len(similar_docs)}")
         agent = self.make_agent(
             llm=llm,
             chat_history_messages=self.format_messages_into_messages(
@@ -549,12 +547,11 @@ Lets think step by step to help the student following all rules.
                 "ai_name": self.ai_name,
                 "help_data" : help_data
             },
-            extra_tools=[
-                
-            ]
+            extra_tools=[]
         )
         if not callback:
             raise ValueError("Callback not passed for streaming to work")
+        
         return agent.run(
             prompt,
             callbacks=[CustomCallbackAgent(callback, on_end_callback)],
