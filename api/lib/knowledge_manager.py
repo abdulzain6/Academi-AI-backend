@@ -107,7 +107,7 @@ class CustomCallbackAgent(BaseCallbackHandler):
         **kwargs: Any,
     ) -> Any:
         """Run when tool ends running."""
-        self.callback("\n*AI has finished using the tool and will respond shortly...*\n")
+        self.callback("\n*AI has finished using the tool and will respond shortly...*\n\n")
 
     def on_agent_finish(
         self,
@@ -483,6 +483,10 @@ Lets think step by step to help the student following all rules.
     ):
         if chat_history is None:
             chat_history = []
+            
+        if metadata is None:
+            metadata = {}
+
 
         llm = self.get_llm(
             False, callback_func=None, on_end_callback=None, model=model_name
@@ -509,7 +513,7 @@ File data:
         agent = self.make_agent(
             llm=llm,
             chat_history_messages=self.format_messages_into_messages(
-                chat_history, 700, llm
+                chat_history, self.conversation_limit, llm
             ),
             prompt_args={
                 "language": language,
@@ -529,7 +533,7 @@ The function takes in a detailed prompt of what you need. You must be descriptiv
         if not callback:
             raise ValueError("Callback not passed for streaming to work")
         return agent.run(
-            prompt + " (use my files to answer if needed)",
+            prompt + " (use my files/ other tools to answer if needed)",
             callbacks=[CustomCallbackAgent(callback, on_end_callback)],
         )
 

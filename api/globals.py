@@ -92,9 +92,10 @@ chat_manager = ChatManager(
         "openai_api_key": OPENAI_API_KEY,
         "temperature": 0.3,
         "request_timeout": 100,
+        "max_tokens" : 4000
     },
-    conversation_limit=1000,
-    docs_limit=1500,
+    conversation_limit=700,
+    docs_limit=1000,
     qdrant_api_key=QDRANT_API_KEY,
     qdrant_url=QDRANT_URL,
     python_client=client,
