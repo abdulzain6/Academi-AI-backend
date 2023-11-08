@@ -490,7 +490,7 @@ Lets think step by step to help the student following all rules.
 
 
         llm = self.get_llm(
-            False, callback_func=None, on_end_callback=None, model=model_name
+            True, callback_func=None, on_end_callback=None, model=model_name
         )
 
         if filename:
@@ -536,7 +536,7 @@ The function takes in a detailed prompt of what you need. You must be descriptiv
         if not callback:
             raise ValueError("Callback not passed for streaming to work")
         return agent.run(
-            prompt + " (use my files/ other tools to answer if needed)",
+            prompt,
             callbacks=[CustomCallbackAgent(callback, on_end_callback)],
         )
 
@@ -667,6 +667,7 @@ The function takes in a detailed prompt of what you need. You must be descriptiv
             else:
                 break  # If we can't add a human message, we have reached the token limit.
 
+        logging.info(f"Chat history: {list(reversed(messages))}")
         return list(reversed(messages))
 
     def _reduce_tokens_below_limit(

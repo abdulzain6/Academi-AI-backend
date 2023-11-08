@@ -215,7 +215,7 @@ Lets think step by step to help the student following all rules.
         return Solution.model_validate(chain.run(response)[0])
 
     def wrap_prompt(self, prompt: str) -> str:
-        return f"""{prompt} (Use Tool if applicable)"""
+        return f"""{prompt}"""
 
     def run_agent(
         self,
