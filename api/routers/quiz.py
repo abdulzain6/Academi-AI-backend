@@ -76,7 +76,7 @@ def make_quiz(
             status.HTTP_400_BAD_REQUEST, detail=f"Error: {str(e)}"
         ) from e
 
-    logging.info(f"Quiz generated, {user_id}")
+    logging.info(f"Quiz generated {questions}, {user_id}")
     return {"questions": [question.model_dump() for question in questions]}
 
 
