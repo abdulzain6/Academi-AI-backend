@@ -2,7 +2,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi import Depends, HTTPException, status
 from ..auth import get_user_id, verify_play_integrity
-from ..globals import file_manager, collection_manager, global_chat_model, global_chat_model_kwargs
+from ..globals import file_manager, collection_manager
 from pydantic import BaseModel
 from ..dependencies import get_model, require_points_for_feature, can_use_premium_model, use_feature_with_premium_model_check
 from ..lib.quiz import QuizGenerator, UserResponse, Result
@@ -67,7 +67,7 @@ def make_quiz(
     
     try:
         questions = quiz_generator.generate_quiz(
-            select_random_chunks(data, 1000, 3000),
+            select_random_chunks(data, 600, 1500),
             quiz_input.number_of_questions,
             collection_name=quiz_input.collection_name,
         )
@@ -147,7 +147,7 @@ def make_flashcards(
     )
     try:
         questions = quiz_generator.generate_flashcards(
-            data,
+            select_random_chunks(data, 600, 1500),
             fc_input.number_of_flashcards,
             collection_name=fc_input.collection_name,
         )

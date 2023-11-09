@@ -63,7 +63,7 @@ def write_summary(
     model = get_model({"temperature": 0.3}, False, premium_model)
     summary_writer = SummaryWriter(model)
     content = summary_writer.get_content(
-        select_random_chunks(data, 1000, 3000), input.word_count, input.instructions
+        select_random_chunks(data, 600, 1500), input.word_count, input.instructions
     )
 
     content["pdf"] = base64.b64encode(content["pdf"]).decode()
