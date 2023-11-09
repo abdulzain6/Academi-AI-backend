@@ -153,7 +153,10 @@ def get_model(model_kwargs: dict, stream: bool, is_premium: bool):
             fallback_args.update(**fallback[1])
         
         logging.info(f"Adding fallback {fallback[0]}, args: {fallback_args}")
-        fallbacks.append(fallback[0](**fallback_args))
+        try:
+            fallbacks.append(fallback[0](**fallback_args))
+        except Exception as e:
+            logging.error(f"Error in fallback {e}")
     
     logging.info(f"Chat model fallback {global_chat_model[0]}, args: {args}")
     return global_chat_model[0](
