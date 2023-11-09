@@ -40,7 +40,8 @@ class CustomCallback(BaseCallbackHandler):
         self.is_openai = is_openai
 
     def on_llm_new_token(self, token: str, **kwargs) -> None:
-        self.cached = False
+        if token:
+            self.cached = False
         if not self.cached and self.is_openai:
             self.callback(token)
 
@@ -75,11 +76,12 @@ class CustomCallback(BaseCallbackHandler):
         parent_run_id: Optional[UUID] = None,
         **kwargs: Any,
     ) -> Any:
+        print("Agent end", finish, self.cached)
         self.on_end_callback(finish.return_values.get("output", ""))
         if self.cached or not self.is_openai:
             self.callback(finish.return_values.get("output", ""))
         self.callback("@@END@@")
-
+        
 
 
 
