@@ -546,6 +546,12 @@ Files Data (This data is from files/subjects the human has provided and can be f
 
 Human: {prompt}
 
+
+
+
+System Note:
+Only return the next message of {self.ai_name} nothing else. If you do, it will cause error.
+
 {self.ai_name} {language}:"""
         return agent.run(
             wrapped_prompt,
