@@ -14,10 +14,9 @@ from ..globals import (
 )
 from ..lib.database.messages import MessagePair
 from ..lib.utils import split_into_chunks
-from ..dependencies import can_use_premium_model, require_points_for_feature
+from ..dependencies import can_use_premium_model, require_points_for_feature, get_model_and_fallback
 from pydantic import BaseModel
-from langchain.callbacks import get_openai_callback
-
+from openai.error import OpenAIError
 
 router = APIRouter()
 
@@ -77,11 +76,10 @@ def chat_collection_stream(
         else data.chat_history
     ) or []
     
-    model_name, premium_model = can_use_premium_model(user_id=user_id)     
-    logging.info(f"Using model {model_name} to chat collection for user {user_id}")
-
+    model_name, premium_model = can_use_premium_model(user_id=user_id)        
+    model_default, model_fallback  = get_model_and_fallback({"temperature": 0.3}, True, premium_model)
     data_queue = queue.Queue()
-
+    
     def data_generator() -> Generator[str, None, None]:
        # yield "[START]"
         while True:
@@ -106,18 +104,32 @@ def chat_collection_stream(
 
     def run_chat() -> None:
         try:
-            with get_openai_callback() as cb:
-                chat_manager.run_agent(
+            chat_manager.run_agent(
+                collection_name=collection.vectordb_collection_name,
+                prompt=data.prompt,
+                chat_history=chat_history,
+                language=data.language,
+                llm=model_default,
+                callback=callback,
+                on_end_callback=on_end_callback,
+            )
+        except OpenAIError:
+            try:
+                chat_manager.chat(
                     collection_name=collection.vectordb_collection_name,
                     prompt=data.prompt,
                     chat_history=chat_history,
                     language=data.language,
-                    model_name=model_name,
-                    callback=callback,
+                    llm=model_fallback,
+                    callback_func=callback,
                     on_end_callback=on_end_callback,
                 )
-                print(f"Total tokens used: {cb.total_tokens}")
-                print(f"Total cost: {cb.total_cost}")
+            except Exception as e:
+                logging.error(f"Error running chat in chat_collection_stream: {e}")
+                error_message = "Error in getting response"
+                for chunk in split_into_chunks(error_message, 4):
+                    callback(chunk)
+                callback(None)
         except Exception as e:
             logging.error(f"Error running chat in chat_collection_stream: {e}")
             error_message = "Error in getting response"
@@ -176,8 +188,9 @@ def chat_file_stream(
         else data.chat_history
     ) or []
     
-    model_name, premium_model = can_use_premium_model(user_id=user_id)     
-    logging.info(f"Using model {model_name} to chat collection for user {user_id}")
+    model_name, premium_model = can_use_premium_model(user_id=user_id)        
+    model_default, model_fallback  = get_model_and_fallback({"temperature": 0.3}, True, premium_model)
+
     data_queue = queue.Queue()
 
     def data_generator() -> Generator[str, None, None]:
@@ -209,11 +222,29 @@ def chat_file_stream(
                 prompt=data.prompt,
                 chat_history=chat_history,
                 language=data.language,
-                model_name=model_name,
+                llm=model_default,
                 callback=callback,
-                filename=data.file_name,
                 on_end_callback=on_end_callback,
+                filename=data.file_name,
             )
+        except OpenAIError:
+            try:
+                chat_manager.chat(
+                    collection_name=collection.vectordb_collection_name,
+                    prompt=data.prompt,
+                    chat_history=chat_history,
+                    language=data.language,
+                    llm=model_fallback,
+                    callback_func=callback,
+                    on_end_callback=on_end_callback,
+                    filename=data.file_name,
+                )
+            except Exception as e:
+                logging.error(f"Error running chat in chat_file_stream: {e}")
+                error_message = "Error in getting response"
+                for chunk in split_into_chunks(error_message, 4):
+                    callback(chunk)
+                callback(None)
         except Exception as e:
             logging.error(f"Error running chat in chat_file_stream: {e}")
             error_message = "Error in getting response"

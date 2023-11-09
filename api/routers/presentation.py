@@ -15,7 +15,7 @@ from ..globals import (
     subscription_manager
 )
 from ..lib.presentation_maker.presentation_maker import PresentationInput, PresentationMaker, PexelsImageSearch
-from ..dependencies import require_points_for_feature, use_feature_with_premium_model_check
+from ..dependencies import get_model, require_points_for_feature, use_feature_with_premium_model_check
 from langchain.chat_models import ChatOpenAI
 from pydantic import BaseModel
 
@@ -67,11 +67,7 @@ def make_presentation(
     play_integrity_verified=Depends(verify_play_integrity),
 ):
     model_name, premium_model = use_feature_with_premium_model_check("PRESENTATION", user_id=user_id)
-    if premium_model and model_name:
-        llm = global_chat_model(temperature=0.3, model=model_name, **global_chat_model_kwargs)
-    else:
-        llm = global_chat_model(temperature=0.3, **global_chat_model_kwargs)
-        
+    llm = get_model({"temperature": 0.3}, False, premium_model)        
     ppt_pages = subscription_manager.get_feature_value(user_id, "ppt_pages").main_data or 12
     presentation_input.number_of_pages = min(presentation_input.number_of_pages, ppt_pages)
     

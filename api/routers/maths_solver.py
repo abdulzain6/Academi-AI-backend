@@ -7,18 +7,19 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi import Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from api.lib.maths_solver.agent import MathSolver
-from ..dependencies import require_points_for_feature
+from ..dependencies import get_model_and_fallback, require_points_for_feature
 from ..lib.database.messages import MessagePair
 from ..lib.utils import split_into_chunks
 from ..globals import image_ocr, conversation_manager
 from ..globals import (
-    global_chat_model,
-    global_chat_model_kwargs,
-    client  
+    client, CHAT_TOOLS
 )
 from pydantic import BaseModel
 from ..auth import get_user_id, verify_play_integrity
-from ..dependencies import use_feature_with_premium_model_check, use_feature, can_use_premium_model
+from ..dependencies import use_feature, can_use_premium_model
+from langchain.chat_models.openai import ChatOpenAI
+from openai.error import OpenAIError
+
 
 
 router = APIRouter()
@@ -62,17 +63,13 @@ def solve_maths_stream(
     ) or []
     
     model_name, premium_model = can_use_premium_model(user_id=user_id)        
-    kwargs = {**global_chat_model_kwargs}
-    if model_name:
-        kwargs["model"] = model_name
+    model_default, model_fallback  = get_model_and_fallback({"temperature": 0}, True, premium_model)
+    logging.info(f"Default {model_default}, Fallback {model_fallback}")
+    if isinstance(model_default, ChatOpenAI):
+        functions = True
+    else:
+        functions = False
         
-    maths_solver = MathSolver(
-        client,
-        global_chat_model,
-        llm_kwargs=kwargs,
-    )
-    logging.info(f"Using model {model_name} to solve question for user {user_id}")
-
     data_queue = queue.Queue()
 
     def callback(data: str) -> None:
@@ -99,14 +96,38 @@ def solve_maths_stream(
 
     def run_agent() -> None:
         try:
+            maths_solver = MathSolver(
+                client,
+                llm=model_default,
+                is_openai_functions=functions,
+                extra_tools=CHAT_TOOLS
+            )
             maths_solver.run_agent(
                 maths_solver_input.question,
-                structured=False,
-                stream=True,
                 callback=callback,
                 chat_history=chat_history,
                 on_end_callback=on_end_callback,
             )
+        except OpenAIError:
+            try:
+                maths_solver = MathSolver(
+                    client,
+                    llm=model_fallback,
+                    is_openai_functions=False,
+                    extra_tools=CHAT_TOOLS
+                )
+                maths_solver.run_agent(
+                    maths_solver_input.question,
+                    callback=callback,
+                    chat_history=chat_history,
+                    on_end_callback=on_end_callback,
+                )
+            except Exception as e:
+                logging.error(f"Error in math solver {user_id}, Error: {e}")
+                error_message = "The AI was not able to solve the question please make your question clearer."
+                for chunk in split_into_chunks(error_message, 4):
+                    callback(chunk)
+                callback("@@END@@")
         except Exception as e:
             logging.error(f"Error in math solver {user_id}, Error: {e}")
             error_message = "The AI was not able to solve the question please make your question clearer."

@@ -1,3 +1,4 @@
+import logging
 import re
 import time
 from typing import Dict, List, Optional, Sequence, Tuple, Union
@@ -15,6 +16,7 @@ from langchain.schema import (
 )
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.chat_models.base import BaseChatModel
+from langchain.agents.structured_chat.base import StructuredChatAgent
 from langchain.chains import create_extraction_chain
 from .modified_openai_agent import ModifiedOpenAIAgent
 from typing import Any, Optional, Sequence
@@ -30,15 +32,16 @@ def split_into_chunks(text, chunk_size):
 
 
 class CustomCallback(BaseCallbackHandler):
-    def __init__(self, callback, on_end_callback) -> None:
+    def __init__(self, callback, on_end_callback, is_openai: bool) -> None:
         self.callback = callback
         self.on_end_callback = on_end_callback
         super().__init__()
         self.cached = True
+        self.is_openai = is_openai
 
     def on_llm_new_token(self, token: str, **kwargs) -> None:
         self.cached = False
-        if not self.cached:
+        if not self.cached and self.is_openai:
             self.callback(token)
 
     def on_agent_action(
@@ -50,7 +53,7 @@ class CustomCallback(BaseCallbackHandler):
         **kwargs: Any,
     ) -> Any:
         self.callback(
-            "AI is using a tool to perform calculations to better assist you...\n"
+            "*AI is using a tool to perform calculations to better assist you...*\n"
         )
 
     def on_tool_end(
@@ -62,7 +65,7 @@ class CustomCallback(BaseCallbackHandler):
         **kwargs: Any,
     ) -> Any:
         """Run when tool ends running."""
-        self.callback("\nAI has finished using the tool and will respond shortly...\n")
+        self.callback("\n*AI has finished using the tool and will respond shortly...*\n")
 
     def on_agent_finish(
         self,
@@ -73,42 +76,22 @@ class CustomCallback(BaseCallbackHandler):
         **kwargs: Any,
     ) -> Any:
         self.on_end_callback(finish.return_values.get("output", ""))
-        if self.cached:
+        if self.cached or not self.is_openai:
             self.callback(finish.return_values.get("output", ""))
         self.callback("@@END@@")
 
 
-class Solution(BaseModel):
-    answer_markdown: str = Field(
-        None,
-        json_schema_extra={
-            "description": "The answer to the user question in markdown"
-        },
-    )
-    explanation_markdown: str = Field(
-        None,
-        json_schema_extra={
-            "description": "The explanation for the answer with definitions, assumptions intermediate results, units and problem statement Must explain in the easiest language as possible. Must be in markdown"
-        },
-    )
-    steps: str = Field(
-        None,
-        json_schema_extra={
-            "description": "The step by step methodology used to reach the solution."
-        },
-    )
-    message_user: str = Field(
-        None, json_schema_extra={"description": "A useful message to the user."}
-    )
 
 
 class MathSolver:
     def __init__(
-        self, python_client: PythonClient, llm_cls: BaseChatModel, llm_kwargs: dict
+        self, python_client: PythonClient, llm: BaseChatModel, is_openai_functions: bool = True, extra_tools: list[Tool] = []
     ) -> None:
         self.python_client = python_client
-        self.llm_cls = llm_cls
-        self.llm_kwargs = llm_kwargs
+        self.llm = llm
+        self.is_openai_functions = is_openai_functions
+        self.python_count = 0
+        self.extra_tools = extra_tools
 
     def make_tools(self) -> list[Tool]:
         try:
@@ -145,13 +128,18 @@ Do not import libraries that are not allowed.
             return joined_matches or text.strip()
 
         def python_function(code: str):
+            logging.info(f"Runing {code}")
+            max_count = 3 if self.is_openai_functions else 2
+            if self.python_count >= max_count:
+                return "Cannot use tool anymore, just answer what you know"
             result = self.python_client.evaluate_code(extract_python_code(code))
+            self.python_count += 1
             try:
                 return result["result"]
             except Exception as e:
                 return result
 
-        return [Tool("python", python_function, description)]
+        return [Tool("python", python_function, description), *self.extra_tools]
 
     def make_agent(
         self, llm: BaseChatModel, chat_history_messages: list[BaseMessage]
@@ -176,9 +164,11 @@ Rules:
     The student is solving the question on paper, help him solve on paper he has no tools.
     Use tools if you think you need help or to confirm answer.
     You must use tools to confirm your answer. (Important)
-    Make sure arguments to tools are loadable by json.loads (Super important), so use double quotes!! or it will cause error
     Use latex for maths equations and symbols (important)
-Lets think step by step to help the student following all rules.
+    
+Use tools to get accurate answer, dont give approximations (Important)
+Always use tools (Important)
+Lets think step by step to help the student following all rules. 
 """
             ),
             "extra_prompt_messages": chat_history_messages,
@@ -187,7 +177,7 @@ Lets think step by step to help the student following all rules.
             self.make_tools(),
             llm,
             agent_kwargs=agent_kwargs,
-            max_iterations=4,
+            max_iterations=5,
         )
 
     def initialize_agent(
@@ -198,9 +188,18 @@ Lets think step by step to help the student following all rules.
         agent_kwargs: Optional[dict] = None,
         **kwargs: Any,
     ):
-        agent_obj = ModifiedOpenAIAgent.from_llm_and_tools(
-            llm, tools, callback_manager=callback_manager, **agent_kwargs
-        )
+        if self.is_openai_functions:
+            agent_obj = ModifiedOpenAIAgent.from_llm_and_tools(
+                llm, tools, callback_manager=callback_manager, **agent_kwargs
+            )
+        else:
+            agent_obj = StructuredChatAgent.from_llm_and_tools(
+                llm,
+                tools,
+                callback_manager=callback_manager,
+                prefix=agent_kwargs["system_message"].content,
+                memory_prompts=agent_kwargs["extra_prompt_messages"]
+            )
         return AgentExecutor.from_agent_and_tools(
             agent=agent_obj,
             tools=tools,
@@ -208,20 +207,12 @@ Lets think step by step to help the student following all rules.
             **kwargs,
         )
 
-    def get_structured_output(self, response: str) -> Solution:
-        chain = create_extraction_chain(
-            Solution.model_json_schema(), self.llm_cls(**self.llm_kwargs)
-        )
-        return Solution.model_validate(chain.run(response)[0])
-
     def wrap_prompt(self, prompt: str) -> str:
         return f"""{prompt}"""
 
     def run_agent(
         self,
         prompt: str,
-        structured: bool,
-        stream: bool = False,
         callback: callable = None,
         on_end_callback: callable = None,
         chat_history: list[tuple[str, str]] = None,
@@ -229,27 +220,17 @@ Lets think step by step to help the student following all rules.
         if chat_history is None:
             chat_history = []
 
-        if structured and stream:
-            raise ValueError("Stream must be disabled for structured output")
-
-        llm = self.llm_cls(**self.llm_kwargs, **{"streaming": stream})
         agent = self.make_agent(
-            llm=llm, chat_history_messages=self.format_messages(chat_history, 700, llm)
+            llm=self.llm,
+            chat_history_messages=self.format_messages(chat_history, 700, self.llm),
         )
-        if stream:
-            agent = self.make_agent(
-                llm=self.llm_cls(**self.llm_kwargs, **{"streaming": stream}),
-                chat_history_messages=self.format_messages(chat_history, 700, llm),
-            )
-            if not callback:
-                raise ValueError("Callback not passed for streaming to")
-            return agent.run(
-                self.wrap_prompt(prompt),
-                callbacks=[CustomCallback(callback, on_end_callback)],
-            )
-        else:
-            response = agent.run(self.wrap_prompt(prompt))
-            return self.get_structured_output(response) if structured else response
+        if not callback:
+            raise ValueError("Callback not passed for streaming to")
+        
+        return agent.run(
+            self.wrap_prompt(prompt),
+            callbacks=[CustomCallback(callback, on_end_callback, self.is_openai_functions)],
+        )
 
     def format_messages(
         self,
@@ -266,7 +247,7 @@ Lets think step by step to help the student following all rules.
             if tokens_used + ai_tokens <= tokens_limit:
                 messages.append(AIMessage(content=ai_msg))
                 tokens_used += ai_tokens
-            
+
             # Add the human message if it doesn't exceed the limit.
             if tokens_used + human_tokens <= tokens_limit:
                 messages.append(HumanMessage(content=human_msg))
@@ -275,4 +256,3 @@ Lets think step by step to help the student following all rules.
                 break  # If we can't add a human message, we have reached the token limit.
 
         return list(reversed(messages))
-

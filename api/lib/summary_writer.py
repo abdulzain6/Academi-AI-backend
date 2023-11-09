@@ -21,9 +21,8 @@ class Content(BaseModel):
 
 
 class SummaryWriter:
-    def __init__(self, llm: Type[BaseChatModel], llm_kwargs: dict) -> None:
+    def __init__(self, llm: BaseChatModel) -> None:
         self.llm = llm
-        self.llm_kwargs = llm_kwargs
 
     def get_markdown(self, data: str, word_count: int, instructions: str) -> Content:
         parser = PydanticOutputParser(pydantic_object=Content)
@@ -69,7 +68,7 @@ Follow the limit, you gave too small before.
             ],
             partial_variables={"format_instructions" : parser.get_format_instructions()}
         )
-        chain = LLMChain(prompt=prompt, llm=self.llm(**self.llm_kwargs), output_parser=parser, verbose=True)
+        chain = LLMChain(prompt=prompt, llm=self.llm, output_parser=parser, verbose=True)
 
         return chain.run(
             minimum_words=word_count,

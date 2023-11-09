@@ -27,6 +27,12 @@ spec:
           image: registry.digitalocean.com/mufti-api/akalmand:latest
           imagePullPolicy: Always
           env:
+            - name: ANYSCALE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: study-app-environment-variables
+                  key: ANYSCALE_API_KEY
+
             - name: MONGODB_URL
               valueFrom:
                 secretKeyRef:
@@ -65,8 +71,14 @@ spec:
             httpGet:
               path: /health
               port: 8000 # Replace with the correct port on which your container is listening
+              scheme: HTTP
             initialDelaySeconds: 10 # Time to wait before first probe is initiated
             periodSeconds: 300 
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+              scheme: HTTP
           resources: {}
           terminationMessagePath: /dev/termination-log
           terminationMessagePolicy: File

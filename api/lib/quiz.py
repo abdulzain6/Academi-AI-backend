@@ -132,12 +132,10 @@ class QuizGenerator:
         file_manager: FileDBManager,
         knowledge_manager: KnowledgeManager,
         llm: BaseLanguageModel,
-        llm_kwargs: dict,
     ) -> None:
         self.file_manager = file_manager
         self.knowledge_manager = knowledge_manager
         self.llm = llm
-        self.llm_kwargs = llm_kwargs
 
     def split_into_n_chunks(self, lst: List[Any], n: int) -> Generator[List[Any], None, None]:
         if not lst or n <= 0:
@@ -216,7 +214,7 @@ The generated quiz in proper schema without useless and incomplete questions, wh
         chain = LLMChain(
             prompt=prompt_template,
             output_parser=parser,
-            llm=self.llm(**self.llm_kwargs),
+            llm=self.llm,
         )
         
         if len(texts) == 0:
@@ -337,7 +335,7 @@ The generated flashcards in proper schema without useless and incomplete questio
         chain = LLMChain(
             prompt=prompt_template,
             output_parser=parser,
-            llm=self.llm(**self.llm_kwargs),
+            llm=self.llm,
         )
         
         if len(texts) == 0:
@@ -381,7 +379,7 @@ The result for the quiz, You must follow the schema(Important):
         chain = LLMChain(
             prompt=prompt_template,
             output_parser=parser,
-            llm=self.llm(**self.llm_kwargs),
+            llm=self.llm,
         )
         short_answers, rest_answers = self.separate_responses_by_type(user_answers)
         incoming_ids = {answer.id for answer in user_answers}

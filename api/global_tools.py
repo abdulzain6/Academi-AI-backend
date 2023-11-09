@@ -1,5 +1,10 @@
 from langchain.tools.ddg_search.tool import DuckDuckGoSearchRun
+from langchain.tools.wikipedia.tool import WikipediaQueryRun
+from langchain.utilities.wikipedia import WikipediaAPIWrapper
+from langchain.tools.youtube.search import YouTubeSearchTool
 
 CHAT_TOOLS = [
-    DuckDuckGoSearchRun()
+    DuckDuckGoSearchRun(),
+    WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper()),
+    YouTubeSearchTool()
 ]

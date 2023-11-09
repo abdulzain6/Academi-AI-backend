@@ -34,9 +34,8 @@ class ContentInput(BaseModel):
 
 
 class Writer:
-    def __init__(self, llm: Type[BaseChatModel], llm_kwargs: dict) -> None:
+    def __init__(self, llm: BaseChatModel) -> None:
         self.llm = llm
-        self.llm_kwargs = llm_kwargs
 
     def get_content_plan(self, content_input: ContentInput) -> GenerationPlan:
         parser = PydanticOutputParser(pydantic_object=GenerationPlan)
@@ -79,7 +78,7 @@ Follow the schema above (Important)
             ],
             partial_variables={"format_instructions" : parser.get_format_instructions()}
         )
-        chain = LLMChain(prompt=prompt, llm=self.llm(**self.llm_kwargs), output_parser=parser)
+        chain = LLMChain(prompt=prompt, llm=self.llm, output_parser=parser)
         return chain.run(
             minimum_words=content_input.minimum_word_count,
             topic=content_input.topic,
@@ -136,7 +135,7 @@ Follow the schema above (Important) Make sure the json is correct! You gave wron
             ],
             partial_variables={"format_instructions" : parser.get_format_instructions()}
         )
-        chain = LLMChain(prompt=prompt, llm=self.llm(**self.llm_kwargs), output_parser=parser)
+        chain = LLMChain(prompt=prompt, llm=self.llm, output_parser=parser)
 
         return chain.run(
             minimum_words=word_count,

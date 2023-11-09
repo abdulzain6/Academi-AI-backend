@@ -7,6 +7,9 @@ from .globals import (
     subscription_manager,
     file_manager,
     collection_manager,
+    global_chat_model,
+    global_chat_model_kwargs,
+    fallback_chat_models
 )
 from fastapi import HTTPException
 from functools import wraps
@@ -54,7 +57,7 @@ def require_points_for_feature(feature_key: str):
                 user_points_manager.increment_user_points(user_id, required_points)
                 if isinstance(e, HTTPException):
                     raise e
-                
+
                 raise HTTPException(500, detail=str(e))
 
         return wrapper
@@ -81,15 +84,15 @@ def use_feature_with_premium_model_check(
 ) -> tuple[Optional[Union[str, int]], bool]:
     used, feature = use_feature(feature_name, user_id)
     if subscription_manager.get_subscription_type(user_id) == SubscriptionType.ELITE:
-        used_gpt, feature_gpt = use_feature("MODEL", user_id)
-        return feature_gpt, used_gpt
+        used_gpt, model_name = use_feature("MODEL", user_id)
+        return model_name, used_gpt
     return None, False
 
 
 def can_use_premium_model(user_id: str) -> tuple[Optional[Union[str, int]], bool]:
     if subscription_manager.get_subscription_type(user_id) == SubscriptionType.ELITE:
-        used_gpt, feature_gpt = use_feature("MODEL", user_id)
-        return feature_gpt, used_gpt
+        used_gpt, model_name = use_feature("MODEL", user_id)
+        return model_name, used_gpt
     return None, False
 
 
@@ -123,7 +126,62 @@ def can_add_more_data(
             raise HTTPException(400, detail="File limit reached, cannot add more files")
 
     collection_count = len(collection_manager.get_all_by_user(user_id))
-    if collection_count >= FILE_COLLECTION_LIMITS[SubscriptionType.FREE] and collection_check:
+    if (
+        collection_count >= FILE_COLLECTION_LIMITS[SubscriptionType.FREE]
+        and collection_check
+    ):
         raise HTTPException(
             400, detail="Collection/Subject limit reached, cannot add more"
         )
+
+
+def get_model(model_kwargs: dict, stream: bool, is_premium: bool):
+    args = {**global_chat_model_kwargs, **{"streaming" : stream}}
+    args.update(model_kwargs)
+    fallback_args = args.copy()
+    
+    if is_premium:
+        args.update(**global_chat_model[2])
+    else:
+        args.update(**global_chat_model[1])
+        
+    fallbacks = []
+    for fallback in fallback_chat_models:
+        if is_premium:
+            fallback_args.update(**fallback[2])
+        else:
+            fallback_args.update(**fallback[1])
+        
+        logging.info(f"Adding fallback {fallback[0]}, args: {fallback_args}")
+        fallbacks.append(fallback[0](**fallback_args))
+    
+    logging.info(f"Chat model fallback {global_chat_model[0]}, args: {args}")
+    return global_chat_model[0](
+        **args
+    ).with_fallbacks(fallbacks=fallbacks)
+
+
+def get_model_and_fallback(model_kwargs: dict, stream: bool, is_premium: bool):
+    args = {**global_chat_model_kwargs, **{"streaming" : stream}}
+    args.update(model_kwargs)
+    fallback_args = args.copy()
+    
+    if is_premium:
+        args.update(**global_chat_model[2])
+    else:
+        args.update(**global_chat_model[1])
+        
+    fallbacks = []
+    for fallback in fallback_chat_models:
+        if is_premium:
+            fallback_args.update(**fallback[2])
+        else:
+            fallback_args.update(**fallback[1])
+        
+        logging.info(f"Adding fallback {fallback[0]}, args: {fallback_args}")
+        fallbacks.append(fallback[0](**fallback_args))
+    
+    logging.info(f"Chat model fallback {global_chat_model[0]}, args: {args}")
+    return global_chat_model[0](
+        **args
+    ), fallbacks[-1]

@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from api.lib.summary_writer import SummaryWriter
 from ..auth import get_user_id, verify_play_integrity
 from ..globals import collection_manager, file_manager, global_chat_model_kwargs, global_chat_model
-from ..dependencies import require_points_for_feature, can_use_premium_model
+from ..dependencies import get_model, require_points_for_feature, can_use_premium_model
 from random import sample
 
 router = APIRouter()
@@ -78,18 +78,8 @@ def write_summary(
         data = "\n".join([file.file_content for file in files])
         
     model_name, premium_model = can_use_premium_model(user_id=user_id)     
-    kwargs = {**global_chat_model_kwargs}
-    if model_name:
-        kwargs["model"] = model_name
-    
-   # kwargs["model"] = "gpt-3.5-turbo-16k"
-    summary_writer = SummaryWriter(
-        global_chat_model,
-        llm_kwargs={
-            "temperature": 0.3,
-            **kwargs
-        }
-    )
+    model = get_model({"temperature": 0.3}, False, premium_model)
+    summary_writer = SummaryWriter(model)
     content = summary_writer.get_content(
         select_random_chunks(data, 1000, 4500), input.word_count, input.instructions
     )

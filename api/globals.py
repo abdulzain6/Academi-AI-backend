@@ -24,8 +24,7 @@ from .lib.presentation_maker.database import initialize_managers
 from .lib.maths_solver.python_exec_client import PythonClient, Urls
 from .lib.maths_solver.ocr import ImageOCR
 from .lib.redis_cache import RedisCache
-from langchain.chat_models import ChatOpenAI
-from langchain.llms import OpenAI
+from langchain.chat_models import ChatOpenAI, ChatAnyscale
 from .lib.purchases_play_store import SubscriptionChecker
 from .global_tools import CHAT_TOOLS
 import langchain
@@ -36,13 +35,24 @@ langchain.verbose = False
 current_directory = os.path.dirname(os.path.abspath(__file__))
 
 
-global_chat_model = ChatOpenAI
-global_chat_model_kwargs = {"request_timeout": 150}
+
+
+global_chat_model_kwargs = {"request_timeout": 150, "max_retries": 0}
+global_chat_model = (ChatOpenAI, {"model_name" : "gpt-3.5-turbo"}, {"model_name" : "gpt-4"})
+# Model class , free overrides, premium overides
+fallback_chat_models = [
+    (
+        ChatAnyscale,
+        {"model_name": "meta-llama/Llama-2-70b-chat-hf"},
+        {"model_name": "meta-llama/Llama-2-70b-chat-hf"},
+    )
+]
+
 langchain.llm_cache = RedisCache(redis_=redis.from_url(REDIS_URL), ttl=CACHE_TTL)
 redis_cache_manager = RedisCacheManager(redis.from_url(REDIS_URL))
 
 
-#code runner
+# code runner
 client = PythonClient(
     Urls(
         main_url=MAIN_URL_EXECUTOR,
@@ -86,19 +96,13 @@ knowledge_manager = KnowledgeManager(
     qdrant_url=QDRANT_URL,
 )
 chat_manager = ChatManager(
-    OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY),
-    global_chat_model,
-    llm_kwargs={
-        "openai_api_key": OPENAI_API_KEY,
-        "temperature": 0.3,
-        "request_timeout": 100,
-    },
+    OpenAIEmbeddings(),
     conversation_limit=700,
     docs_limit=1000,
     qdrant_api_key=QDRANT_API_KEY,
     qdrant_url=QDRANT_URL,
     python_client=client,
-    base_tools=CHAT_TOOLS
+    base_tools=CHAT_TOOLS,
 )
 subscription_manager = SubscriptionManager(
     connection_string=MONGODB_URL,
@@ -140,8 +144,8 @@ subscription_manager = SubscriptionManager(
                 MonthlyLimitFeature(
                     name="MODEL",
                     limit=75,
-                    value="gpt-4",
-                    fallback_value="gpt-3.5-turbo",
+                    value="paid",
+                    fallback_value="free",
                     enabled=True,
                 )
             ],
@@ -150,8 +154,6 @@ subscription_manager = SubscriptionManager(
     },
     cache_manager=RedisCacheManager(redis.from_url(REDIS_URL), ttl=3600),
 )
-
-
 
 
 # Presentation
@@ -165,12 +167,6 @@ template_manager, temp_knowledge_manager = initialize_managers(
 image_ocr = ImageOCR(
     app_id=MATHPIX_APPID,
     app_key=MATHPIX_API_KEY,
-    llm_kwargs={
-        "openai_api_key": OPENAI_API_KEY,
-        "model": "gpt-3.5-turbo-instruct",
-        "request_timeout": 100,
-    },
-    llm_cls=OpenAI,
 )
 
 

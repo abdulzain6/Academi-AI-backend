@@ -310,7 +310,7 @@ class ChatManager:
         messages=[
             SystemMessagePromptTemplate.from_template(
                 """
-You are {ai_name}, an AI designed to provide information. You are {model_name} 
+You are {ai_name}, an AI teacher designed to teach students. You are {model_name} 
 You are to take the tone of a teacher.
 Talk as if you're a teacher. Use the data provided to answer user questions. 
 Only return the next message content in {language}. dont return anything else not even the name of AI.
@@ -330,6 +330,8 @@ Let's think in a step by step, answer the humans question in {language}. Use the
 
 Human: {question}
 
+Use the help data to answer the student question
+
 {ai_name} ({language}):"""
             ),
         ],
@@ -346,19 +348,15 @@ Human: {question}
     def __init__(
         self,
         embeddings: Embeddings,
-        llm_cls: Type[BaseChatModel],
-        llm_kwargs: Dict[str, str],
         qdrant_api_key: str,
         qdrant_url: str,
         conversation_limit: int,
         docs_limit: int,
         python_client: PythonClient,
-        ai_name: str = "AI",
+        ai_name: str = "AcademiAI",
         base_tools: list[Tool] = [],
     ) -> None:
         self.embeddings = embeddings
-        self.llm_cls = llm_cls
-        self.llm_kwargs = llm_kwargs
         self.qdrant_api_key = qdrant_api_key
         self.qdrant_url = qdrant_url
         self.conversation_limit = conversation_limit
@@ -423,7 +421,7 @@ Do not import libraries that are not allowed.
         agent_kwargs = {
             "system_message": SystemMessagePromptTemplate.from_template(
                 template="""
-You are {ai_name}, an AI designed to provide information. You are {model_name} 
+You are {ai_name}, an AI teacher designed to teach students. 
 You are to take the tone of a teacher.
 You must answer the human in {language} (important)
 Talk as if you're a teacher. Use the data provided to answer user questions. 
@@ -432,16 +430,12 @@ Use files data to answer quetions always (important)
 If you have no context what the student is asking use files data to answer (Very important)
 file data is from students webpages, youtube links, files, images and much more
 
-files data (this is from students webpages, youtube links, files, subjects, images and much more):
-==========
-{help_data}
-==========
-
 Rules:
     You will not run unsafe code or perform harm to the server youre on. Or import potentially harmful libraries (Very Important).
     Do not return python code to the user.(Super important)
     Use tools if you think you need help or to confirm answer.
-Lets think step by step to help the student following all rules.
+    
+Lets always use tools and keep the files data in mind before answering the questions. Good luck mr teacher
 """
             ).format(**prompt_args),
             "extra_prompt_messages": chat_history_messages,
@@ -489,12 +483,12 @@ Lets think step by step to help the student following all rules.
         prompt: str,
         collection_name: str,
         language: str,
+        llm: BaseChatModel,
         callback: callable = None,
         on_end_callback: callable = None,
         chat_history: list[tuple[str, str]] = None,
         metadata: dict[str, str] = None,
         filename: str = None,
-        model_name: str = "gpt-3.5-turbo",
         k: int = 5,
     ):
         if chat_history is None:
@@ -502,12 +496,6 @@ Lets think step by step to help the student following all rules.
             
         if metadata is None:
             metadata = {}
-
-        args = {"streaming": True}
-        if model_name:
-            args["model"] : model_name
-            
-        llm = self.llm_cls(**self.llm_kwargs, **args)
 
         if filename:
             metadata["file"] = filename
@@ -543,17 +531,24 @@ Lets think step by step to help the student following all rules.
             ),
             prompt_args={
                 "language": language,
-                "model_name": model_name,
                 "ai_name": self.ai_name,
-                "help_data" : help_data
             },
             extra_tools=[]
         )
         if not callback:
             raise ValueError("Callback not passed for streaming to work")
         
+        wrapped_prompt = f"""
+Files Data (This data is from files/subjects the human has provided and can be from webpages, youtube links, files, images and much more):
+==========
+{help_data}
+==========
+
+Human: {prompt}
+
+{self.ai_name} {language}:"""
         return agent.run(
-            prompt,
+            wrapped_prompt,
             callbacks=[CustomCallbackAgent(callback, on_end_callback)],
         )
 
@@ -563,23 +558,18 @@ Lets think step by step to help the student following all rules.
         prompt: str,
         chat_history: list[tuple[str, str]],
         language: str,
-        stream: bool = True,
+        llm: BaseChatModel,
         callback_func: callable = None,
         on_end_callback: callable = None,
         k: int = 5,
         metadata: dict[str, str] = None,
         filename: str = None,
-        model_name: str = "gpt-3.5-turbo",
     ) -> str:
         if metadata is None:
             metadata = {}
 
-        llm = self.get_llm(
-            stream=stream,
-            callback_func=callback_func,
-            on_end_callback=on_end_callback,
-            model=model_name,
-        )
+        llm.callbacks = [CustomCallback(callback_func, on_end_callback)]
+        
         conversation = self.format_messages(
             chat_history=chat_history,
             tokens_limit=self.conversation_limit,
@@ -618,7 +608,7 @@ Lets think step by step to help the student following all rules.
             conversation=conversation,
             question=prompt,
             language=language,
-            model_name=model_name,
+            model_name="gpt",
         )
 
     def format_messages(
@@ -627,7 +617,7 @@ Lets think step by step to help the student following all rules.
         tokens_limit: int,
         llm: BaseChatModel,
         human_only: bool = False,
-        ai_name: str = "AI",
+        ai_name: str = "AcademiAi",
     ) -> str:
         cleaned_msgs: List[Union[str, Tuple[str, str]]] = []
         tokens_used: int = 0
@@ -699,37 +689,3 @@ Lets think step by step to help the student following all rules.
             token_count -= tokens[num_docs]
 
         return docs[:num_docs]
-
-    def get_llm(
-        self,
-        stream=False,
-        callback_func=None,
-        on_end_callback=None,
-        model: str = "gpt-3.5-turbo",
-    ):
-        if not stream:
-            if model:
-                return self.llm_cls(
-                    model=model,
-                    **self.llm_kwargs,
-                    streaming=False,
-                )
-            else:
-                return self.llm_cls(
-                    **self.llm_kwargs,
-                    streaming=False,
-                )
-
-        if model:
-            return self.llm_cls(
-                model=model,
-                **self.llm_kwargs,
-                streaming=True,
-                callbacks=[CustomCallback(callback_func, on_end_callback)],
-            )
-        else:
-            return self.llm_cls(
-                **self.llm_kwargs,
-                streaming=True,
-                callbacks=[CustomCallback(callback_func, on_end_callback)],
-            )
