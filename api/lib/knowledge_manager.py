@@ -439,13 +439,14 @@ Rules:
     Use tools if you think you need help or to confirm answer.
     
 
-Files Data (This data is from files/subjects the human has provided and can be from webpages, youtube links, files, images and much more):
+File content/ Help data/ Student data (This data is from files/subjects the human has provided and can be from webpages, youtube links, files, images and much more):
 ==========
 {help_data}
 ==========
 
-Use files data to answer questions always (important)
-Lets use tools and keep the files data in mind before answering the questions. Good luck mr teacher
+Use files data above ^^ to answer questions always (important)
+
+Lets use tools and keep the files data above in mind before answering the questions. Good luck mr teacher
 """
             ).format(**prompt_args),
             "extra_prompt_messages": chat_history_messages,
