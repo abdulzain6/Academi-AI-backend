@@ -30,6 +30,7 @@ google-auth
 google-auth-oauthlib
 wikipedia
 youtube_search
+scholarly
 
 opentelemetry-distro==0.41b0
 opentelemetry-exporter-otlp==1.20.0
