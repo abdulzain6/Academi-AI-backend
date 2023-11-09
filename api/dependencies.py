@@ -64,7 +64,10 @@ def require_points_for_feature(feature_key: str, usage_key: str = None):
                 if not isinstance(e, LimitException):
                     subscription_manager.undo_use_feature(user_id=user_id, feature_name="MODEL")
                 
-                if isinstance(e, HTTPException) or isinstance(e, LimitException):
+                if isinstance(e, LimitException):
+                    raise HTTPException(400, "Error user cannot use feature limit reached")
+                
+                if isinstance(e, HTTPException):
                     raise e
 
                 raise HTTPException(500, detail=str(e))
@@ -82,7 +85,7 @@ def use_feature(feature_name: str, user_id: str) -> tuple[bool, str | int]:
     )
 
     if not can_use:
-        raise LimitException(400, detail="Limit reached, User cannot use feature")
+        raise LimitException
 
     used = subscription_manager.use_feature(user_id, feature_name)
     return used, feature
