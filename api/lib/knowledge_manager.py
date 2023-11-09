@@ -65,7 +65,7 @@ class CustomCallback(BaseCallbackHandler):
     def on_llm_new_token(self, token: str, **kwargs) -> None:
         if token:
             self.cached = False
-        if not self.cached and self.is_openai:
+        if not self.cached:
             self.callback(token)
 
     def on_llm_end(self, response: LLMResult, *args, **kwargs) -> None:
@@ -85,7 +85,8 @@ class CustomCallbackAgent(BaseCallbackHandler):
         self.cached = True
 
     def on_llm_new_token(self, token: str, **kwargs) -> None:
-        self.cached = False
+        if token:
+            self.cached = False
         if not self.cached:
             self.callback(token)
 
