@@ -136,22 +136,6 @@ class QuizGenerator:
         self.file_manager = file_manager
         self.knowledge_manager = knowledge_manager
         self.llm = llm
-
-    def split_into_n_chunks(self, lst: List[Any], n: int) -> Generator[List[Any], None, None]:
-        if not lst or n <= 0:
-            return  # Yield nothing for empty list or non-positive n
-
-        n = min(n, len(lst))  # Adjust n to avoid empty chunks
-
-        avg_len = len(lst) // n
-        remainder = len(lst) % n
-
-        start = 0
-        for _ in range(n):
-            end = start + avg_len + (remainder > 0)
-            yield lst[start:end]
-            start = end
-            remainder -= 1
             
     def run_chain(self, chain, text, number_of_questions: int) -> List[QuizQuestion]:
         output: Quiz = chain.run(data=text, number_of_questions=number_of_questions)
@@ -162,23 +146,7 @@ class QuizGenerator:
         return output.flashcards
 
     @retry(stop_max_attempt_number=3)
-    def generate_quiz(self, data: str, number_of_questions: int, collection_name: str = "Anything", n: int = 4) -> list[QuizQuestionResponse]:
-        if data:
-            data_tokens = 2500
-            if data_tokens < 1500:
-                texts = data
-            else:
-                chunk_size = min(data_tokens // n, 1500)
-                
-                text_splitter = TokenTextSplitter(
-                    chunk_size=chunk_size, model_name="gpt-3.5-turbo"
-                )
-                splits = text_splitter.split_text(data)
-                
-                texts = random.choice(splits)
-        else:
-            texts = data
-            
+    def generate_quiz(self, data: str, number_of_questions: int, collection_name: str = "Anything", maximum_questions: int = 10) -> list[QuizQuestionResponse]:            
         parser = PydanticOutputParser(pydantic_object=Quiz)
         prompt_template = ChatPromptTemplate(
             messages=[
@@ -189,9 +157,7 @@ You will generate a variety of question types. (IMportant)
 You will not generate unimportant or incomplete questions.
 You will not generate too many questions as this is not the full quiz but a part of it. (Important) 
 The quiz is to be of {number_of_questions} questions. (Important)
-You will follow the following schema and will not return anything else
-The schema:
-{format_instructions}
+Follow the schema provided to generate the quiz, failing to do so will raise an error. (Important!!)
 """
                 ),
                 HumanMessagePromptTemplate.from_template(
@@ -201,8 +167,13 @@ Here is the data used to generate the quiz
 {data}
 ===========
 
-If there is no data, Use your knowledge to generate the quiz about {collection_name}. if you dont know about this, make a general quiz
+You will follow the following schema and will not return anything else or an error will be raised
 
+The schema:
+{format_instructions}
+
+
+If there is no data, Use your knowledge to generate the quiz about {collection_name}. if you dont know about this, make a general quiz
 The generated quiz in proper schema without useless and incomplete questions, while picking a variety of question types. You must follow the schema(Important):
 """
                 ),
@@ -217,35 +188,12 @@ The generated quiz in proper schema without useless and incomplete questions, wh
             llm=self.llm,
         )
         
-        if len(texts) == 0:
-            questions = self.run_chain(chain, "", min(number_of_questions, 10))
+        if not data:
+            questions = self.run_chain(chain, "", min(number_of_questions, maximum_questions))
         else:
-            questions = self.run_chain(chain, texts, number_of_questions)
+            questions = self.run_chain(chain, data, min(number_of_questions, maximum_questions))
 
-        return [QuizQuestionResponse(**question.model_dump(), id=str(uuid.uuid4())) for question in questions[:number_of_questions]]
-    
-    def pick_evenly_spaced_elements(self, arr: List[Any], n: int) -> List[Any]:
-        arr_length = len(arr)
-
-        if n <= 0 or n > arr_length:
-            return arr
-
-        if arr_length <= n:
-            return arr
-
-        spacing = math.floor(arr_length / n)
-
-        if spacing == 0:
-            spacing = 1
-
-        start_idx = random.randint(0, spacing - 1)
-        picked_elements = [
-            arr[start_idx + i * spacing]
-            for i in range(n)
-            if start_idx + i * spacing < arr_length
-        ]
-        random.shuffle(picked_elements)
-        return picked_elements
+        return [QuizQuestionResponse(**question.model_dump(), id=str(uuid.uuid4())) for question in questions[:maximum_questions]]
 
     def format_user_responses(self, responses: List[UserResponse]) -> str:
         formatted_responses = []
@@ -284,23 +232,7 @@ The generated quiz in proper schema without useless and incomplete questions, wh
         return percentage_correct, correct_answers, total_questions      
 
     @retry(stop_max_attempt_number=3)
-    def generate_flashcards(self, data: str, number_of_flashcards: int, collection_name: str = "Anything", n: int = 4) -> list[FlashCard]:
-        if data:
-            data_tokens = 2500
-            if data_tokens < 1500:
-                texts = data
-            else:
-                chunk_size = min(data_tokens // n, 1500)
-                
-                text_splitter = TokenTextSplitter(
-                    chunk_size=chunk_size, model_name="gpt-3.5-turbo"
-                )
-                splits = text_splitter.split_text(data)
-                
-                texts = random.choice(splits)
-        else:
-            texts = data
-            
+    def generate_flashcards(self, data: str, number_of_flashcards: int, collection_name: str = "Anything", maximium_flashcards: int = 10) -> list[FlashCard]:
         parser = PydanticOutputParser(pydantic_object=FlashCards)
         prompt_template = ChatPromptTemplate(
             messages=[
@@ -310,9 +242,7 @@ You are an AI designed to generate flashcards from the data.
 You will not generate unimportant or incomplete questions.
 You will not generate too many questions as this is not the full set but a part of it. (Important) 
 The flashcard set is to be of {number_of_questions} questions. (Important)
-You will follow the following schema and will not return anything else
-The schema:
-{format_instructions}
+Follow the schema provided to generate the quiz, failing to do so will raise an error. (Important!!)
 """
                 ),
                 HumanMessagePromptTemplate.from_template(
@@ -322,9 +252,14 @@ Here is the data used to generate the flashcards
 {data}
 ===========
 
+You will follow the following schema and will not return anything else
+
+The schema:
+{format_instructions}
+
 If there is no data, Use your knowledge to generate the flashcards about {collection_name}. if you dont know about this, make a general flashcards
 
-The generated flashcards in proper schema without useless and incomplete questions. You must follow the schema(Important):
+The generated flashcards in proper schema. You must follow the schema(Important):
 """
                 ),
             ],
@@ -338,10 +273,10 @@ The generated flashcards in proper schema without useless and incomplete questio
             llm=self.llm,
         )
         
-        if len(texts) == 0:
+        if not data:
             flashcards = self.run_chain_fc(chain, "", min(number_of_flashcards, 10))
         else:
-            flashcards = self.run_chain_fc(chain, texts, min(number_of_flashcards, 10))
+            flashcards = self.run_chain_fc(chain, data, min(number_of_flashcards, 10))
 
         return flashcards[:number_of_flashcards]
   

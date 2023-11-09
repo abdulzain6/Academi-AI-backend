@@ -6,6 +6,7 @@ from ..globals import file_manager, collection_manager, global_chat_model, globa
 from pydantic import BaseModel
 from ..dependencies import get_model, require_points_for_feature, can_use_premium_model, use_feature_with_premium_model_check
 from ..lib.quiz import QuizGenerator, UserResponse, Result
+from .utils import select_random_chunks
 import logging
 
 router = APIRouter()
@@ -24,7 +25,7 @@ class MakeFlashCardsInput(BaseModel):
 
 
 @router.post("/")
-@require_points_for_feature("QUIZ")
+@require_points_for_feature("QUIZ", "QUIZ")
 def make_quiz(
     quiz_input: MakeQuizInput,
     user_id=Depends(get_user_id),
@@ -57,7 +58,7 @@ def make_quiz(
     data = "\n".join([file.file_content for file in files if file])
     
     model_name, premium_model = use_feature_with_premium_model_check(user_id=user_id, feature_name="QUIZ")     
-    model = get_model({"temperature": 0.3}, False, premium_model)    
+    model = get_model({"temperature": 0}, False, premium_model)    
     quiz_generator = QuizGenerator(
         file_manager,
         None,
@@ -66,7 +67,7 @@ def make_quiz(
     
     try:
         questions = quiz_generator.generate_quiz(
-            data,
+            select_random_chunks(data, 1000, 3000),
             quiz_input.number_of_questions,
             collection_name=quiz_input.collection_name,
         )
@@ -137,7 +138,7 @@ def make_flashcards(
     data = "\n".join([file.file_content for file in files if file])
     
     model_name, premium_model = can_use_premium_model(user_id=user_id)     
-    model = get_model({"temperature": 0.3}, False, premium_model)
+    model = get_model({"temperature": 0}, False, premium_model)
     
     quiz_generator = QuizGenerator(
         file_manager,

@@ -19,7 +19,7 @@ from .lib.database.purchases import (
     MonthlyLimitFeature,
 )
 from .lib.database.cache_manager import RedisCacheManager
-from .lib.knowledge_manager import KnowledgeManager, ChatManager
+from .lib.knowledge_manager import KnowledgeManager, ChatManagerRetrieval, ChatManagerNonRetrieval
 from .lib.presentation_maker.database import initialize_managers
 from .lib.maths_solver.python_exec_client import PythonClient, Urls
 from .lib.maths_solver.ocr import ImageOCR
@@ -95,14 +95,19 @@ knowledge_manager = KnowledgeManager(
     qdrant_api_key=QDRANT_API_KEY,
     qdrant_url=QDRANT_URL,
 )
-chat_manager = ChatManager(
+chat_manager = ChatManagerRetrieval(
     OpenAIEmbeddings(),
     conversation_limit=700,
     docs_limit=1000,
     qdrant_api_key=QDRANT_API_KEY,
     qdrant_url=QDRANT_URL,
     python_client=client,
-    base_tools=CHAT_TOOLS,
+)
+chat_manager_agent_non_retrieval = ChatManagerNonRetrieval(
+    OpenAIEmbeddings(),
+    conversation_limit=700,
+    python_client=client,
+    base_tools=CHAT_TOOLS
 )
 subscription_manager = SubscriptionManager(
     connection_string=MONGODB_URL,

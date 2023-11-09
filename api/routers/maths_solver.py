@@ -100,7 +100,6 @@ def solve_maths_stream(
                 client,
                 llm=model_default,
                 is_openai_functions=functions,
-                extra_tools=CHAT_TOOLS
             )
             maths_solver.run_agent(
                 maths_solver_input.question,
@@ -114,7 +113,6 @@ def solve_maths_stream(
                     client,
                     llm=model_fallback,
                     is_openai_functions=False,
-                    extra_tools=CHAT_TOOLS
                 )
                 maths_solver.run_agent(
                     maths_solver_input.question,
@@ -141,7 +139,7 @@ def solve_maths_stream(
 
 
 @router.post("/ocr_image")
-@require_points_for_feature("OCR")
+@require_points_for_feature("OCR", "OCR")
 def ocr_image_route(
     user_id: str = Depends(get_user_id),
     file: UploadFile = File(...),

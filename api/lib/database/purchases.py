@@ -247,6 +247,37 @@ class SubscriptionManager:
             return FeatureValueResponse(name=feature_name, main_data=sub_doc["monthly_coins"], limit=None, fallback_value=None)
 
         return None  # Feature not found
+    
+    def undo_use_feature(self, user_id: str, feature_name: str) -> bool:
+        sub_doc = self.fetch_or_cache_subscription(user_id)
+
+        # Incremental features
+        for feature in sub_doc.get("incremental_features", []):
+            if feature_name == feature["name"]:
+                self.subscriptions.update_one(
+                    {"user_id": user_id},
+                    {"$inc": {"incremental_features.$[elem].limit": 1}},
+                    array_filters=[{"elem.name": {"$eq": feature_name}}],
+                )
+                logging.info(f"Reversed usage for user {user_id}, feature {feature_name}. New limit is {feature['limit'] + 1}")
+                self.cache_manager.delete(f"user_subscription:{user_id}")
+                return True
+
+        # Monthly limit features
+        for feature in sub_doc.get("monthly_limit_features", []):
+            if feature_name == feature["name"] and feature["enabled"]:
+                self.subscriptions.update_one(
+                    {"user_id": user_id},
+                    {"$inc": {"monthly_limit_features.$[elem].limit": 1}},
+                    array_filters=[{"elem.name": {"$eq": feature_name}}],
+                )
+                logging.info(f"Reversed monthly limit feature for user {user_id}, feature {feature_name}. New limit is {feature['limit'] + 1}")
+                self.cache_manager.delete(f"user_subscription:{user_id}")
+                return True
+
+        # If feature does not exist in the document, log and return False
+        logging.info(f"No such feature {feature_name} found for user {user_id} to reverse.")
+        return False
 
     def use_feature(self, user_id: str, feature_name: str) -> bool:
         self.reset_all_limits(user_id)

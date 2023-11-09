@@ -60,7 +60,7 @@ def get_available_templates(
 
 
 @router.post("/")
-@require_points_for_feature("PRESENTATION")
+@require_points_for_feature("PRESENTATION", "PRESENTATION")
 def make_presentation(
     presentation_input: MakePresentationInput,
     user_id=Depends(get_user_id),

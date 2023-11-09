@@ -1,4 +1,5 @@
 import logging
+from api.exceptions import LimitException
 
 from api.lib.database.purchases import SubscriptionType
 from .config import FEATURE_PRICING, FILE_COLLECTION_LIMITS
@@ -18,7 +19,7 @@ from typing import Callable, Any, Optional, Union
 from inspect import isfunction
 
 
-def require_points_for_feature(feature_key: str):
+def require_points_for_feature(feature_key: str, usage_key: str = None):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -55,7 +56,15 @@ def require_points_for_feature(feature_key: str):
                     f"An error occurred: {e}. Refunding points for user: {user_id} on feature: {feature_key}"
                 )
                 user_points_manager.increment_user_points(user_id, required_points)
-                if isinstance(e, HTTPException):
+                if usage_key:
+                    if not isinstance(e, LimitException):
+                        logging.info(f"Refunding usage for user {user_id} for feature {usage_key}")
+                        subscription_manager.undo_use_feature(user_id=user_id, feature_name=usage_key)
+                
+                if not isinstance(e, LimitException):
+                    subscription_manager.undo_use_feature(user_id=user_id, feature_name="MODEL")
+                
+                if isinstance(e, HTTPException) or isinstance(e, LimitException):
                     raise e
 
                 raise HTTPException(500, detail=str(e))
@@ -73,7 +82,7 @@ def use_feature(feature_name: str, user_id: str) -> tuple[bool, str | int]:
     )
 
     if not can_use:
-        raise HTTPException(400, detail="Limit reached, User cannot use feature")
+        raise LimitException(400, detail="Limit reached, User cannot use feature")
 
     used = subscription_manager.use_feature(user_id, feature_name)
     return used, feature

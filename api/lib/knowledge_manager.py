@@ -15,7 +15,7 @@ from langchain.document_loaders import WebBaseLoader, YoutubeLoader
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.schema import Document, LLMResult
 from langchain.chains import LLMChain
-from langchain.embeddings import OpenAIEmbeddings
+from langchain.embeddings import OpenAIEmbeddings, FakeEmbeddings
 from langchain.prompts import (
     PromptTemplate,
     ChatPromptTemplate,
@@ -304,10 +304,14 @@ class KnowledgeManager:
             vectorstore = Qdrant(self.client, collection_name, self.embeddings)
             return vectorstore.similarity_search(query, k, filter=metadata)
         except Exception:
-            return []
+            try:
+                vectorstore = Qdrant(self.client, collection_name, FakeEmbeddings(size=1536))
+                return vectorstore.similarity_search(query, k, filter=metadata)
+            except Exception:
+                return []
 
 
-class ChatManager:
+class ChatManagerRetrieval:
     prompt = ChatPromptTemplate(
         messages=[
             SystemMessagePromptTemplate.from_template(
@@ -687,3 +691,140 @@ Lets use tools and keep the files data in mind before answering the questions. G
             token_count -= tokens[num_docs]
 
         return docs[:num_docs]
+
+
+class ChatManagerNonRetrieval(ChatManagerRetrieval):
+    prompt = ChatPromptTemplate(
+        messages=[
+            SystemMessagePromptTemplate.from_template(
+                """
+You are {ai_name}, an AI teacher designed to teach students. You are {model_name} 
+You are to take the tone of a teacher.
+Talk as if you're a teacher.
+Only return the next message content in {language}. dont return anything else not even the name of AI.
+You must answer the human in {language} (important)
+"""
+            ),
+            HumanMessagePromptTemplate.from_template(
+                """
+Let's think in a step by step, answer the humans question in {language}.
+
+{conversation}
+
+Human: {question}
+
+{ai_name} ({language}):"""
+            ),
+        ],
+        input_variables=[
+            "ai_name",
+            "conversation",
+            "question",
+            "language",
+            "model_name",
+        ],
+    )
+    
+    def __init__(
+        self,
+        embeddings: Embeddings,
+        conversation_limit: int,
+        python_client: PythonClient,
+        ai_name: str = "AcademiAI",
+        base_tools: list[Tool] = [],
+    ) -> None:
+        self.embeddings = embeddings
+        self.conversation_limit = conversation_limit
+        self.ai_name = ai_name
+        self.python_client = python_client
+        self.base_tools = base_tools
+
+    def make_agent(
+        self,
+        llm: BaseChatModel,
+        chat_history_messages: list[BaseMessage],
+        prompt_args: dict,
+        extra_tools: list[Tool] = [],
+    ) -> AgentExecutor:
+        agent_kwargs = {
+            "system_message": SystemMessagePromptTemplate.from_template(
+                template="""
+You are {ai_name}, an AI teacher designed to teach students. 
+You are to take the tone of a teacher.
+You must answer the human in {language} (important)
+Talk as if you're a teacher. Use the data provided to answer user questions. 
+
+Rules:
+    You will not run unsafe code or perform harm to the server youre on. Or import potentially harmful libraries (Very Important).
+    Do not return python code to the user.(Super important)
+    Use tools if you think you need help or to confirm answer.
+    
+Lets keep tools in mind before answering the questions. Good luck mr teacher
+"""
+            ).format(**prompt_args),
+            "extra_prompt_messages": chat_history_messages,
+        }
+        return self.initialize_agent(
+            [*self.make_code_runner(), *extra_tools, *self.base_tools],
+            llm,
+            agent_kwargs=agent_kwargs,
+            max_iterations=4,
+        )
+        
+    def run_agent(
+        self,
+        prompt: str,
+        language: str,
+        llm: BaseChatModel,
+        callback: callable = None,
+        on_end_callback: callable = None,
+        chat_history: list[tuple[str, str]] = None,
+    ):
+        if chat_history is None:
+            chat_history = []
+        
+        agent = self.make_agent(
+            llm=llm,
+            chat_history_messages=self.format_messages_into_messages(
+                chat_history, self.conversation_limit, llm
+            ),
+            prompt_args={
+                "language": language,
+                "ai_name": self.ai_name,
+            },
+            extra_tools=[]
+        )
+        if not callback:
+            raise ValueError("Callback not passed for streaming to work")
+        
+        return agent.run(
+            prompt,
+            callbacks=[CustomCallbackAgent(callback, on_end_callback)],
+        )
+        
+    def chat(
+        self,
+        prompt: str,
+        chat_history: list[tuple[str, str]],
+        language: str,
+        llm: BaseChatModel,
+        callback_func: callable = None,
+        on_end_callback: callable = None,
+    ) -> str:
+
+        llm.callbacks = [CustomCallback(callback_func, on_end_callback)]
+        
+        conversation = self.format_messages(
+            chat_history=chat_history,
+            tokens_limit=self.conversation_limit,
+            ai_name=self.ai_name,
+            llm=llm,
+        )
+        chain = LLMChain(llm=llm, prompt=self.prompt)
+        return chain.run(
+            ai_name=self.ai_name,
+            conversation=conversation,
+            question=prompt,
+            language=language,
+            model_name="gpt",
+        )
