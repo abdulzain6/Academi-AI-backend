@@ -523,7 +523,6 @@ Lets always use tools and keep the files data in mind before answering the quest
         )
         help_data = "\n".join([doc.page_content for doc in similar_docs])
         
-        logging.info(f"Data tokens {len(similar_docs)}")
         agent = self.make_agent(
             llm=llm,
             chat_history_messages=self.format_messages_into_messages(
