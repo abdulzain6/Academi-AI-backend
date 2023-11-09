@@ -428,15 +428,20 @@ You are to take the tone of a teacher.
 You must answer the human in {language} (important)
 Talk as if you're a teacher. Use the data provided to answer user questions. 
 
-Use files data to answer quetions always (important)
-
 Rules:
     Use file data to answer questions 
     You will not run unsafe code or perform harm to the server youre on. Or import potentially harmful libraries (Very Important).
     Do not return python code to the user.(Super important)
     Use tools if you think you need help or to confirm answer.
     
-Lets always use tools and keep the files data in mind before answering the questions. Good luck mr teacher
+
+Files Data (This data is from files/subjects the human has provided and can be from webpages, youtube links, files, images and much more):
+==========
+{help_data}
+==========
+
+Use files data to answer questions always (important)
+Lets use tools and keep the files data in mind before answering the questions. Good luck mr teacher
 """
             ).format(**prompt_args),
             "extra_prompt_messages": chat_history_messages,
@@ -532,22 +537,16 @@ Lets always use tools and keep the files data in mind before answering the quest
             prompt_args={
                 "language": language,
                 "ai_name": self.ai_name,
+                "help_data": help_data
             },
             extra_tools=[]
         )
         if not callback:
             raise ValueError("Callback not passed for streaming to work")
         
-        wrapped_prompt = f"""
-Files Data (This data is from files/subjects the human has provided and can be from webpages, youtube links, files, images and much more):
-==========
-{help_data}
-==========
 
-Human: {prompt}
-"""
         return agent.run(
-            wrapped_prompt,
+            prompt,
             callbacks=[CustomCallbackAgent(callback, on_end_callback)],
         )
 
