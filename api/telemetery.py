@@ -21,7 +21,7 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExport
 import logging
 
 # Configure tracer provider with OTLP exporter
-with contextlib.suppress(Exception):
+try:
     service_name = "academiai"
     resource = Resource.create({"service.name": service_name})
     tracer_provider = TracerProvider(resource=resource)
@@ -37,3 +37,5 @@ with contextlib.suppress(Exception):
 
     RedisInstrumentor().instrument(tracer_provider=tracer_provider)
     PymongoInstrumentor().instrument(tracer_provider=tracer_provider)
+except Exception:
+    logging.info("Error in telemetry")

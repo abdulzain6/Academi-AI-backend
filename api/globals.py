@@ -52,6 +52,7 @@ try:
     langchain.llm_cache = RedisCache(redis_=redis.from_url(REDIS_URL), ttl=CACHE_TTL)
     redis_cache_manager = RedisCacheManager(redis.from_url(REDIS_URL), 10000)
 except:
+    logging.info("Error in redis")
     redis_cache_manager = None
 
 

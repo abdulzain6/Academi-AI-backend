@@ -42,6 +42,7 @@ app = FastAPI(
 
 with contextlib.suppress(Exception):
     FastAPIInstrumentor.instrument_app(app, tracer_provider=tracer_provider)
+    
 security = HTTPBasic()
 
 
