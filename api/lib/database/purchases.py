@@ -371,15 +371,15 @@ class SubscriptionManager:
         self.reset_all_limits(user_id)
         sub_doc = self.fetch_or_cache_subscription(user_id)
         usage_left = [
-            {"name": feature["name"], "limit": feature["limit"]}
+            {"name": feature["name"], "limit": feature["limit"], "type" : "incremental_features"}
             for feature in sub_doc["incremental_features"]
         ]
         usage_left.extend(
-            {"name": feature["name"], "limit": feature["limit"]}
+            {"name": feature["name"], "limit": feature["limit"], "type" : "monthly_limit_features"}
             for feature in sub_doc["monthly_limit_features"]
         )
         usage_left.extend(
-            {"name": feature["name"], "limit": feature["value"]}
+            {"name": feature["name"], "limit": feature["value"], "type" : "static_features"}
             for feature in sub_doc["static_features"]
         )
         return usage_left
