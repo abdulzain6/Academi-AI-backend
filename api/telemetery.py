@@ -1,3 +1,4 @@
+import contextlib
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.redis import RedisInstrumentor
 from opentelemetry.instrumentation.pymongo import PymongoInstrumentor
@@ -20,18 +21,19 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExport
 import logging
 
 # Configure tracer provider with OTLP exporter
-service_name = "academiai"
-resource = Resource.create({"service.name": service_name})
-tracer_provider = TracerProvider(resource=resource)
-otlp_exporter = OTLPSpanExporter(endpoint=SIGMOZ_URL, insecure=True)
-tracer_provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
-trace.set_tracer_provider(tracer_provider)
+with contextlib.suppress(Exception):
+    service_name = "academiai"
+    resource = Resource.create({"service.name": service_name})
+    tracer_provider = TracerProvider(resource=resource)
+    otlp_exporter = OTLPSpanExporter(endpoint=SIGMOZ_URL, insecure=True)
+    tracer_provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
+    trace.set_tracer_provider(tracer_provider)
 
-logger_provider = LoggerProvider(resource=resource)
-log_exporter = OTLPLogExporter(endpoint=SIGMOZ_URL, insecure=True)
-logger_provider.add_log_record_processor(BatchLogRecordProcessor(log_exporter))
-logging_handler = LoggingHandler(level=logging.NOTSET, logger_provider=logger_provider)
-logging.getLogger().addHandler(logging_handler)
+    logger_provider = LoggerProvider(resource=resource)
+    log_exporter = OTLPLogExporter(endpoint=SIGMOZ_URL, insecure=True)
+    logger_provider.add_log_record_processor(BatchLogRecordProcessor(log_exporter))
+    logging_handler = LoggingHandler(level=logging.NOTSET, logger_provider=logger_provider)
+    logging.getLogger().addHandler(logging_handler)
 
-RedisInstrumentor().instrument(tracer_provider=tracer_provider)
-PymongoInstrumentor().instrument(tracer_provider=tracer_provider)
+    RedisInstrumentor().instrument(tracer_provider=tracer_provider)
+    PymongoInstrumentor().instrument(tracer_provider=tracer_provider)

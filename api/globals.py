@@ -37,7 +37,7 @@ current_directory = os.path.dirname(os.path.abspath(__file__))
 
 
 
-global_chat_model_kwargs = {"request_timeout": 150, "max_retries": 0, "max_tokens" : 1400}
+global_chat_model_kwargs = {"request_timeout": 150, "max_retries": 0, "max_tokens" : 1700}
 global_chat_model = (ChatOpenAI, {"model_name" : "gpt-3.5-turbo"}, {"model_name" : "gpt-4-1106-preview"})
 # Model class , free overrides, premium overides
 fallback_chat_models = [
@@ -48,8 +48,11 @@ fallback_chat_models = [
     )
 ]
 
-langchain.llm_cache = RedisCache(redis_=redis.from_url(REDIS_URL), ttl=CACHE_TTL)
-redis_cache_manager = RedisCacheManager(redis.from_url(REDIS_URL))
+try:
+    langchain.llm_cache = RedisCache(redis_=redis.from_url(REDIS_URL), ttl=CACHE_TTL)
+    redis_cache_manager = RedisCacheManager(redis.from_url(REDIS_URL), 10000)
+except:
+    redis_cache_manager = None
 
 
 # code runner
@@ -66,26 +69,26 @@ client = PythonClient(
 collection_manager = CollectionDBManager(
     MONGODB_URL,
     DATABASE_NAME,
-    cache_manager=RedisCacheManager(redis.from_url(REDIS_URL)),
+    cache_manager=redis_cache_manager,
 )
 user_manager = UserDBManager(
     MONGODB_URL,
     DATABASE_NAME,
-    cache_manager=RedisCacheManager(redis.from_url(REDIS_URL)),
+    cache_manager=redis_cache_manager,
     collection_manager=collection_manager,
 )
 file_manager = FileDBManager(
     MONGODB_URL,
     DATABASE_NAME,
     collection_manager,
-    cache=RedisCacheManager(redis.from_url(REDIS_URL)),
+    cache=redis_cache_manager,
 )
 conversation_manager = MessageDBManager(
     MONGODB_URL,
     DATABASE_NAME,
     collection_manager,
     file_manager,
-    cache_manager=RedisCacheManager(redis.from_url(REDIS_URL), 50000),
+    cache_manager=redis_cache_manager,
 )
 
 knowledge_manager = KnowledgeManager(
@@ -157,7 +160,7 @@ subscription_manager = SubscriptionManager(
             monthly_coins=MonthlyCoinsFeature(amount=2000),
         ),
     },
-    cache_manager=RedisCacheManager(redis.from_url(REDIS_URL), ttl=3600),
+    cache_manager=redis_cache_manager,
 )
 
 

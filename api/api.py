@@ -1,3 +1,4 @@
+import contextlib
 from .telemetery import FastAPIInstrumentor, tracer_provider
 from .config import *
 from .routers.collections import router as collection_router
@@ -39,7 +40,8 @@ app = FastAPI(
     openapi_url=None,
 )
 
-FastAPIInstrumentor.instrument_app(app, tracer_provider=tracer_provider)
+with contextlib.suppress(Exception):
+    FastAPIInstrumentor.instrument_app(app, tracer_provider=tracer_provider)
 security = HTTPBasic()
 
 
