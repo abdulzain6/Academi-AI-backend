@@ -5,6 +5,6 @@ kubectl port-forward service/unstructured-study-service  8080:8000 &
 kubectl port-forward svc/mongodb-study 27017:27017 &
 kubectl port-forward svc/code-runner-service 9000:8000 &
 kubectl port-forward svc/redis-stack-service 6379:6379 &
-kubectl -n platform port-forward svc/my-release-signoz-otel-collector 4317:4317 &
-kubectl -n platform port-forward svc/my-release-signoz-frontend 3000:3301
+kubectl port-forward deploy/prometheus-server 9090
+
 

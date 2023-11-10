@@ -40,11 +40,25 @@ app = FastAPI(
     openapi_url=None,
 )
 
-with contextlib.suppress(Exception):
-    Instrumentator().instrument(app).expose(app, include_in_schema=False)
+
     
 security = HTTPBasic()
 
+def verify_prometheus(credentials: HTTPBasicCredentials = Depends(security)):
+    correct_username = secrets.compare_digest(credentials.username, PROM_USERNAME)
+    correct_password = secrets.compare_digest(credentials.password, PROM_PASSWORD)
+    if not (correct_username and correct_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return credentials.username
+
+try:
+    Instrumentator().instrument(app).expose(app, include_in_schema=False, dependencies=[Depends(verify_prometheus)])
+except Exception as e:
+    logging.error(f"Error in instrumenting app {e}")
 
 def get_current_username(credentials: HTTPBasicCredentials = Depends(security)):
     correct_username = secrets.compare_digest(credentials.username, DOCS_USERNAME)
