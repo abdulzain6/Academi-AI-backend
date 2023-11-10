@@ -5,6 +5,10 @@ metadata:
     app: akalmand
   name: akalmand-deployment
   namespace: default
+  annotations:
+    prometheus.io/scrape: 'true'
+    prometheus.io/path: '/metrics'
+    prometheus.io/port: '8000'
 spec:
   progressDeadlineSeconds: 600
   replicas: 1
