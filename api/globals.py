@@ -1,4 +1,5 @@
-from .telemetery import *
+#from .telemetery import *
+import logging
 from .config import *
 from langchain.embeddings import OpenAIEmbeddings
 from .lib.database import (
@@ -48,7 +49,11 @@ fallback_chat_models = [
     )
 ]
 
-langchain.llm_cache = RedisCache(redis_=redis.from_url(REDIS_URL), ttl=CACHE_TTL)
+try:
+    langchain.llm_cache = RedisCache(redis_=redis.from_url(REDIS_URL), ttl=CACHE_TTL)
+except Exception:
+    logging.info("Fix redis cache")
+    
 redis_cache_manager = RedisCacheManager(redis.from_url(REDIS_URL))
 
 

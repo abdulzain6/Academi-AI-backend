@@ -1,5 +1,5 @@
 import contextlib
-from .telemetery import FastAPIInstrumentor, tracer_provider
+from prometheus_fastapi_instrumentator import Instrumentator
 from .config import *
 from .routers.collections import router as collection_router
 from .routers.files import router as files_router
@@ -41,7 +41,7 @@ app = FastAPI(
 )
 
 with contextlib.suppress(Exception):
-    FastAPIInstrumentor.instrument_app(app, tracer_provider=tracer_provider)
+    Instrumentator().instrument(app).expose(app, include_in_schema=False)
     
 security = HTTPBasic()
 

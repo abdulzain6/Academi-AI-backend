@@ -31,10 +31,6 @@ google-auth-oauthlib
 wikipedia
 youtube_search
 scholarly
+prometheus-fastapi-instrumentator
 
-opentelemetry-distro==0.41b0
-opentelemetry-exporter-otlp==1.20.0
-opentelemetry-instrumentation-fastapi==0.41b0
-opentelemetry-instrumentation-pymongo==0.41b0
-opentelemetry-instrumentation-redis==0.41b0
 
