@@ -48,12 +48,8 @@ fallback_chat_models = [
     )
 ]
 
-try:
-    langchain.llm_cache = RedisCache(redis_=redis.from_url(REDIS_URL), ttl=CACHE_TTL)
-    redis_cache_manager = RedisCacheManager(redis.from_url(REDIS_URL), 10000)
-except:
-    logging.info("Error in redis")
-    redis_cache_manager = None
+langchain.llm_cache = RedisCache(redis_=redis.from_url(REDIS_URL), ttl=CACHE_TTL)
+redis_cache_manager = RedisCacheManager(redis.from_url(REDIS_URL))
 
 
 # code runner
@@ -70,26 +66,26 @@ client = PythonClient(
 collection_manager = CollectionDBManager(
     MONGODB_URL,
     DATABASE_NAME,
-    cache_manager=redis_cache_manager,
+    cache_manager=RedisCacheManager(redis.from_url(REDIS_URL)),
 )
 user_manager = UserDBManager(
     MONGODB_URL,
     DATABASE_NAME,
-    cache_manager=redis_cache_manager,
+    cache_manager=RedisCacheManager(redis.from_url(REDIS_URL)),
     collection_manager=collection_manager,
 )
 file_manager = FileDBManager(
     MONGODB_URL,
     DATABASE_NAME,
     collection_manager,
-    cache=redis_cache_manager,
+    cache=RedisCacheManager(redis.from_url(REDIS_URL)),
 )
 conversation_manager = MessageDBManager(
     MONGODB_URL,
     DATABASE_NAME,
     collection_manager,
     file_manager,
-    cache_manager=redis_cache_manager,
+    cache_manager=RedisCacheManager(redis.from_url(REDIS_URL), 50000),
 )
 
 knowledge_manager = KnowledgeManager(
@@ -161,7 +157,7 @@ subscription_manager = SubscriptionManager(
             monthly_coins=MonthlyCoinsFeature(amount=2000),
         ),
     },
-    cache_manager=redis_cache_manager,
+    cache_manager=RedisCacheManager(redis.from_url(REDIS_URL), ttl=3600),
 )
 
 
