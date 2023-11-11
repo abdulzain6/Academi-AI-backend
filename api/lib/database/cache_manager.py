@@ -18,7 +18,7 @@ class RedisCacheManager:
         try:
             self.redis_client = redis_client
             self.redis_client.ping()
-        except redis.ConnectionError:
+        except Exception:
             self.redis_client = None
         self.ttl = ttl
 

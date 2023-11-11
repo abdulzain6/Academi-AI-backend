@@ -6,5 +6,6 @@ kubectl port-forward svc/mongodb-study 27017:27017 &
 kubectl port-forward svc/code-runner-service 9000:8000 &
 kubectl port-forward svc/redis-stack-service 6379:6379 &
 kubectl port-forward deploy/prometheus-server 9090 &
-kubectl port-forward svc/grafana-loki-gateway 3000:80
+kubectl port-forward grafana-5c944f4c5-dnhdn 3000 &
+kubectl get secret --namespace default grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
 
