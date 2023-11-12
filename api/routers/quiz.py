@@ -78,8 +78,9 @@ def make_quiz(
             status.HTTP_400_BAD_REQUEST, detail=f"Error: {str(e)}"
         ) from e
 
-    return {"questions": [question.dict() for question in questions]}
-
+    quiz = {"questions": [question.dict() for question in questions]}
+    logging.info(f"quiz made {quiz}")
+    return quiz
 
 @router.post("/evaluate")
 def evaluate_quiz(
