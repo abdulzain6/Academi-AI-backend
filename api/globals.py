@@ -38,8 +38,8 @@ current_directory = os.path.dirname(os.path.abspath(__file__))
 
 
 
-global_chat_model_kwargs = {"request_timeout": 150, "max_retries": 0, "max_tokens" : 1700}
-global_chat_model = (ChatOpenAI, {"model_name" : "gpt-3.5-turbo"}, {"model_name" : "gpt-4-1106-preview"})
+global_chat_model_kwargs = {"request_timeout": 150, "max_retries": 0}
+global_chat_model = (ChatOpenAI, {"model_name" : "gpt-3.5-turbo"}, {"model_name" : "gpt-4-1106-preview", "max_tokens" : 2700})
 # Model class , free overrides, premium overides
 fallback_chat_models = [
     (
