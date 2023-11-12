@@ -48,9 +48,10 @@ def make_quiz(
     elif file_manager.file_exists(
         user_id, collection.collection_uid, quiz_input.file_name
     ):
-        files = file_manager.get_file_by_name(
+        file = file_manager.get_file_by_name(
             user_id, quiz_input.collection_name, quiz_input.file_name
         )
+        files = [file]
     else:
         logging.error(f"File not exists {user_id}")
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="File not found!")
@@ -77,11 +78,10 @@ def make_quiz(
             status.HTTP_400_BAD_REQUEST, detail=f"Error: {str(e)}"
         ) from e
 
-    logging.info(f"Quiz generated {questions}, {user_id}")
-    return {"questions": [question.model_dump() for question in questions]}
+    return {"questions": [question.dict() for question in questions]}
 
 
-@router.post("/evaluate", response_model=Result)
+@router.post("/evaluate")
 def evaluate_quiz(
     user_answers: list[UserResponse],
     user_id=Depends(get_user_id),
@@ -128,9 +128,10 @@ def make_flashcards(
     elif file_manager.file_exists(
         user_id, collection.collection_uid, fc_input.file_name
     ):
-        files = file_manager.get_file_by_name(
+        file = file_manager.get_file_by_name(
             user_id, fc_input.collection_name, fc_input.file_name
         )
+        files = [file]
     else:
         logging.error(f"File not found, {user_id}")
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="File not found!")
@@ -158,4 +159,4 @@ def make_flashcards(
             status.HTTP_400_BAD_REQUEST, detail=f"Error: {str(e)}"
         ) from e
 
-    return {"flashcards": [flashcards.model_dump() for flashcards in questions]}
+    return {"flashcards": [flashcards.dict() for flashcards in questions]}
