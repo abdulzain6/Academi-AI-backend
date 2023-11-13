@@ -130,6 +130,9 @@ The json with no missing fields and schema followed:"""
                 "--hide-scrollbars",
                 "--disable-animations",
                 "--start-maximized",
+                "--no-sandbox",
+                "--disable-software-rasterizer",
+                "--disable-dev-shm-usage"
             ],
         )
         hti.output_path = output_file_path
