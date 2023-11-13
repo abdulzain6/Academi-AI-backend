@@ -425,7 +425,7 @@ Here is the correct answer with explanation and user response.
 {data}
 ===========
 You will not check word to word, which means even if the answers wording is a bit different but it means the same as correct answer it will be correct. (Important)
-The result for the quiz, You must follow the schema(Important):
+The result for the quiz, You must follow the schema(Important) also be lenient fool the users wording can be different, if it means the same mark as correct:
     """
                 ),
             ],
