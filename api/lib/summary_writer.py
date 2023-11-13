@@ -16,20 +16,14 @@ from retrying import retry
 
 
 
-class Content(BaseModel):
-    content_markdown: str = Field(json_schema_extra={"description": "The content for the user requested material"})
-
-
 class SummaryWriter:
     def __init__(self, llm: BaseChatModel) -> None:
         self.llm = llm
 
-    def get_markdown(self, data: str, word_count: int, instructions: str) -> Content:
-        parser = PydanticOutputParser(pydantic_object=Content)
+    def get_markdown(self, data: str, word_count: int, instructions: str) -> str:
         system_prompt = """
 You are an AI designed to assist people in writing summaries.
 You will generate a summary for a minimum {minimum_words} words.
-You must follow the schema return nothing else.
 Do not mention the parts of summary as headings. For example, dont say ## Body or ## Intro etc.
 Use the features of markdown like headings, text formatting to make the document professional looking this will be stored as pdf (Important)
 """
@@ -45,17 +39,12 @@ You must Follow these instructions while writing the summary:
 ===============
 
 
-Schema:
-======================
-{format_instructions}
-=======================
-
 You must follow the word limit of {minimum_words} (Very important)
 Do not explictly mention intro body conclusion, the output must be good so no changes need to be made
 Lets think step by step, keeping in mind whats said above to generate the summary for the data provided it must be of {minimum_words} words.
-Follow the schema above (Important) Make sure the json is correct!
 Follow the limit, you gave too small before.
-"""   
+
+The summary:"""   
         prompt = ChatPromptTemplate(
             messages=[
                 SystemMessagePromptTemplate.from_template(template=system_prompt),
@@ -66,9 +55,8 @@ Follow the limit, you gave too small before.
                 "data",
                 "instructions"
             ],
-            partial_variables={"format_instructions" : parser.get_format_instructions()}
         )
-        chain = LLMChain(prompt=prompt, llm=self.llm, output_parser=parser, verbose=True)
+        chain = LLMChain(prompt=prompt, llm=self.llm)
 
         return chain.run(
             minimum_words=word_count,
@@ -79,7 +67,7 @@ Follow the limit, you gave too small before.
     def generate_content_html(self, data: str, word_count: int, instructions: str) -> tuple[str, str]:
         #plan = self.get_content_plan(content_input)
         content = self.get_markdown(data, word_count, instructions)
-        return markdown(content.content_markdown), content.content_markdown
+        return markdown(content), content
     
     def html_to_pdf_bytes(self, html: str) -> bytes:
         return pdfkit.from_string(html, False)
