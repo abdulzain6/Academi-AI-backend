@@ -10,6 +10,7 @@ from ..globals import (
     DEFAULT_POINTS_INCREMENT,
     referral_manager,
     subscription_manager,
+    conversation_manager
 )
 from ..lib.database.users import UserModel
 from ..lib.database.points import UserPoints
@@ -206,6 +207,8 @@ def delete_user(
             raise HTTPException(400, "ERROR DELETING COLLECTION")
 
     user = user_manager.delete_user(user_id)
+    conversation_manager.delete_all_conversations(user_id)
+    subscription_manager.apply_or_default_subscription(user_id, update=True)
     if user == 0:
         logging.error(f"User not found {user_id}")
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")

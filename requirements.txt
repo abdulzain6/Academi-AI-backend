@@ -32,5 +32,7 @@ wikipedia
 youtube_search
 scholarly
 prometheus-fastapi-instrumentator
-
+html2image
+jinja2
+jsonschema
 

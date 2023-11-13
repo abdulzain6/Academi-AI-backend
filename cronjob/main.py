@@ -9,3 +9,4 @@ headers = {
 
 response = requests.get(f'http://{os.getenv("URL", "api.academiai.org")}/api/v1/subscriptions-info/reset', headers=headers)
 print(response.status_code)
+

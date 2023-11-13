@@ -68,7 +68,7 @@ class QuizQuestion(BaseModel):
             "description": "The type of the question (MCQ, short_answer, true_false)."
         },
     )
-    answer: Union[Answer, List[Answer]] = Field(
+    answer: Answer = Field(
         ...,
         json_schema_extra={
             "description": "The correct answer or a list of correct answers."

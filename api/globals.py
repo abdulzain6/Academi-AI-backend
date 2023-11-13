@@ -35,8 +35,59 @@ import redis
 langchain.verbose = False
 current_directory = os.path.dirname(os.path.abspath(__file__))
 
+def get_model(model_kwargs: dict, stream: bool, is_premium: bool):
+    args = {**global_chat_model_kwargs, **{"streaming" : stream}}
+    args.update(model_kwargs)
+    fallback_args = args.copy()
+    
+    if is_premium:
+        args.update(**global_chat_model[2])
+    else:
+        args.update(**global_chat_model[1])
+        
+    fallbacks = []
+    for fallback in fallback_chat_models:
+        if is_premium:
+            fallback_args.update(**fallback[2])
+        else:
+            fallback_args.update(**fallback[1])
+        
+        logging.info(f"Adding fallback {fallback[0]}, args: {fallback_args}")
+        try:
+            fallbacks.append(fallback[0](**fallback_args))
+        except Exception as e:
+            logging.error(f"Error in fallback {e}")
+    
+    logging.info(f"Chat model fallback {global_chat_model[0]}, args: {args}")
+    return global_chat_model[0](
+        **args
+    ).with_fallbacks(fallbacks=fallbacks)
 
 
+def get_model_and_fallback(model_kwargs: dict, stream: bool, is_premium: bool):
+    args = {**global_chat_model_kwargs, **{"streaming" : stream}}
+    args.update(model_kwargs)
+    fallback_args = args.copy()
+    
+    if is_premium:
+        args.update(**global_chat_model[2])
+    else:
+        args.update(**global_chat_model[1])
+        
+    fallbacks = []
+    for fallback in fallback_chat_models:
+        if is_premium:
+            fallback_args.update(**fallback[2])
+        else:
+            fallback_args.update(**fallback[1])
+        
+        logging.info(f"Adding fallback {fallback[0]}, args: {fallback_args}")
+        fallbacks.append(fallback[0](**fallback_args))
+    
+    logging.info(f"Chat model fallback {global_chat_model[0]}, args: {args}")
+    return global_chat_model[0](
+        **args
+    ), fallbacks[-1]
 
 global_chat_model_kwargs = {"request_timeout": 150, "max_retries": 0}
 global_chat_model = (ChatOpenAI, {"model_name" : "gpt-3.5-turbo"}, {"model_name" : "gpt-4-1106-preview", "max_tokens" : 2700})
@@ -48,6 +99,8 @@ fallback_chat_models = [
         {"model_name": "meta-llama/Llama-2-70b-chat-hf"},
     )
 ]
+
+
 
 try:
     langchain.llm_cache = RedisCache(redis_=redis.from_url(REDIS_URL), ttl=CACHE_TTL)
@@ -180,7 +233,6 @@ image_ocr = ImageOCR(
     app_id=MATHPIX_APPID,
     app_key=MATHPIX_API_KEY,
 )
-
 
 # Monetization
 

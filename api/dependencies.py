@@ -10,7 +10,9 @@ from .globals import (
     collection_manager,
     global_chat_model,
     global_chat_model_kwargs,
-    fallback_chat_models
+    fallback_chat_models,
+    get_model_and_fallback,
+    get_model
 )
 from fastapi import HTTPException
 from functools import wraps
@@ -145,58 +147,3 @@ def can_add_more_data(
         raise HTTPException(
             400, detail="Collection/Subject limit reached, cannot add more"
         )
-
-
-def get_model(model_kwargs: dict, stream: bool, is_premium: bool):
-    args = {**global_chat_model_kwargs, **{"streaming" : stream}}
-    args.update(model_kwargs)
-    fallback_args = args.copy()
-    
-    if is_premium:
-        args.update(**global_chat_model[2])
-    else:
-        args.update(**global_chat_model[1])
-        
-    fallbacks = []
-    for fallback in fallback_chat_models:
-        if is_premium:
-            fallback_args.update(**fallback[2])
-        else:
-            fallback_args.update(**fallback[1])
-        
-        logging.info(f"Adding fallback {fallback[0]}, args: {fallback_args}")
-        try:
-            fallbacks.append(fallback[0](**fallback_args))
-        except Exception as e:
-            logging.error(f"Error in fallback {e}")
-    
-    logging.info(f"Chat model fallback {global_chat_model[0]}, args: {args}")
-    return global_chat_model[0](
-        **args
-    ).with_fallbacks(fallbacks=fallbacks)
-
-
-def get_model_and_fallback(model_kwargs: dict, stream: bool, is_premium: bool):
-    args = {**global_chat_model_kwargs, **{"streaming" : stream}}
-    args.update(model_kwargs)
-    fallback_args = args.copy()
-    
-    if is_premium:
-        args.update(**global_chat_model[2])
-    else:
-        args.update(**global_chat_model[1])
-        
-    fallbacks = []
-    for fallback in fallback_chat_models:
-        if is_premium:
-            fallback_args.update(**fallback[2])
-        else:
-            fallback_args.update(**fallback[1])
-        
-        logging.info(f"Adding fallback {fallback[0]}, args: {fallback_args}")
-        fallbacks.append(fallback[0](**fallback_args))
-    
-    logging.info(f"Chat model fallback {global_chat_model[0]}, args: {args}")
-    return global_chat_model[0](
-        **args
-    ), fallbacks[-1]

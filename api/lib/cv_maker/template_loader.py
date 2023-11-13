@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from template import ResumeTemplate
+from .template import ResumeTemplate
 
 
 def template_loader(template_dir: str = None) -> list[ResumeTemplate]:

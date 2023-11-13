@@ -13,6 +13,8 @@ from .routers.writer import router as writer_router
 from .routers.summary_writer import router as summary_router
 from .routers.subscriptions_playstore import router as playstore_sub_router
 from .routers.subscriptions import router as subscriptions_router
+from .routers.cv_maker import router as cv_router
+
 from fastapi import FastAPI, Request, HTTPException, status, Depends
 from fastapi.responses import JSONResponse
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
@@ -102,6 +104,7 @@ app.include_router(writer_router, prefix="/api/v1/writer", tags=["writer"])
 app.include_router(playstore_sub_router, prefix="/api/v1/subscriptions/playstore", tags=["playstore", "subscriptions"])
 app.include_router(summary_router, prefix="/api/v1/summary", tags=["summary"])
 app.include_router(subscriptions_router, prefix="/api/v1/subscriptions-info", tags=["subscriptions"])
+app.include_router(cv_router, prefix="/api/v1/cv_maker", tags=["cv maker"])
 
 
 

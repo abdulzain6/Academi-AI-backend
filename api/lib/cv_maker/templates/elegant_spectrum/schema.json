@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Resume Data",
+  "description": "Schema for validating resume data. AI instances should infer or generate missing details where applicable.",
+  "type": "object",
+  "properties": {
+    "personal_details": {
+      "type": "object",
+      "description": "Personal information of the individual. AI should create realistic and contextually appropriate details if missing.",
+      "properties": {
+        "first_name": { "type": "string", "description": "First name of the individual. AI can generate a name if missing." },
+        "last_name": { "type": "string", "description": "Last name of the individual. AI should generate a surname if missing." },
+        "image_url": { "type": "string", "format": "uri", "description": "URL of the individual's image. AI should use a placeholder if missing." },
+        "nationality": { "type": "string", "description": "Nationality of the individual. AI may infer nationality based on other details." },
+        "location": { "type": "string", "description": "Current location of the individual. AI can suggest a location if not provided." },
+        "birthday": { "type": "string", "format": "date", "description": "Birth date of the individual. AI may estimate a reasonable date if necessary." },
+        "hobbies": { "type": "string", "description": "Hobbies of the individual. AI can suggest hobbies based on the overall profile." }
+      },
+      "required": ["first_name", "last_name", "image_url", "nationality", "location", "birthday", "hobbies"]
+    },
+    "employment_history": {
+      "type": "array",
+      "description": "List of employment experiences. AI should generate plausible job histories if none are provided.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "position": { "type": "string", "description": "Job title held in the position. AI may create a title based on industry norms." },
+          "years": { "type": "string", "description": "Duration of employment. AI can estimate durations if not specified." },
+          "details": { "type": "string", "description": "Details of the job responsibilities and achievements. AI should elaborate if vague." }
+        },
+        "required": ["position", "years", "details"]
+      }
+    },
+    "education": {
+      "type": "array",
+      "description": "Educational background of the individual. AI can fill in typical educational paths if absent.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "institution": { "type": "string", "description": "Name of the educational institution. AI can infer or create one if not provided." },
+          "qualification": { "type": "string", "description": "Degree or certification obtained. AI can suggest common qualifications for given fields." },
+          "date_completed": { "type": "string", "description": "Completion date of the qualification. AI may generate a suitable date if missing." },
+          "gpa": { "type": "string", "description": "GPA obtained. AI can provide a realistic GPA based on the education level." }
+        },
+        "required": ["institution", "qualification", "date_completed", "gpa"]
+      }
+    },
+    "personal_skills": {
+      "type": "array",
+      "description": "List of personal skills. AI should propose skills that align with the individual's profile.",
+      "items": { "type": "string" }
+    },
+    "technical_skills": {
+      "type": "array",
+      "description": "List of technical skills relevant to the individual’s profession. AI can suggest skills based on the current job market trends.",
+      "items": { "type": "string" }
+    },
+    "contact": {
+      "type": "object",
+      "description": "Contact information of the individual. AI should create fictional but plausible contact details if missing.",
+      "properties": {
+        "phone": { "type": "string", "description": "Phone number. AI may generate a standard format number if not available." },
+        "email": { "type": "string", "format": "email", "description": "Email address. AI should create a realistic email address if absent." },
+        "website": { "type": "string", "format": "uri", "description": "Personal or professional website URL. AI can provide a placeholder URL." },
+        "socials": {
+          "type": "object",
+          "description": "Social media profiles. AI may suggest popular social media platforms.",
+          "additionalProperties": { "type": "string", "format": "uri", "description": "Individual social media URLs. AI can generate plausible URLs." }
+        }
+      },
+      "required": ["phone", "email", "website", "socials"]
+    }
+  },
+  "required": ["personal_details", "employment_history", "education", "personal_skills", "technical_skills", "contact"]
+}
