@@ -1,4 +1,3 @@
-#from .telemetery import *
 import logging
 from .config import *
 from langchain.embeddings import OpenAIEmbeddings

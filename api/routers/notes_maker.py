@@ -3,7 +3,7 @@ import tempfile
 
 from fastapi.responses import StreamingResponse
 from ..auth import get_user_id, verify_play_integrity
-from ..dependencies import use_feature, can_use_premium_model
+from ..dependencies import require_points_for_feature, use_feature, can_use_premium_model
 from ..lib.notes_maker import make_notes_maker, get_available_note_makers
 from ..globals import get_model, text_ocr, collection_manager, file_manager
 from typing import Optional
@@ -58,6 +58,7 @@ def get_available_templates(
 
 
 @router.post("/make_notes")
+@require_points_for_feature("NOTES")
 def make_notes(
     notes_input: MakeNotesInput,
     user_id: str = Depends(get_user_id),

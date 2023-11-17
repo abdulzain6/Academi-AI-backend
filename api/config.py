@@ -13,11 +13,9 @@ def get_dict_from_env_var(env_var_name: str, default: Dict = None) -> Dict:
     return json.loads(env_val) if env_val is not None else default
 
 
-SIGMOZ_URL = os.getenv("SIGMOZ_URL")
 UNSTRUCTURED_API_KEY = os.getenv("UNSTRUCTURED_API_KEY", None)
 UNSTRUCTURED_URL = os.getenv("UNSTRUCTURED_URL", "http://localhost:8080/general/v0/general")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-MODEL_NAME = os.getenv("MODEL_NAME", "gpt-3.5-turbo")
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", None)
 QDRANT_URL = os.getenv("QDRANT_URL", "localhost")
 MONGODB_URL = os.getenv("MONGODB_URL")
@@ -43,7 +41,9 @@ FEATURE_PRICING = get_dict_from_env_var(
         "PRESENTATION" : 4,
         "FLASHCARDS" : 2,
         "WRITER" : 2,
-        "SUMMARY" : 2
+        "SUMMARY" : 2,
+        "CV" : 3,
+        "NOTES" : 3
     }
 )
 DEFAULT_POINTS_INCREMENT = int(os.getenv("DEFAULT_POINTS_INCREMENT", 2))

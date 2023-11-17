@@ -5,6 +5,8 @@ import logging
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Optional
+
+from api.dependencies import require_points_for_feature
 from ..auth import get_user_id, verify_play_integrity
 from ..globals import get_model
 from ..lib.cv_maker.cv_maker import CVMaker
@@ -41,6 +43,7 @@ def get_cv_templates(
 
     
 @router.post("/make_cv")
+@require_points_for_feature("CV")
 def make_cv(
     background_tasks: BackgroundTasks,
     cv_input: MakeCV,
