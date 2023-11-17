@@ -43,7 +43,8 @@ FEATURE_PRICING = get_dict_from_env_var(
         "WRITER" : 2,
         "SUMMARY" : 2,
         "CV" : 3,
-        "NOTES" : 3
+        "NOTES" : 3,
+        "GRAMMAR" : 2
     }
 )
 DEFAULT_POINTS_INCREMENT = int(os.getenv("DEFAULT_POINTS_INCREMENT", 2))

@@ -50,7 +50,7 @@ if __name__ == "__main__":
             temperature=0,
             max_tokens=2000,
             request_timeout=100,
-            openai_api_key="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",
+            openai_api_key="",
         )
     )
     curr = generator.generate_curriculum(StudentCurriculumInput(course_name="Calculus"))
