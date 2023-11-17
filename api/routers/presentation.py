@@ -10,8 +10,6 @@ from ..globals import (
     template_manager,
     temp_knowledge_manager,
     knowledge_manager,
-    global_chat_model,
-    global_chat_model_kwargs,
     subscription_manager
 )
 from ..lib.presentation_maker.presentation_maker import PresentationInput, PresentationMaker, PexelsImageSearch

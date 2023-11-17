@@ -32,6 +32,9 @@ def num_tokens_from_string(string: str, encoding_name: str = "cl100k_base") -> i
     return num_tokens
 
 def select_random_chunks(text: str, chunk_size: int, total_length: int) -> str:
+    if num_tokens_from_string(text) < total_length:
+        return text
+    
     texts = TokenTextSplitter(chunk_size=chunk_size).split_text(text)
     random.shuffle(texts)
     selected_text = ''

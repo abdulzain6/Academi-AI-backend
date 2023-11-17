@@ -2,6 +2,7 @@
 import logging
 from .config import *
 from langchain.embeddings import OpenAIEmbeddings
+from .lib.ocr import AzureOCR
 from .lib.database import (
     FileDBManager,
     CollectionDBManager,
@@ -234,9 +235,10 @@ image_ocr = ImageOCR(
     app_key=MATHPIX_API_KEY,
 )
 
+#OCR
+text_ocr = AzureOCR(AZURE_OCR_ENDPOINT, AZURE_OCR_KEY)
+
 # Monetization
-
-
 user_points_manager = UserPointsManager(MONGODB_URL, DATABASE_NAME, DEFAULT_POINTS)
 referral_manager = ReferralManager(
     user_manager, user_points_manager, DEFAULT_REFERRAL_POINTS

@@ -36,4 +36,7 @@ html2image
 jinja2
 jsonschema
 img2pdf
-
+docxtpl
+python-docx
+pypandoc
+azure-cognitiveservices-vision-computervision

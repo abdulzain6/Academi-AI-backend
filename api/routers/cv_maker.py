@@ -70,9 +70,7 @@ def make_cv(
             else:
                 cv_maker.make_cv_from_string(cv_input.template_name, cv_input.data_str, output_file_path=output_file_directory, output_file_name=output_file_name)
             
-            print("convertinf")
             pdf_bytes = image_to_pdf_in_memory(tmp_file_path)
-            print("converted")
             pdf_base64 = base64.b64encode(pdf_bytes).decode()
 
             with open(tmp_file_path, "rb") as image_file:
