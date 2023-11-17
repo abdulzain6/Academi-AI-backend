@@ -68,7 +68,7 @@ def make_quiz(
     
     try:
         questions = quiz_generator.generate_quiz(
-            select_random_chunks(data, 300, 750),
+            select_random_chunks(data, 300, 1000),
             quiz_input.number_of_questions,
             collection_name=quiz_input.collection_name,
         )
