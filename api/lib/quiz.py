@@ -272,11 +272,11 @@ If there is no data, Use your knowledge to generate the quiz about {collection_n
         for idx, response in enumerate(responses):
             formatted_response = (
                 f"Response {idx + 1}:\n"
-                f"  Question ID: {response.id}\n"
-                f"  Question: {response.question}\n"
+                f"  Question ID: {response.id}\n=======\n"
+                f"  Question: {response.question}\n========\n"
                 f"  User Answer (What the user answered): {response.user_answer}\n"
-                f"  Correct Answer (What the actual answer was): {response.correct_answer}\n"
-                f"  Why the answer is correct (Why the actual answer is correct): {response.reason_of_choice}\n"
+                f"  Correct Answer (What the actual answer was): {response.correct_answer}\n========\n"
+                f"  Why the answer is correct (Why the actual answer is correct): {response.reason_of_choice}\n\n\n======================"
             )
             formatted_responses.append(formatted_response)
 
@@ -427,7 +427,7 @@ Here is the correct answer with explanation and user response.
 {data}
 ===========
 You will not check word to word, which means even if the answers wording is a bit different but it means the same as correct answer it will be correct. (Important)
-The result for the quiz, You must follow the schema(Important) also be lenient:
+The result for the quiz, You must follow the schema(Important):
     """
                 ),
             ],
