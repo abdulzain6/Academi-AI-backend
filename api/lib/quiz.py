@@ -242,6 +242,7 @@ If there is no data, Use your knowledge to generate the quiz about {collection_n
         )
 
         try:
+            raise Exception()
             chain_oai = create_extraction_chain_pydantic(
                 QuizQuestion, self.llm, oai_prompt_template
             )
@@ -250,7 +251,7 @@ If there is no data, Use your knowledge to generate the quiz about {collection_n
                 number_of_questions=min(number_of_questions, maximum_questions),
             )
         except Exception as e:
-            logging.info(f"Error in oai chain {e}")
+           # logging.info(f"Error in oai chain {e}")
             if not data:
                 questions = self.run_chain(
                     chain, "", min(number_of_questions, maximum_questions)
@@ -382,6 +383,7 @@ If there is no data, Use your knowledge to generate the flashcards about {collec
         )
 
         try:
+            raise Exception()
             chain_oai = create_extraction_chain_pydantic(
                 FlashCard, self.llm, oai_prompt_template
             )
@@ -390,7 +392,7 @@ If there is no data, Use your knowledge to generate the flashcards about {collec
                 number_of_flashcards=min(number_of_flashcards, maximium_flashcards),
             )
         except Exception as e:
-            logging.info(f"Error in oai chain {e}")
+          #  logging.info(f"Error in oai chain {e}")
 
             if not data:
                 flashcards = self.run_chain_fc(chain, "", min(number_of_flashcards, maximium_flashcards))
@@ -425,7 +427,7 @@ Here is the correct answer with explanation and user response.
 {data}
 ===========
 You will not check word to word, which means even if the answers wording is a bit different but it means the same as correct answer it will be correct. (Important)
-The result for the quiz, You must follow the schema(Important) also be lenient fool the users wording can be different, if it means the same mark as correct:
+The result for the quiz, You must follow the schema(Important) also be lenient:
     """
                 ),
             ],
@@ -483,6 +485,7 @@ You will not check word to word, which means even if the answers wording is a bi
             results.append(result)
 
         try:
+            raise Exception()
             chain_oai = create_extraction_chain_pydantic(
                 QuestionResult, self.llm, oaiprompt_template
             )
@@ -492,7 +495,7 @@ You will not check word to word, which means even if the answers wording is a bi
                 )
                 results.extend(short_answer_result)
         except Exception as e:
-            logging.error(f"Error in oai chain {e}")
+        #    logging.error(f"Error in oai chain {e}")
             chain = LLMChain(
                 prompt=prompt_template,
                 output_parser=parser,
