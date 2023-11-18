@@ -341,6 +341,8 @@ def chat_general_stream(
                     callback(chunk)
                 callback(None)
         except Exception as e:
+            import traceback
+            traceback.print_exception(e)
             logging.error(f"Error running chat in general chat: {e}")
             error_message = "Error in getting response"
             for chunk in split_into_chunks(error_message, 4):

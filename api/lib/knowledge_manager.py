@@ -121,9 +121,12 @@ class CustomCallbackAgent(BaseCallbackHandler):
         parent_run_id: Optional[UUID] = None,
         **kwargs: Any,
     ) -> Any:
-        self.on_end_callback(finish.return_values.get("output", ""))
-        if self.cached:
-            self.callback(finish.return_values.get("output", ""))
+        try:
+            self.on_end_callback(finish.return_values.get("output", ""))
+            if self.cached:
+                self.callback(finish.return_values.get("output", ""))
+        except Exception:
+            pass
         self.callback(None)
 
 
