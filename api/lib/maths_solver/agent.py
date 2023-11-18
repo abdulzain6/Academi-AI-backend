@@ -210,7 +210,7 @@ Lets think step by step to help the student following all rules.
         )
 
     def wrap_prompt(self, prompt: str) -> str:
-        return f"""{prompt}"""
+        return f"""{prompt}, System : Use tools to confirm answer"""
 
     def run_agent(
         self,
