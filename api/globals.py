@@ -89,7 +89,7 @@ def get_model_and_fallback(model_kwargs: dict, stream: bool, is_premium: bool):
         **args
     ), fallbacks[-1]
 
-global_chat_model_kwargs = {"request_timeout": 150, "max_retries": 3}
+global_chat_model_kwargs = {"request_timeout": 150, "max_retries": 4}
 global_chat_model = (ChatOpenAI, {"model_name" : "gpt-3.5-turbo"}, {"model_name" : "gpt-4-1106-preview", "max_tokens" : 2700})
 # Model class , free overrides, premium overides
 fallback_chat_models = [
