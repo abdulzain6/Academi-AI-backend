@@ -3,6 +3,31 @@ import base64
 import tiktoken
 import random
 import img2pdf
+from typing import List, Optional
+import Levenshtein
+
+def find_most_similar(strings: List[str], target: str, max_distance: int = 5) -> Optional[str]:
+    """
+    Finds the most similar string in the list to the target string, with a constraint on the maximum Levenshtein distance.
+
+    Args:
+    strings (List[str]): List of strings to search through.
+    target (str): The target string to compare with.
+    max_distance (int): The maximum allowed Levenshtein distance.
+
+    Returns:
+    Optional[str]: The most similar string within the max_distance, or None if no such string exists.
+    """
+    closest_match = None
+    min_distance = float('inf')
+
+    for string in strings:
+        distance = Levenshtein.distance(string, target)
+        if distance < min_distance and distance <= max_distance:
+            closest_match = string
+            min_distance = distance
+
+    return closest_match
 
 def image_to_pdf_in_memory(image_path: str) -> bytes:
     """

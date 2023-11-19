@@ -147,8 +147,7 @@ class CollectionDBManager:
             output_string = ""
             for subject in data:
                 subject_name = subject['name']
-                subject_description = subject.get('description', 'No description')
-                output_string += f"Subject name: '{subject_name}' \nDescription: '{subject_description}'\nFiles:\n"
+                output_string += f"Subject name: '{subject_name}'\nFiles:\n"
                 for file in subject['files']:
                     output_string += f"- Filename: '{file['friendly_filename']}' Filetype: '({file.get('filetype', 'No type')})' Description: '{file.get('description', 'No desc')}')\n"
                 if not subject['files']:

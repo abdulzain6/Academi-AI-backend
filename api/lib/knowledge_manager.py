@@ -763,7 +763,10 @@ Rules:
     Do not return python code to the user.(Super important)
     Use tools if you think you need help or to confirm answer.
 
-Student has also made subjects in the app and added files to them also. You can use tools to get more information
+Student has also made subjects in the app and added files to them also.
+They are:
+{files}
+==========
 Lets keep tools in mind before answering the questions. Good luck mr teacher
 Keep in mind you will try to teach the student based on the files they provided, by default (Important) 
 """
@@ -774,7 +777,7 @@ Keep in mind you will try to teach the student based on the files they provided,
             [*self.make_code_runner(), *extra_tools, *self.base_tools],
             llm,
             agent_kwargs=agent_kwargs,
-            max_iterations=4,
+            max_iterations=3,
         )
         
     def run_agent(
@@ -785,7 +788,8 @@ Keep in mind you will try to teach the student based on the files they provided,
         callback: callable = None,
         on_end_callback: callable = None,
         chat_history: list[tuple[str, str]] = None,
-        extra_tools: list = None
+        extra_tools: list = None,
+        files: str = ""
     ):
         if extra_tools is None:
             extra_tools = []
@@ -801,6 +805,7 @@ Keep in mind you will try to teach the student based on the files they provided,
             prompt_args={
                 "language": language,
                 "ai_name": self.ai_name,
+                "files" : files
             },
             extra_tools=extra_tools
         )

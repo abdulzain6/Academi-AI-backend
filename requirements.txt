@@ -16,6 +16,7 @@ python-dotenv
 python-multipart
 requests
 retrying
+python-Levenshtein
 six
 tiktoken
 unstructured[all]
