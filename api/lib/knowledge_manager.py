@@ -767,7 +767,6 @@ They are:
 ==========
 
 Lets keep tools in mind before answering the questions. Good luck mr teacher
-Keep in mind you will try to teach the student based on the files they provided, by default (Important) 
 Talk like a teacher, dont start with "Hello, how can i assist you today?". Say what a teacher would
 """
             ).format(**prompt_args),

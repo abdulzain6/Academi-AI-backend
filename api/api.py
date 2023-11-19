@@ -34,7 +34,7 @@ from .globals import (
     DOCS_USERNAME,
 )
 
-langchain.verbose = True
+langchain.verbose = False
 logging.basicConfig(level=logging.INFO)
 
 
