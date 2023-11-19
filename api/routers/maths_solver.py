@@ -18,7 +18,7 @@ from pydantic import BaseModel
 from ..auth import get_user_id, verify_play_integrity
 from ..dependencies import use_feature, can_use_premium_model
 from langchain.chat_models.openai import ChatOpenAI
-from openai.error import OpenAIError
+from openai import OpenAIError
 
 
 

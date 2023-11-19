@@ -762,8 +762,10 @@ Rules:
     You will not run unsafe code or perform harm to the server youre on. Or import potentially harmful libraries (Very Important).
     Do not return python code to the user.(Super important)
     Use tools if you think you need help or to confirm answer.
-    
+
+Student has also made subjects in the app and added files to them also. You can use tools to get more information
 Lets keep tools in mind before answering the questions. Good luck mr teacher
+Keep in mind you will try to teach the student based on the files they provided, by default (Important) 
 """
             ).format(**prompt_args),
             "extra_prompt_messages": chat_history_messages,
@@ -783,7 +785,11 @@ Lets keep tools in mind before answering the questions. Good luck mr teacher
         callback: callable = None,
         on_end_callback: callable = None,
         chat_history: list[tuple[str, str]] = None,
+        extra_tools: list = None
     ):
+        if extra_tools is None:
+            extra_tools = []
+            
         if chat_history is None:
             chat_history = []
         
@@ -796,7 +802,7 @@ Lets keep tools in mind before answering the questions. Good luck mr teacher
                 "language": language,
                 "ai_name": self.ai_name,
             },
-            extra_tools=[]
+            extra_tools=extra_tools
         )
         if not callback:
             raise ValueError("Callback not passed for streaming to work")

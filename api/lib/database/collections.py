@@ -107,12 +107,58 @@ class CollectionDBManager:
         except StopIteration:
             return None
 
-
         return CollectionModel(**collection_data)
+        
+    def get_all_files_for_user_as_string(self, user_id: str) -> str:
+        pipeline = [
+            {"$match": {"user_uid": user_id}},
+            {
+                "$lookup": {
+                    "from": self.file_manager.file_collection.name,
+                    "localField": "collection_uid",
+                    "foreignField": "collection_uid",
+                    "as": "files",
+                }
+            },
+            {
+                "$project": {
+                    "name": "$name",  # Project the name field
+                    "description": "$description",  # Project the description field
+                    "files": {
+                        "$map": {
+                            "input": "$files",
+                            "as": "file",
+                            "in": {
+                                "collection_name": "$$file.collection_name",
+                                "filename": "$$file.filename",
+                                "friendly_filename": "$$file.friendly_filename",
+                                "description": "$$file.description",
+                                "filetype": "$$file.filetype",
+                            }
+                        }
+                    }
+                }
+            }
+        ]
 
 
+        try:
+            data = list(self.collection_collection.aggregate(pipeline))
+            output_string = ""
+            for subject in data:
+                subject_name = subject['name']
+                subject_description = subject.get('description', 'No description')
+                output_string += f"Subject: {subject_name}\nDescription: {subject_description}\nFiles:\n"
+                for file in subject['files']:
+                    output_string += f"- {file['friendly_filename']} ({file.get('filetype', 'No type')}) Description: {file.get('description', 'No desc')})\n"
+                output_string += "\n"  # Add extra newline for separation between subjects
 
-    def get_all_by_user(self, user_id: str) -> List[CollectionModel]:
+            return output_string
+        except Exception as e:
+            print(f"Error occurred: {e} {data}")
+            return "An error occurred while fetching data."
+        
+    def get_all_by_user(self, user_id: str, dict: bool = False) -> List[CollectionModel] | List[Dict]:
         pipeline = [
             {"$match": {"user_uid": user_id}},
             {
@@ -127,7 +173,10 @@ class CollectionDBManager:
             {"$project": {"files": 0}},  # Exclude the "files" field from the results
         ]
         results = list(self.collection_collection.aggregate(pipeline))
-        return [CollectionModel(**doc) for doc in results]
+        if not dict:
+            return [CollectionModel(**doc) for doc in results]
+        else:
+            return [CollectionModel(**doc).model_dump() for doc in results]
 
     def update_collection(
         self, user_id: str, collection_name: str, **kwargs: Dict

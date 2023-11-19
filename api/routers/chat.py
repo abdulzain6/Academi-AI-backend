@@ -11,13 +11,18 @@ from ..globals import (
     chat_manager,
     file_manager,
     conversation_manager,
-    chat_manager_agent_non_retrieval
+    chat_manager_agent_non_retrieval,
+    knowledge_manager
 )
 from ..lib.database.messages import MessagePair
 from ..lib.utils import split_into_chunks
 from ..dependencies import can_use_premium_model, require_points_for_feature, get_model_and_fallback
-from pydantic import BaseModel
-from openai.error import OpenAIError
+from pydantic import BaseModel, Field
+from openai import OpenAIError
+from langchain.tools import BaseTool, StructuredTool, Tool, tool
+from .utils import select_random_chunks
+from langchain.pydantic_v1 import BaseModel as OldBaseModel
+from langchain.pydantic_v1 import Field as OldField
 
 router = APIRouter()
 
@@ -289,8 +294,56 @@ def chat_general_stream(
     
     model_name, premium_model = can_use_premium_model(user_id=user_id)        
     model_default, model_fallback  = get_model_and_fallback({"temperature": 0.3}, True, premium_model)
-
     data_queue = queue.Queue()
+    
+    class ReadDataArgs(OldBaseModel):
+        query: str = OldField("all", description="What you want to search")
+        subject_name: str = OldField(description="The name of the subject to read data from")
+        file_name: Optional[str] = OldField(None, description="The name of the file to read from the subject, if it is empty, the whole subject will be read/searched")
+    
+    def read_vector_db(subject_name: str, file_name: str = None, query: str = "all") -> str:
+        if file_name:
+            metadata = {"file" : file_name}
+        else:
+            metadata = {}
+        
+        if not (
+            collection := collection_manager.get_collection_by_name_and_user(
+                subject_name, user_id
+            )
+        ):
+            return "Subject name is wrong, file name might correct. Maybe list all subjects and files to find out?"
+        
+        if collection.number_of_files == 0:
+            return "Subject has no files, but exists",
+
+        if file_name:
+            if not file_manager.file_exists(
+                collection_uid=collection.collection_uid,
+                user_id=user_id,
+                filename=file_name,
+            ):
+                return "File not found. subject exists tho. Maybe list all subjects and files to find out?"
+            
+        docs = knowledge_manager.query_data(query, collection.vectordb_collection_name, k=3, metadata=metadata)
+        data = select_random_chunks( "\n".join([doc.page_content for doc in docs]), 300, 600)
+        logging.info(f"Read {data}")
+        return data
+
+    
+    extra_tools = [
+        StructuredTool.from_function(
+            func=lambda subject_name, file_name=None, query="all", *args, **kwargs: read_vector_db(query=query, subject_name=subject_name, file_name=file_name),
+            name="read_user_subject_or_file",
+            description="Used to read students subject of a file in that subject",
+            args_schema=ReadDataArgs
+        ),
+        Tool.from_function(
+            func=lambda *args, **kwargs: collection_manager.get_all_files_for_user_as_string(user_id),
+            name="list_user_subjects_files",
+            description="Used to list the subjects the students has added and files in them.",
+        )
+    ]
 
     def data_generator() -> Generator[str, None, None]:
        # yield "[START]"
@@ -323,8 +376,10 @@ def chat_general_stream(
                 llm=model_default,
                 callback=callback,
                 on_end_callback=on_end_callback,
+                extra_tools=extra_tools
             )
-        except OpenAIError:
+        except OpenAIError as e:
+            logging.error(f"Error in openai {e}")
             try:
                 chat_manager_agent_non_retrieval.chat(
                     prompt=data.prompt,
