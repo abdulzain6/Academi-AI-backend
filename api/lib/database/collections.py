@@ -148,9 +148,11 @@ class CollectionDBManager:
             for subject in data:
                 subject_name = subject['name']
                 subject_description = subject.get('description', 'No description')
-                output_string += f"Subject: {subject_name}\nDescription: {subject_description}\nFiles:\n"
+                output_string += f"Subject name: '{subject_name}' \nDescription: '{subject_description}'\nFiles:\n"
                 for file in subject['files']:
-                    output_string += f"- {file['friendly_filename']} ({file.get('filetype', 'No type')}) Description: {file.get('description', 'No desc')})\n"
+                    output_string += f"- Filename: '{file['friendly_filename']}' Filetype: '({file.get('filetype', 'No type')})' Description: '{file.get('description', 'No desc')}')\n"
+                if not subject['files']:
+                    output_string += f"- This subject has no files so ignore this"
                 output_string += "\n"  # Add extra newline for separation between subjects
 
             return output_string
