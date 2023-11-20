@@ -66,7 +66,7 @@ class QuizQuestion(BaseModel):
     question_type: QuestionType = Field(
         ...,
         json_schema_extra={
-            "description": "The type of the question (MCQ, short_answer, true_false)."
+            "description": "The type of the question (MCQ, short_answer)."
         },
     )
     answer: Answer = Field(
