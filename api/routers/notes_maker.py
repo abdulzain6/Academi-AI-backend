@@ -31,8 +31,6 @@ def ocr_image_route(
     play_integrity_verified=Depends(verify_play_integrity),
 ) -> Optional[str]:
     logging.info(f"Got ocr request, {user_id}")
-    use_feature("OCR", user_id)
-
     try:
         with tempfile.NamedTemporaryFile(delete=True) as temp_file:
             temp_file.write(file.file.read())
