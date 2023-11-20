@@ -1,7 +1,4 @@
 venv
-temp
-.image_cache
-*.pptx
 .env
 credentials-velero
 tests/
