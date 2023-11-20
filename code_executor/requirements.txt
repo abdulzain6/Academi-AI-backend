@@ -13,5 +13,5 @@ qiskit
 shapely
 numexpr
 fastapi[all]
-
+pandas
 RestrictedPython

@@ -20,7 +20,8 @@ math_libraries = [
     "shapely",  # Geometric objects, predicates, and operations
     "numexpr",  # Fast numerical expression evaluation
     "cmath",
-    "statistics"
+    "statistics",
+    "pandas"
 ]
 
 

@@ -114,13 +114,13 @@ def chat_collection_stream(
 
     def run_chat() -> None:
         try:
-            chat_manager.run_agent(
+            chat_manager.chat(
                 collection_name=collection.vectordb_collection_name,
                 prompt=data.prompt,
                 chat_history=chat_history,
                 language=data.language,
                 llm=model_default,
-                callback=callback,
+                callback_func=callback,
                 on_end_callback=on_end_callback,
             )
         except OpenAIError:
@@ -227,13 +227,13 @@ def chat_file_stream(
 
     def run_chat() -> None:
         try:
-            chat_manager.run_agent(
+            chat_manager.chat(
                 collection_name=collection.vectordb_collection_name,
                 prompt=data.prompt,
                 chat_history=chat_history,
                 language=data.language,
                 llm=model_default,
-                callback=callback,
+                callback_func=callback,
                 on_end_callback=on_end_callback,
                 filename=data.file_name,
             )
