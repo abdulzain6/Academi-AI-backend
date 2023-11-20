@@ -2,7 +2,6 @@ venv
 temp
 .image_cache
 .env
-*.pptx
 tests/
 .vscode/
 akalmand-deployment.yml
