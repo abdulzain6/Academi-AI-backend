@@ -17,6 +17,7 @@ from langchain.output_parsers import PydanticOutputParser
 from langchain.schema.language_model import BaseLanguageModel
 from langchain.pydantic_v1 import BaseModel, Field
 from pydantic import BaseModel as RealBaseModel
+from pydantic import BaseModel, Field
 from typing import Any, Generator, List, Union
 from enum import Enum
 from retrying import retry
