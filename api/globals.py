@@ -21,7 +21,7 @@ from .lib.database.purchases import (
 )
 from .lib.database.cache_manager import RedisCacheManager
 from .lib.knowledge_manager import KnowledgeManager, ChatManagerRetrieval, ChatManagerNonRetrieval
-from .lib.presentation_maker.database import initialize_managers
+from .lib.presentation_maker.database import initialize_managers, DEFAULT_TEMPLATE_DIR, DEFAULT_TEMPLATES_JSON
 from .lib.maths_solver.python_exec_client import PythonClient, Urls
 from .lib.maths_solver.ocr import ImageOCR
 from .lib.redis_cache import RedisCache
@@ -224,7 +224,7 @@ subscription_manager = SubscriptionManager(
 # Presentation
 
 template_manager, temp_knowledge_manager = initialize_managers(
-    MONGODB_URL, DATABASE_NAME, local_storage_path="/tmp/ppts"
+    template_json_path=DEFAULT_TEMPLATES_JSON, template_dir=DEFAULT_TEMPLATE_DIR
 )
 
 

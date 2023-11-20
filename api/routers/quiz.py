@@ -57,6 +57,8 @@ def make_quiz(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="File not found!")
 
     data = "\n".join([file.file_content for file in files if file])
+    if not data:
+        data = f"Make flashcards about '{quiz_input.collection_name}' if the term doesnt make sense make general quiz"
     
     model_name, premium_model = use_feature_with_premium_model_check(user_id=user_id, feature_name="QUIZ")     
     model = get_model({"temperature": 0}, False, premium_model)    
@@ -138,6 +140,8 @@ def make_flashcards(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="File not found!")
 
     data = "\n".join([file.file_content for file in files if file])
+    if not data:
+        data = f"Make flashcards about '{fc_input.collection_name}' if the term doesnt make sense make general flashcards"
     
     model_name, premium_model = can_use_premium_model(user_id=user_id)     
     model = get_model({"temperature": 0}, False, premium_model)

@@ -1,10 +1,9 @@
 import json
-import re
-from pptx.util import Inches
 import os
-from pydantic import BaseModel, ValidationError
+from pptx.util import Inches
+from shutil import copy
+from pydantic import BaseModel
 from typing import Optional, List, Union
-from gridfs import GridFS
 from abc import ABC, abstractmethod
 from langchain.vectorstores import Qdrant
 from langchain.embeddings import OpenAIEmbeddings
@@ -12,11 +11,11 @@ from langchain.schema import Document
 from qdrant_client import QdrantClient
 from qdrant_client.http import models as rest
 from pptx import Presentation
-from pymongo import MongoClient
-from pymongo.collection import Collection
-from typing import List, Union, Dict, Optional
+from typing import List, Union, Optional
 
 
+DEFAULT_TEMPLATE_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "template_dir")
+DEFAULT_TEMPLATES_JSON = os.path.join(os.path.dirname(os.path.realpath(__file__)), "templates.json")
 
 class PlaceholderModel(BaseModel):
     name: str
@@ -45,6 +44,7 @@ class TemplateModel(BaseModel):
     word_limit_points: int = 80
     word_limit_hybrid: int = 75
     file_name: Optional[str] = None 
+    image_base64: Optional[str] = None
 
 
 class TemplateObserver(ABC):
@@ -64,20 +64,24 @@ class TemplateListManager(TemplateObserver):
 class TemplateDBManager:
     def __init__(
         self,
-        connection_string: str,
-        database_name: str,
-        local_storage_path: str = "temp",
+        templates_json_path: str,
+        template_dir: str,
     ) -> None:
-        self.client = MongoClient(connection_string)
-        self.db = self.client[database_name]
-        self.template_collection: Collection = self.db["templates"]
-        self.fs = GridFS(self.db, collection="template_files")
-        self.template_collection.create_index("template_name", unique=True)
-
-        self.local_storage_path = local_storage_path
+        self.template_dir = template_dir
+        self.templates_json_path = templates_json_path
+        self.templates = self.load_templates(templates_json_path)
         self._observers: List[TemplateObserver] = []
-        if not os.path.exists(self.local_storage_path):
-            os.makedirs(self.local_storage_path)
+        
+    def add_template_to_json(self, template_json_file: str, template: TemplateModel):
+        with open(template_json_file, "r+") as fp:
+            self.templates.append(template)
+            json.dump(self.templates, fp)
+        
+    def load_templates(self, template_json_file: str = "templates.json") -> List[TemplateModel]:
+        with open(template_json_file, "rt") as fp:
+            templates = json.load(fp)
+
+        return [TemplateModel.model_validate(template) for template in templates]
 
     def register_observer(self, observer: TemplateObserver) -> None:
         self._observers.append(observer)
@@ -86,76 +90,45 @@ class TemplateDBManager:
         for observer in self._observers:
             observer.update(template)
 
-    def is_template_name_unique(self, template_name: str) -> bool:
-        return self._find_template_by_name(template_name) is None
-
-    def _find_template_by_name(self, template_name: str) -> Optional[Dict]:
-        query = {"template_name": {"$regex": re.compile(f'^{re.escape(template_name)}$', re.IGNORECASE)}}
-        return self.template_collection.find_one(query)
+    def find_template_by_name(self, template_name: str) -> Optional[TemplateModel]:
+        for template in self.templates:
+            if template.template_name == template_name:
+                return template
 
     def create_template(
         self, template: TemplateModel, file_path: str
     ) -> Union[None, str]:
-        if not self.is_template_name_unique(template.template_name):
-            return "Template name already exists."
+        if not self.find_template_by_name(template.template_name):
+            raise ValueError("Template Already exists")
 
-        file_extension = os.path.splitext(file_path)[1]
-        template.file_extension = file_extension
-
-        with open(file_path, "rb") as f:
-            file_id = self.fs.put(f.read(), filename=template.template_name)
-
-        template_dict = template.model_dump()
-        template_dict["file_id"] = file_id
-        self.template_collection.insert_one(template_dict)
-
+        copy(file_path, self.template_dir)
+        self.add_template_to_json(self.templates_json_path, template)
         self._notify_observers(template)
         return None
 
     def read_template(self, template_name: str) -> Union[TemplateModel, None]:
-        doc = self._find_template_by_name(template_name)
-        return TemplateModel(**doc) if doc else None
-
-    def update_template(self, template_name: str, updated_data: Dict) -> None:
-        self.template_collection.update_one(
-            {"template_name": template_name}, {"$set": updated_data}
-        )
-
-    def delete_template(self, template_name: str) -> None:
-        if doc := self._find_template_by_name(template_name):
-            self.fs.delete(doc["file_id"])
-            self.template_collection.delete_one({"_id": doc["_id"]})
+        temp = self.find_template_by_name(template_name)
+        return temp if temp else None
 
     def get_all_templates(self) -> List[TemplateModel]:
-        cursor = self.template_collection.find()
-        return [TemplateModel(**doc) for doc in cursor]
+        return self.templates
 
     def get_template_file(self, template_name: str) -> Union[str, None]:
-        doc = self._find_template_by_name(template_name)
-        if doc is None:
-            return None
-
-        file_id = doc.get("file_id")
-        if file_id is None:
-            return None
-
-        file_extension = doc.get("file_extension", "")
-        local_path = os.path.join(self.local_storage_path, f"{file_id}{file_extension}")
-
-        if not os.path.exists(local_path):
-            with open(local_path, "wb") as f:
-                f.write(self.fs.get(file_id).read())
-
-        return local_path
+        doc = self.find_template_by_name(template_name)
+        return os.path.join(self.template_dir, doc.file_name)
 
 
 class TemplateKnowledgeManager(TemplateObserver):
-    def __init__(self) -> None:
+    def __init__(self, embeddings = None) -> None:
+        if not embeddings:
+            self.embeddings = OpenAIEmbeddings()
+        else:
+            self.embeddings = embeddings
         self.vectorstore = self.get_vectorstore()
 
     def get_vectorstore(self) -> Qdrant:
         client = QdrantClient(location=":memory:")
-        embedding = OpenAIEmbeddings()
+        embedding = self.embeddings
         partial_embeddings = embedding.embed_documents(["test"])
         vector_size = len(partial_embeddings[0])
 
@@ -181,9 +154,9 @@ class TemplateKnowledgeManager(TemplateObserver):
 
 
 def initialize_managers(
-    connection_string: str, database_name: str, local_storage_path: str = "temp"
+    template_json_path: str, template_dir: str
 ) -> tuple[TemplateDBManager, TemplateKnowledgeManager]:
-    template_manager = TemplateDBManager(connection_string, database_name, local_storage_path)
+    template_manager = TemplateDBManager(templates_json_path=template_json_path, template_dir=template_dir)
     knowledge_manager = TemplateKnowledgeManager()
     templates = template_manager.get_all_templates()
     docs = [
@@ -296,42 +269,4 @@ class PresentationTemplateWizard:
             file_name=file_name
         )
 
-def load_and_validate_templates(file_path: str) -> Union[List[TemplateModel], TemplateModel, None]:
-    try:
-        with open(file_path, 'r') as f:
-            data = json.load(f)
-        
-        if isinstance(data, list):
-            templates = [TemplateModel(**item) for item in data]
-            return templates
-        elif isinstance(data, dict):
-            template = TemplateModel(**data)
-            return template
-        else:
-            print("Invalid JSON structure.")
-            return None
     
-    except ValidationError as e:
-        print(f"Validation Error: {e}")
-        return None
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        return None
-
-if __name__ == "__main__":
-    def load():
-        manager = TemplateDBManager(os.getenv("MONGODB_URL"), "study-app")   
-        loaded_templates = load_and_validate_templates("templates.json")
-        for template in loaded_templates:
-            manager.create_template(template, "template_dir/" + template.file_name)
-    def input_and_save(file_path):
-      #  manager = TemplateDBManager(os.getenv("MONGODB_URL"), "study-app")   
-        loaded_templates = load_and_validate_templates("templates.json")
-        model = PresentationTemplateWizard(file_path).wizard_cli()
-        templates = loaded_templates.append(model)    
-        updated_templates_json_str = json.dumps([template.dict() for template in templates], indent=4)
-        updated_json_file_path = 'templatesupdated.json'
-        with open(updated_json_file_path, 'w') as f:
-            f.write(updated_templates_json_str)
-    load()       
-    #input_and_save("/home/zain/Akalmand.ai/api/lib/presentation_maker/template_dir/Azure_Versatility.pptx")

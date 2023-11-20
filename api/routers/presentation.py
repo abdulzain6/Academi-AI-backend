@@ -20,6 +20,7 @@ from pydantic import BaseModel
 
 class GetTemplateResponse(BaseModel):
     templates: list[dict[str, str]]
+    images: list[dict[str, str]]
 
 
 class MakePresentationInput(PresentationInput):
@@ -53,8 +54,12 @@ def get_available_templates(
         {template.template_name.title(): template.template_description}
         for template in templates
     ]
+    images = [
+        {template.template_name.title(): template.image_base64}
+        for template in templates
+    ]
     logging.info(f"processed get ppt templates request, {user_id}")
-    return GetTemplateResponse(templates=formatted_templates)
+    return GetTemplateResponse(templates=formatted_templates, images=images)
 
 
 @router.post("/")
