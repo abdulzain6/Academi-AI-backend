@@ -74,7 +74,7 @@ class CustomCallback(BaseCallbackHandler):
                 self.callback(chunk)
                 time.sleep(0.05)
         self.callback(None)
-        self.on_end_callback(response)
+        self.on_end_callback(response.generations[0][0].text)
 
 
 class CustomCallbackAgent(BaseCallbackHandler):

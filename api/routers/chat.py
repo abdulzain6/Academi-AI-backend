@@ -108,10 +108,14 @@ def chat_collection_stream(
 
     def on_end_callback(response: str) -> None:
         if conversation_id:
-            conversation_manager.add_message(
-                user_id, conversation_id, data.prompt, response
-            )
-
+            try:
+                conversation_manager.add_message(
+                    user_id, conversation_id, data.prompt, response
+                )
+            except Exception as e:
+                logging.error(f"Error adding message {e}")
+            logging.info(f"Added ({data.prompt}, {response}) {conversation_id}")
+            
     def run_chat() -> None:
         try:
             chat_manager.chat(
@@ -221,9 +225,13 @@ def chat_file_stream(
 
     def on_end_callback(response: str) -> None:
         if conversation_id:
-            conversation_manager.add_message(
-                user_id, conversation_id, data.prompt, response
-            )
+            try:
+                conversation_manager.add_message(
+                    user_id, conversation_id, data.prompt, response
+                )
+            except Exception as e:
+                logging.error(f"Error adding message {e}")
+            logging.info(f"Added ({data.prompt}, {response}) {conversation_id}")
 
     def run_chat() -> None:
         try:
