@@ -157,6 +157,7 @@ You must follow the following instructions:
 You must not do the following:
 {negative_prompt}
 ==========================================
+You must follow the instructions above failure to do so will cause fatal error!
 """
                 ),
                 HumanMessagePromptTemplate.from_template(
@@ -364,6 +365,7 @@ Do not do the following:
 Do not choose slide types that are not shown to you.
 {negative_prompt}
 ==============
+You must follow the instructions above failure to do so will cause fatal error!
 """
                 ),
                 HumanMessagePromptTemplate.from_template(
@@ -386,6 +388,7 @@ Here are the placeholders we want to fill:
 {help_text}
 
 Ordered or unordered list points must be short (Very importsnt)
+You must follow the instructions above failure to do so will cause fatal error!
 Lets think step by step, Looking at the placeholders and their descriptions to fill them for the slide topic {slide_detail}. Follow all rules above! Ensure it fits in a slide
 {format_instructions}
 Follow the damn rules, you gave 150 words for a placeholder last time that caused error so keep it within slide limits.
