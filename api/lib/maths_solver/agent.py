@@ -25,6 +25,8 @@ from langchain.callbacks.base import BaseCallbackManager
 from langchain.schema.language_model import BaseLanguageModel
 from langchain.tools.base import BaseTool
 from langchain.schema.agent import AgentFinish
+from langchain.agents.openai_functions_agent.base import OpenAIFunctionsAgent
+
 
 
 def split_into_chunks(text, chunk_size):
@@ -191,7 +193,7 @@ Lets think step by step to help the student following all rules.
         **kwargs: Any,
     ):
         if self.is_openai_functions:
-            agent_obj = ModifiedOpenAIAgent.from_llm_and_tools(
+            agent_obj = OpenAIFunctionsAgent.from_llm_and_tools(
                 llm, tools, callback_manager=callback_manager, **agent_kwargs
             )
         else:

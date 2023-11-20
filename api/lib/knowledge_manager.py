@@ -16,6 +16,7 @@ from langchain.callbacks.base import BaseCallbackHandler
 from langchain.schema import Document, LLMResult
 from langchain.chains import LLMChain
 from langchain.embeddings import OpenAIEmbeddings, FakeEmbeddings
+from langchain.agents.openai_functions_agent.base import OpenAIFunctionsAgent
 from langchain.prompts import (
     PromptTemplate,
     ChatPromptTemplate,
@@ -476,7 +477,7 @@ Lets use tools and keep the files data above in mind before answering the questi
         agent_kwargs: Optional[dict] = None,
         **kwargs: Any,
     ):
-        agent_obj = ModifiedOpenAIAgent.from_llm_and_tools(
+        agent_obj = OpenAIFunctionsAgent.from_llm_and_tools(
             llm, tools, callback_manager=callback_manager, **agent_kwargs
         )
         return AgentExecutor.from_agent_and_tools(
