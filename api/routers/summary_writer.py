@@ -60,7 +60,7 @@ def write_summary(
         data = "\n".join([file.file_content for file in files])
         
     model_name, premium_model = can_use_premium_model(user_id=user_id)     
-    model = get_model({"temperature": 0.3}, False, premium_model)
+    model = get_model({"temperature": 0.3}, False, premium_model, alt=True)
     summary_writer = SummaryWriter(model)
     content = summary_writer.get_content(
         select_random_chunks(data, 600, 1500), input.word_count, input.instructions

@@ -20,87 +20,112 @@ from .lib.database.purchases import (
     MonthlyLimitFeature,
 )
 from .lib.database.cache_manager import RedisCacheManager
-from .lib.knowledge_manager import KnowledgeManager, ChatManagerRetrieval, ChatManagerNonRetrieval
-from .lib.presentation_maker.database import initialize_managers, DEFAULT_TEMPLATE_DIR, DEFAULT_TEMPLATES_JSON
+from .lib.knowledge_manager import (
+    KnowledgeManager,
+    ChatManagerRetrieval,
+    ChatManagerNonRetrieval,
+)
+from .lib.presentation_maker.database import (
+    initialize_managers,
+    DEFAULT_TEMPLATE_DIR,
+    DEFAULT_TEMPLATES_JSON,
+)
 from .lib.maths_solver.python_exec_client import PythonClient, Urls
 from .lib.maths_solver.ocr import ImageOCR
 from .lib.redis_cache import RedisCache
 from langchain.chat_models import ChatOpenAI, ChatAnyscale
 from .lib.purchases_play_store import SubscriptionChecker
 from .global_tools import CHAT_TOOLS
+from .ai_model import AIModel
+from contextlib import suppress
 import langchain
 import redis
 
 
 langchain.verbose = False
 current_directory = os.path.dirname(os.path.abspath(__file__))
+global_kwargs = {"request_timeout": 50, "max_retries": 4}
+global_chat_model = AIModel(
+    regular_model=ChatOpenAI(model_name="gpt-3.5-turbo"),
+    premium_model=ChatOpenAI(model_name="gpt-4-1106-preview", max_tokens=2700)
+)
 
-def get_model(model_kwargs: dict, stream: bool, is_premium: bool):
-    args = {**global_chat_model_kwargs, **{"streaming" : stream}}
-    args.update(model_kwargs)
-    fallback_args = args.copy()
-    
-    if is_premium:
-        args.update(**global_chat_model[2])
-    else:
-        args.update(**global_chat_model[1])
-        
-    fallbacks = []
-    for fallback in fallback_chat_models:
-        if is_premium:
-            fallback_args.update(**fallback[2])
-        else:
-            fallback_args.update(**fallback[1])
-        
-        logging.info(f"Adding fallback {fallback[0]}, args: {fallback_args}")
-        try:
-            fallbacks.append(fallback[0](**fallback_args))
-        except Exception as e:
-            logging.error(f"Error in fallback {e}")
-    
-    logging.info(f"Chat model fallback {global_chat_model[0]}, args: {args}")
-    return global_chat_model[0](
-        **args
-    ).with_fallbacks(fallbacks=fallbacks)
+global_chat_model_alternative = AIModel(
+    regular_model=ChatAnyscale(model_name="mistralai/Mistral-7B-Instruct-v0.1"),
+    premium_model=ChatOpenAI(model_name="gpt-4-1106-preview", max_tokens=2700)
+)
 
-
-def get_model_and_fallback(model_kwargs: dict, stream: bool, is_premium: bool):
-    args = {**global_chat_model_kwargs, **{"streaming" : stream}}
-    args.update(model_kwargs)
-    fallback_args = args.copy()
-    
-    if is_premium:
-        args.update(**global_chat_model[2])
-    else:
-        args.update(**global_chat_model[1])
-        
-    fallbacks = []
-    for fallback in fallback_chat_models:
-        if is_premium:
-            fallback_args.update(**fallback[2])
-        else:
-            fallback_args.update(**fallback[1])
-        
-        logging.info(f"Adding fallback {fallback[0]}, args: {fallback_args}")
-        fallbacks.append(fallback[0](**fallback_args))
-    
-    logging.info(f"Chat model fallback {global_chat_model[0]}, args: {args}")
-    return global_chat_model[0](
-        **args
-    ), fallbacks[-1]
-
-global_chat_model_kwargs = {"request_timeout": 50, "max_retries": 4}
-global_chat_model = (ChatOpenAI, {"model_name" : "gpt-3.5-turbo"}, {"model_name" : "gpt-4-1106-preview", "max_tokens" : 2700})
-# Model class , free overrides, premium overides
 fallback_chat_models = [
-    (
-        ChatAnyscale,
-        {"model_name": "meta-llama/Llama-2-70b-chat-hf"},
-        {"model_name": "meta-llama/Llama-2-70b-chat-hf"},
+    AIModel(
+        regular_model=ChatAnyscale(model_name="meta-llama/Llama-2-70b-chat-hf"),
+        premium_model=ChatAnyscale(model_name="meta-llama/Llama-2-70b-chat-hf"),
     )
 ]
 
+def get_model(model_kwargs: dict, stream: bool, is_premium: bool, alt: bool = False):
+    args = {**model_kwargs, **{"streaming": stream}}
+    
+    if not alt:
+        if is_premium:
+            model = global_chat_model.premium_model
+        else:
+            model = global_chat_model.regular_model
+    else:
+        if is_premium:
+            model = global_chat_model_alternative.premium_model
+        else:
+            model = global_chat_model_alternative.regular_model
+            
+    for k, v in args.items():
+        with suppress(Exception):
+            setattr(model, k, v)
 
+    fallbacks = []
+    for fallback in fallback_chat_models:
+        if is_premium:
+            fallback_model = fallback.premium_model
+        else:
+            fallback_model = fallback.regular_model
+
+        for k, v in args.items():
+            with suppress(Exception):
+                setattr(fallback_model, k, v)
+        try:
+            fallbacks.append(fallback_model)
+        except Exception as e:
+            logging.error(f"Error in fallback {e}")
+            
+        logging.info(f"\nAdding fallback {fallback_model}\n")
+
+    logging.info(f"Model used : {model}")
+    return model.with_fallbacks(fallbacks=fallbacks)
+
+
+def get_model_and_fallback(model_kwargs: dict, stream: bool, is_premium: bool, alt: bool = False):
+    model_kwargs = {**model_kwargs, "streaming" : stream}
+    if is_premium:
+        if not alt:
+            model = global_chat_model.premium_model
+        else:
+            model = global_chat_model_alternative.premium_model
+            
+        fallback_model = fallback_chat_models[-1].premium_model
+    else:
+        if not alt:
+            model = global_chat_model.regular_model
+        else:
+            model = global_chat_model_alternative.regular_model
+            
+        fallback_model = fallback_chat_models[-1].regular_model
+
+    for k, v in model_kwargs.items():
+        with suppress(Exception):
+            setattr(model, k, v)
+        with suppress(Exception):
+            setattr(fallback_model, k, v)
+    
+    return model, fallback_model
+    
 
 try:
     langchain.llm_cache = RedisCache(redis_=redis.from_url(REDIS_URL), ttl=CACHE_TTL)
@@ -157,8 +182,8 @@ knowledge_manager = KnowledgeManager(
 )
 chat_manager = ChatManagerRetrieval(
     OpenAIEmbeddings(),
-    conversation_limit=700,
-    docs_limit=1000,
+    conversation_limit=800,
+    docs_limit=1700,
     qdrant_api_key=QDRANT_API_KEY,
     qdrant_url=QDRANT_URL,
     python_client=client,
@@ -167,7 +192,7 @@ chat_manager_agent_non_retrieval = ChatManagerNonRetrieval(
     OpenAIEmbeddings(),
     conversation_limit=700,
     python_client=client,
-    base_tools=CHAT_TOOLS
+    base_tools=CHAT_TOOLS,
 )
 subscription_manager = SubscriptionManager(
     connection_string=MONGODB_URL,
@@ -234,7 +259,7 @@ image_ocr = ImageOCR(
     app_key=MATHPIX_API_KEY,
 )
 
-#OCR
+# OCR
 text_ocr = AzureOCR(AZURE_OCR_ENDPOINT, AZURE_OCR_KEY)
 
 # Monetization

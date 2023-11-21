@@ -170,7 +170,7 @@ class QuizGenerator:
         data: str,
         number_of_questions: int,
         collection_name: str = "Anything",
-        maximum_questions: int = 7,
+        maximum_questions: int = 10,
     ) -> list[QuizQuestionResponse]:
         parser = PydanticOutputParser(pydantic_object=Quiz)
         prompt_template = ChatPromptTemplate(

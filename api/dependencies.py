@@ -9,7 +9,7 @@ from .globals import (
     file_manager,
     collection_manager,
     global_chat_model,
-    global_chat_model_kwargs,
+    global_kwargs,
     fallback_chat_models,
     get_model_and_fallback,
     get_model
