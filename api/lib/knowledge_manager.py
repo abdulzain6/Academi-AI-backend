@@ -484,6 +484,7 @@ Lets use tools and keep the files data above in mind before answering the questi
             agent=agent_obj,
             tools=tools,
             callback_manager=callback_manager,
+            handle_parsing_errors=True,
             **kwargs,
         )
 

@@ -208,11 +208,12 @@ Lets think step by step to help the student following all rules.
             agent=agent_obj,
             tools=tools,
             callback_manager=callback_manager,
+            handle_parsing_errors=True,
             **kwargs,
         )
 
     def wrap_prompt(self, prompt: str) -> str:
-        return f"""{prompt}, [Reminder: Use tools to confirm answer for the user.]"""
+        return f"""{prompt}, Note: Always Use tools to confirm answer for the user."""
 
     def run_agent(
         self,
