@@ -119,7 +119,7 @@ Here is the plan you can use to write it:
 Do not explictly mention intro body conclusion, the output must be good so no changes need to be made
 Lets think step by step, keeping in mind whats said above to generate the {to_generate} for the {topic} it must be of {minimum_words} words.
 Follow the schema above (Important) Make sure the json is correct! You gave wrong last time! Follow the instructions by user above also.
-The {tto_generate}:"""   
+The {to_generate}:"""   
         prompt = ChatPromptTemplate(
             messages=[
                 SystemMessagePromptTemplate.from_template(template=system_prompt),
