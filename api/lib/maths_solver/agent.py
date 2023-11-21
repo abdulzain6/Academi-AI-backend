@@ -212,7 +212,7 @@ Lets think step by step to help the student following all rules.
         )
 
     def wrap_prompt(self, prompt: str) -> str:
-        return f"""{prompt}, [App System: Use tools to confirm answer for the user (Important)]"""
+        return f"""{prompt}, [Reminder: Use tools to confirm answer for the user.]"""
 
     def run_agent(
         self,
