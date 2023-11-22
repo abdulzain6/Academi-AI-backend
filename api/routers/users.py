@@ -43,13 +43,6 @@ def increment_points(
     play_integrity_verified: None = Depends(verify_play_integrity),
 ) -> dict:
     logging.info(f"Increment points request from {user_id}")
-    if not user_points_manager.can_increment_from_ad(user_id):
-        logging.error(f"Too many points increments requests from {user_id}")
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=f"Rate limit exceeded: Max {user_points_manager.max_ads_per_hour} ad watches per hour.",
-        )
-
     modified_count = user_points_manager.increment_user_points(
         user_id, DEFAULT_POINTS_INCREMENT
     )
