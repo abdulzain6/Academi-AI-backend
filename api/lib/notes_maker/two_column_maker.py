@@ -11,7 +11,7 @@ from langchain.prompts import (
     SystemMessagePromptTemplate,
     HumanMessagePromptTemplate,
 )
-from langchain.output_parsers import PydanticOutputParser
+from langchain.output_parsers import PydanticOutputParser, RetryWithErrorOutputParser
 import io
 import os
 
@@ -72,7 +72,9 @@ class QuestionsDetailsSummaryNotesMaker(NotesMaker):
         self.llm = llm
 
     def make_notes_from_string(self, string: str, instructions: str) -> io.BytesIO:
-        parser = PydanticOutputParser(pydantic_object=InputData)
+        parser = RetryWithErrorOutputParser(
+            parser=PydanticOutputParser(pydantic_object=InputData)
+        )
         prompt = ChatPromptTemplate(
             messages=[
                 SystemMessagePromptTemplate.from_template(
