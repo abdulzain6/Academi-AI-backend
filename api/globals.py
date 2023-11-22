@@ -37,6 +37,7 @@ from langchain.chat_models import ChatOpenAI, ChatAnyscale
 from .lib.purchases_play_store import SubscriptionChecker
 from .global_tools import CHAT_TOOLS
 from .ai_model import AIModel
+from copy import deepcopy
 from contextlib import suppress
 import langchain
 import redis
@@ -67,14 +68,14 @@ def get_model(model_kwargs: dict, stream: bool, is_premium: bool, alt: bool = Fa
     
     if not alt:
         if is_premium:
-            model = global_chat_model.premium_model
+            model = deepcopy(global_chat_model.premium_model)
         else:
-            model = global_chat_model.regular_model
+            model = deepcopy(global_chat_model.regular_model)
     else:
         if is_premium:
-            model = global_chat_model_alternative.premium_model
+            model = deepcopy(global_chat_model_alternative.premium_model)
         else:
-            model = global_chat_model_alternative.regular_model
+            model = deepcopy(global_chat_model_alternative.regular_model)
             
     for k, v in args.items():
         with suppress(Exception):
@@ -83,9 +84,9 @@ def get_model(model_kwargs: dict, stream: bool, is_premium: bool, alt: bool = Fa
     fallbacks = []
     for fallback in fallback_chat_models:
         if is_premium:
-            fallback_model = fallback.premium_model
+            fallback_model = deepcopy(fallback.premium_model)
         else:
-            fallback_model = fallback.regular_model
+            fallback_model = deepcopy(fallback.regular_model)
 
         for k, v in args.items():
             with suppress(Exception):
@@ -105,18 +106,18 @@ def get_model_and_fallback(model_kwargs: dict, stream: bool, is_premium: bool, a
     model_kwargs = {**model_kwargs, "streaming" : stream}
     if is_premium:
         if not alt:
-            model = global_chat_model.premium_model
+            model = deepcopy(global_chat_model.premium_model)
         else:
-            model = global_chat_model_alternative.premium_model
+            model = deepcopy(global_chat_model_alternative.premium_model)
             
         fallback_model = fallback_chat_models[-1].premium_model
     else:
         if not alt:
-            model = global_chat_model.regular_model
+            model = deepcopy(global_chat_model.regular_model)
         else:
-            model = global_chat_model_alternative.regular_model
+            model = deepcopy(global_chat_model_alternative.regular_model)
             
-        fallback_model = fallback_chat_models[-1].regular_model
+        fallback_model = deepcopy(fallback_chat_models[-1].regular_model)
 
     for k, v in model_kwargs.items():
         with suppress(Exception):
