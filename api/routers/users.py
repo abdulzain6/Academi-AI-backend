@@ -77,22 +77,39 @@ def is_daily_bonus_claimed(
 
 @router.get("/points", tags=["points", "ads"])
 def get_user_points(
-    user_id=Depends(get_user_id), play_integrity_verified=Depends(verify_play_integrity)
+    current_user=Depends(get_current_user), play_integrity_verified=Depends(verify_play_integrity)
 ):
-    logging.info(f"Get points request from {user_id}")
-    if user_points := user_points_manager.get_user_points(user_id):
-        if model := subscription_manager.get_feature_value(user_id, "MODEL"):
+    logging.info(f"Get points request from {current_user['user_id']}")
+    if user_points := user_points_manager.get_user_points(current_user['user_id']):
+        if model := subscription_manager.get_feature_value(current_user['user_id'], "MODEL"):
             return {
                 "points": user_points.model_dump(),
                 "model": model.model_dump(),
                 "model_enabled": subscription_manager.is_monthly_limit_feature_enabled(
-                    user_id, "MODEL"
+                    current_user['user_id'], "MODEL"
                 ),
             }
         return {"points": user_points.model_dump()}
     else:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
-
+        user = user_manager.add_user(
+            UserModel(
+                uid=current_user["user_id"],
+                email=current_user["email"],
+                display_name=current_user["display_name"],
+                photo_url=current_user["photo_url"],
+            )
+        )
+        if model := subscription_manager.get_feature_value(current_user['user_id'], "MODEL"):
+            return {
+                "points": user_points.model_dump(),
+                "model": model.model_dump(),
+                "model_enabled": subscription_manager.is_monthly_limit_feature_enabled(
+                    current_user['user_id'], "MODEL"
+                ),
+            }
+        return {"points": user_points.model_dump()}
+        
+        
 
 @router.post("/claim_daily_bonus/", tags=["points", "daily bonus"])
 def claim_daily_bonus(
@@ -180,16 +197,23 @@ def create_user(
 @router.put("/", response_model=UserResponse, tags=["user"])
 def update_user(
     user_update: UserUpdate,
-    user_id=Depends(get_user_id),
+    current_user=Depends(get_current_user),
     play_integrity_verified=Depends(verify_play_integrity),
 ):
-    logging.info(f"Update user request from {user_id}")
-    if not user_manager.user_exists(user_id):
-        logging.error(f"User does not exist from {user_id}")
-        raise HTTPException(detail="User does not exist", status_code=404)
+    logging.info(f"Update user request from {current_user['user_id']}")
+    if not user_manager.user_exists(current_user['user_id']):
+        user = user_manager.add_user(
+            UserModel(
+                uid=current_user["user_id"],
+                email=current_user["email"],
+                display_name=current_user["display_name"],
+                photo_url=current_user["photo_url"],
+            )
+        )
+    
     user_update = user_update.model_dump(exclude_none=True)
-    user_manager.update_user(user_id, **user_update)
-    user = user_manager.get_user_by_uid(user_id)
+    user_manager.update_user(current_user['user_id'], **user_update)
+    user = user_manager.get_user_by_uid(current_user['user_id'])
     return {"status": "success", "error": "", "user": user}
 
 
@@ -217,11 +241,18 @@ def delete_user(
 
 @router.get("/", response_model=UserResponse, tags=["user"])
 def get_user(
-    user_id=Depends(get_user_id), play_integrity_verified=Depends(verify_play_integrity)
+    current_user=Depends(get_current_user), play_integrity_verified=Depends(verify_play_integrity)
 ):
-    logging.info(f"Get user request from {user_id}")
-    if user := user_manager.get_user_by_uid(user_id):
+    logging.info(f"Get user request from {current_user['user_id']}")
+    if user := user_manager.get_user_by_uid(current_user["user_id"]):
         return {"status": "success", "error": "", "user": user}
-
-    logging.error(f"Error in Get user request from {user_id}. Error: User not found")
-    raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+    
+    user = user_manager.add_user(
+        UserModel(
+            uid=current_user["user_id"],
+            email=current_user["email"],
+            display_name=current_user["display_name"],
+            photo_url=current_user["photo_url"],
+        )
+    )
+    return {"status": "success", "error": "", "user": user}
