@@ -47,19 +47,25 @@ langchain.verbose = False
 current_directory = os.path.dirname(os.path.abspath(__file__))
 global_kwargs = {"request_timeout": 50, "max_retries": 4}
 global_chat_model = AIModel(
-    regular_model=ChatOpenAI(model_name="gpt-3.5-turbo"),
-    premium_model=ChatOpenAI(model_name="gpt-4-1106-preview", max_tokens=2700)
+    regular_model=ChatOpenAI,
+    regular_args={"model_name" :"gpt-3.5-turbo"},
+    premium_model=ChatOpenAI,
+    premium_args={"model_name": "gpt-4-1106-preview", "max_tokens": 2700}
 )
 
 global_chat_model_alternative = AIModel(
-    regular_model=ChatAnyscale(model_name="mistralai/Mistral-7B-Instruct-v0.1"),
-    premium_model=ChatOpenAI(model_name="gpt-4-1106-preview", max_tokens=2700)
+    regular_model=ChatAnyscale,
+    regular_args={"model_name" : "mistralai/Mistral-7B-Instruct-v0.1"},
+    premium_model=ChatOpenAI,
+    premium_args={"model_name" : "gpt-4-1106-preview", "max_tokens" : 2700}
 )
 
 fallback_chat_models = [
     AIModel(
-        regular_model=ChatAnyscale(model_name="meta-llama/Llama-2-70b-chat-hf"),
-        premium_model=ChatAnyscale(model_name="meta-llama/Llama-2-70b-chat-hf"),
+        regular_model=ChatAnyscale,
+        regular_args={"model_name" : "meta-llama/Llama-2-70b-chat-hf"},
+        premium_model=ChatAnyscale,
+        premium_args={"model_name" : "meta-llama/Llama-2-70b-chat-hf"}
     )
 ]
 
@@ -68,14 +74,14 @@ def get_model(model_kwargs: dict, stream: bool, is_premium: bool, alt: bool = Fa
     
     if not alt:
         if is_premium:
-            model = global_chat_model.premium_model
+            model = global_chat_model.premium_model(**global_chat_model.premium_args, **global_kwargs)
         else:
-            model = ChatOpenAI(model_name="gpt-3.5-turbo")
+            model = global_chat_model.regular_model(**global_chat_model.regular_args, **global_kwargs)
     else:
         if is_premium:
-            model = global_chat_model_alternative.premium_model
+            model = global_chat_model_alternative.premium_model(**global_chat_model_alternative.premium_args, **global_kwargs)
         else:
-            model = global_chat_model_alternative.regular_model
+            model = global_chat_model_alternative.regular_model(**global_chat_model_alternative.regular_args, **global_kwargs)
             
     for k, v in args.items():
         with suppress(Exception):
@@ -84,9 +90,9 @@ def get_model(model_kwargs: dict, stream: bool, is_premium: bool, alt: bool = Fa
     fallbacks = []
     for fallback in fallback_chat_models:
         if is_premium:
-            fallback_model = fallback.premium_model
+            fallback_model = fallback.premium_model(**fallback.premium_args, **global_kwargs)
         else:
-            fallback_model = fallback.regular_model
+            fallback_model = fallback.regular_model(**fallback.regular_args, **global_kwargs)
 
         for k, v in args.items():
             with suppress(Exception):
@@ -106,18 +112,18 @@ def get_model_and_fallback(model_kwargs: dict, stream: bool, is_premium: bool, a
     model_kwargs = {**model_kwargs, "streaming" : stream}
     if is_premium:
         if not alt:
-            model = global_chat_model.premium_model
+            model = global_chat_model.premium_model(**global_chat_model.premium_args, **global_kwargs)
         else:
-            model = global_chat_model_alternative.premium_model
+            model = global_chat_model_alternative.premium_model(**global_chat_model_alternative.premium_args, **global_kwargs)
             
-        fallback_model = fallback_chat_models[-1].premium_model
+        fallback_model = fallback_chat_models[-1].premium_model(**fallback_chat_models[-1].premium_args, **global_kwargs)
     else:
         if not alt:
-            model = ChatOpenAI(model_name="gpt-3.5-turbo")
+            model = global_chat_model.regular_model(**global_chat_model.regular_args, **global_kwargs)
         else:
-            model = global_chat_model_alternative.regular_model
+            model = global_chat_model_alternative.regular_model(**global_chat_model_alternative.regular_args, **global_kwargs)
             
-        fallback_model = fallback_chat_models[-1].regular_model
+        fallback_model = fallback_chat_models[-1].regular_model(**fallback_chat_models[-1].regular_args, **global_kwargs)
 
     for k, v in model_kwargs.items():
         with suppress(Exception):
