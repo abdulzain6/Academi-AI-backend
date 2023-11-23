@@ -1,7 +1,7 @@
 beautifulsoup4
 fastapi
 httpx
-langchain
+langchain==0.0.338
 lxml
 numpy
 openai

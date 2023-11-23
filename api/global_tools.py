@@ -7,7 +7,7 @@ from api.lib.tools import ScholarlySearchRun
 
 CHAT_TOOLS = [
     DuckDuckGoSearchRun(),
-    WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper()),
+    #WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper()),
     YouTubeSearchTool(),
     ScholarlySearchRun()
 ]
