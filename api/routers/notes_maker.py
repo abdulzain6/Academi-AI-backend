@@ -102,7 +102,7 @@ def make_notes(
     except Exception as e:
         raise HTTPException(400, detail=str(e))
 
-    content = select_random_chunks(data, 600, 1500)
+    content = select_random_chunks(data, 600, 1850)
     data = notes_maker.make_notes_from_string(content, notes_input.instructions)
     data.seek(0)
 
