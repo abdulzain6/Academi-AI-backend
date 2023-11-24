@@ -73,6 +73,7 @@ def make_quiz(
             select_random_chunks(data, 300, 1000),
             quiz_input.number_of_questions,
             collection_name=quiz_input.collection_name,
+            collection_description=collection.description
         )
     except Exception as e:
         logging.error(f"Error generating quiz, Error: {e}")
@@ -156,6 +157,7 @@ def make_flashcards(
             select_random_chunks(data, 300, 1000),
             fc_input.number_of_flashcards,
             collection_name=fc_input.collection_name,
+            collection_description=collection.description
         )
         logging.info(f"Flashcards generated, {user_id}")
     except Exception as e:

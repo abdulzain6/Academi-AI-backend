@@ -171,6 +171,7 @@ class QuizGenerator:
         number_of_questions: int,
         collection_name: str = "Anything",
         maximum_questions: int = 10,
+        collection_description: str = "ANything"
     ) -> list[QuizQuestionResponse]:
         parser = PydanticOutputParser(pydantic_object=Quiz)
         prompt_template = ChatPromptTemplate(
@@ -198,45 +199,20 @@ The schema:
 {format_instructions}
 
 
-If there is no data, Use your knowledge to generate the quiz about '{collection_name}'. if you dont know about the term, make a general quiz
+If there is no data, Use your knowledge to generate the quiz about '{collection_name}' Description : {description}. if you dont know about the term, make a general quiz
 The generated quiz in proper schema without useless and incomplete questions, while picking a variety of question types. You must follow the schema(Important)
 Failure to follow schema causes error
 THe quiz with all rules above followed:
 """
                 ),
             ],
-            input_variables=["data", "number_of_questions"],
+            input_variables=["data", "number_of_questions", "description"],
             partial_variables={
                 "format_instructions": parser.get_format_instructions(),
                 "collection_name": collection_name,
+                "description" : collection_description
             },
-        )
-        oai_prompt_template = ChatPromptTemplate(
-            messages=[
-                SystemMessagePromptTemplate.from_template(
-                    """
-You are an AI designed to generate a quiz from the data. 
-You will generate a variety of question types. (IMportant)
-You will not generate unimportant or incomplete questions.
-The quiz is to be of {number_of_questions} questions. (Important)
-"""
-                ),
-                HumanMessagePromptTemplate.from_template(
-                    """
-Here is the data used to generate the quiz
-===========
-{data}
-===========
-If there is no data, Use your knowledge to generate the quiz about '{collection_name}'. if you dont know about the term, make a general quiz
-"""
-                ),
-            ],
-            input_variables=["data", "number_of_questions"],
-            partial_variables={
-                "collection_name": collection_name,
-            },
-        )
-        
+        ) 
         questions: List[QuizQuestion] = []
         chain = LLMChain(
             prompt=prompt_template,
@@ -244,25 +220,15 @@ If there is no data, Use your knowledge to generate the quiz about '{collection_
             llm=self.llm,
         )
 
-        try:
-            raise Exception()
-            chain_oai = create_extraction_chain_pydantic(
-                QuizQuestion, self.llm, oai_prompt_template
+
+        if not data:
+            questions = self.run_chain(
+                chain, "", min(number_of_questions, maximum_questions)
             )
-            questions: list[QuizQuestion] = chain_oai.run(
-                data=data or "",
-                number_of_questions=min(number_of_questions, maximum_questions),
+        else:
+            questions = self.run_chain(
+                chain, data, min(number_of_questions, maximum_questions)
             )
-        except Exception as e:
-           # logging.info(f"Error in oai chain {e}")
-            if not data:
-                questions = self.run_chain(
-                    chain, "", min(number_of_questions, maximum_questions)
-                )
-            else:
-                questions = self.run_chain(
-                    chain, data, min(number_of_questions, maximum_questions)
-                )
 
         return [
             QuizQuestionResponse(**question.dict(), id=str(uuid.uuid4()))
@@ -316,6 +282,7 @@ If there is no data, Use your knowledge to generate the quiz about '{collection_
         number_of_flashcards: int,
         collection_name: str = "Anything",
         maximium_flashcards: int = 10,
+        collection_description: str = "Anything"
     ) -> list[FlashCard]:
         parser = PydanticOutputParser(pydantic_object=FlashCards)
         prompt_template = ChatPromptTemplate(
@@ -341,7 +308,7 @@ You will follow the following schema and will not return anything else
 The schema:
 {format_instructions}
 
-If there is no data, Use your knowledge to generate the flashcards about '{collection_name}'. if you dont know about the term, make general flashcards
+If there is no data, Use your knowledge to generate the flashcards about '{collection_name}, Description: {description}'. if you dont know about the term, make general flashcards
 
 The generated flashcards in proper schema. You must follow the schema(Important):
 """
@@ -351,58 +318,23 @@ The generated flashcards in proper schema. You must follow the schema(Important)
             partial_variables={
                 "format_instructions": parser.get_format_instructions(),
                 "collection_name": collection_name,
+                "description" : collection_description
             },
         )
-        oai_prompt_template = ChatPromptTemplate(
-            messages=[
-                SystemMessagePromptTemplate.from_template(
-                    """
-You are an AI designed to generate flashcards from the data. 
-You will not generate unimportant or incomplete questions.
-The flashcard set is to be of {number_of_flashcards} questions. (Important)
-"""
-                ),
-                HumanMessagePromptTemplate.from_template(
-                    """
-Here is the data used to generate the flashcards
-===========
-{data}
-===========
-If there is no data, Use your knowledge to generate the flashcards about {collection_name}. if you dont know about this, make a general flashcards
-"""
-                ),
-            ],
-            input_variables=["data", "number_of_flashcards"],
-            partial_variables={
-                "collection_name": collection_name,
-            },
-        )
-
+    
         flashcards: List[FlashCard] = []
         chain = LLMChain(
             prompt=prompt_template,
             output_parser=parser,
             llm=self.llm,
         )
-
-        try:
-            raise Exception()
-            chain_oai = create_extraction_chain_pydantic(
-                FlashCard, self.llm, oai_prompt_template
+        
+        if not data:
+            flashcards = self.run_chain_fc(chain, "", min(number_of_flashcards, maximium_flashcards))
+        else:
+            flashcards = self.run_chain_fc(
+                chain, data, min(number_of_flashcards, maximium_flashcards)
             )
-            flashcards: list[FlashCard] = chain_oai.run(
-                data=data or "",
-                number_of_flashcards=min(number_of_flashcards, maximium_flashcards),
-            )
-        except Exception as e:
-          #  logging.info(f"Error in oai chain {e}")
-
-            if not data:
-                flashcards = self.run_chain_fc(chain, "", min(number_of_flashcards, maximium_flashcards))
-            else:
-                flashcards = self.run_chain_fc(
-                    chain, data, min(number_of_flashcards, maximium_flashcards)
-                )
 
         return flashcards[:number_of_flashcards]
 
