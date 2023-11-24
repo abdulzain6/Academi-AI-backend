@@ -15,11 +15,10 @@ from typing import IO
 class MarkdownToPDFConverter(BaseTool):
     """Tool that converts Markdown text to a PDF file in memory."""
     
-    name: str = "make_user_study_material"
+    name: str = "make_pdf"
     description: str = (
-        "A tool to give the user a helpful pdf with useful study material"
+        "A tool to give the user a  pdf with the content of your choice"
         "Input should be the content of the pdf in Markdown formatted string."
-        "Can be used to give the user study material. You must pass in the content as argument"
     )
     cache_manager: object
     url_template: str
