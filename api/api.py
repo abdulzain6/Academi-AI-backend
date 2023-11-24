@@ -16,7 +16,7 @@ from .routers.subscriptions import router as subscriptions_router
 from .routers.cv_maker import router as cv_router
 from .routers.notes_maker import router as notes_router
 from .routers.grammar_checker import router as grammar_router
-
+from .routers.tools import router as tool_router
 
 from fastapi import FastAPI, Request, HTTPException, status, Depends
 from fastapi.responses import JSONResponse
@@ -110,6 +110,7 @@ app.include_router(subscriptions_router, prefix="/api/v1/subscriptions-info", ta
 app.include_router(cv_router, prefix="/api/v1/cv_maker", tags=["cv maker"])
 app.include_router(notes_router, prefix="/api/v1/notes_maker", tags=["notes maker"])
 app.include_router(grammar_router, prefix="/api/v1/grammar_checker", tags=["grammar checker"])
+app.include_router(tool_router, prefix="/api/v1/tools", tags=["tools"])
 
 
 

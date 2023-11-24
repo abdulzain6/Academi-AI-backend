@@ -1,9 +1,53 @@
+import os
+import uuid
 from typing import List, Dict, Union, Optional
+import pypandoc
 from scholarly import scholarly
 from langchain.tools.base import BaseTool
 from langchain.callbacks.manager import (
     CallbackManagerForToolRun,
 )
+from typing import IO
+
+
+
+
+class MarkdownToPDFConverter(BaseTool):
+    """Tool that converts Markdown text to a PDF file in memory."""
+    
+    name: str = "give_user_pdf"
+    description: str = (
+        "A tool to give the user a helpful pdf"
+        "Input should be a Markdown formatted string."
+        "Can be used to give the user study material"
+    )
+    cache_manager: object
+    url_template: str
+
+    def _run(self, markdown_text: str, run_manager: Optional[CallbackManagerForToolRun] = None) -> Union[IO[bytes], str]:
+        """Convert Markdown text to a PDF file."""
+        try:
+            # Generate a unique ID for the document
+            doc_id = str(uuid.uuid4())
+            pdf_filename = f"/tmp/{doc_id}.pdf"
+
+            pypandoc.convert_text(markdown_text, 'pdf', format='md', outputfile=pdf_filename, extra_args=['-V', 'geometry:margin=1in'])
+
+            with open(pdf_filename, "rb") as file:
+                pdf_bytes = file.read()
+            
+            # Store the PDF in Redis
+            self.cache_manager.set(key=doc_id, value=pdf_bytes, ttl=18000)
+
+            # Remove the temporary PDF file
+            os.remove(pdf_filename)
+
+            # Format and return the URL with the document ID
+            document_url = self.url_template.format(doc_id=doc_id)
+            return document_url
+
+        except Exception as e:
+            return f"An error occurred: {e}"
 
 class ScholarlySearchRun(BaseTool):
     """Tool that queries the scholarly search API."""

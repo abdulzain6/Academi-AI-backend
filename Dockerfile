@@ -12,6 +12,7 @@ RUN apt-get update && \
     pandoc \
     wget \
     gnupg2 \
+    texlive \
     && apt-get clean && \
     rm -rf /var/lib/apt/lists/* 
 

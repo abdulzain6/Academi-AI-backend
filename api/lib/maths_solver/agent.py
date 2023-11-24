@@ -170,7 +170,7 @@ Rules:
     Use latex for maths equations and symbols (important)
     
 Use tools to get accurate answer, dont give approximations (Important)
-Always use tools (Important)
+Always use tools when needed not unneccerily (Important)
 Lets think step by step to help the student following all rules. 
 """
             ),
@@ -212,7 +212,7 @@ Lets think step by step to help the student following all rules.
         )
 
     def wrap_prompt(self, prompt: str) -> str:
-        return f"""{prompt}, System: Use tools to confirm"""
+        return f"""{prompt}, System: Use tools to confirm if required not uselessly"""
 
     def run_agent(
         self,
