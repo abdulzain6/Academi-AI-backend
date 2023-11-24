@@ -58,7 +58,7 @@ def make_quiz(
 
     data = "\n".join([file.file_content for file in files if file])
     if not data:
-        data = f"Make flashcards about '{quiz_input.collection_name}' if the term doesnt make sense make general quiz"
+        data = f"Make quiz about '{quiz_input.collection_name}' if the term doesnt make sense make general quiz"
     
     model_name, premium_model = use_feature_with_premium_model_check(user_id=user_id, feature_name="QUIZ")     
     model = get_model({"temperature": 0}, False, premium_model)    
