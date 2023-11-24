@@ -32,14 +32,22 @@ class RedisCacheManager:
             logging.error(f"Error in getting cache {e}")
             return None
 
-    def set(self, key: str, value: Any, ttl: int = None) -> None:
+    def set(self, key: str, value: Any, ttl: int = None, suppress=True) -> None:
         if not ttl:
             ttl = self.ttl
-        with contextlib.suppress(Exception):
+        if suppress:
+            with contextlib.suppress(Exception):
+                if self.redis_client:
+                    logging.info(f"Setting cached value for {key}")
+                    self.redis_client.setex(key, ttl, dumps(value))
+                    logging.info(f"Set successfully cached value for {key}")
+        else:
             if self.redis_client:
                 logging.info(f"Setting cached value for {key}")
                 self.redis_client.setex(key, ttl, dumps(value))
                 logging.info(f"Set successfully cached value for {key}")
+                
+
 
     def delete(self, key: str) -> None:
         with contextlib.suppress(redis.RedisError):

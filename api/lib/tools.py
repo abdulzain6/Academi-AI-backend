@@ -17,7 +17,7 @@ class MarkdownToPDFConverter(BaseTool):
     
     name: str = "make_pdf"
     description: str = (
-        "A tool to give the user a  pdf with the content of your choice"
+        "A tool to give the user a pdf with the content of your choice"
         "Input should be the content of the pdf in Markdown formatted string."
     )
     cache_manager: object
@@ -30,7 +30,7 @@ class MarkdownToPDFConverter(BaseTool):
             doc_id = str(uuid.uuid4())
             pdf_filename = f"/tmp/{doc_id}.pdf"
 
-            pypandoc.convert_text(markdown_text, 'pdf', format='md', outputfile=pdf_filename, extra_args=['-V', 'geometry:margin=1in'])
+            pypandoc.convert_text(markdown_text, 'pdf', format='md', outputfile=pdf_filename, extra_args=['--pdf-engine=xelatex'])
 
             with open(pdf_filename, "rb") as file:
                 pdf_bytes = file.read()
