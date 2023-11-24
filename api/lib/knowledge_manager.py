@@ -178,6 +178,31 @@ class KnowledgeManager:
             file_path=file_path,
             api_key=self.unstructured_api_key,
             url=self.unstructured_url,
+            strategy="hi_res",
+            ocr_languages=[
+                "eng",  # English
+                "spa",  # Spanish
+                "fra",  # French
+                "deu",  # German
+                "chi_sim",  # Chinese (Simplified)
+                "chi_tra",  # Chinese (Traditional)
+                "ara",  # Arabic
+                "por",  # Portuguese
+                "rus",  # Russian
+                "jpn",  # Japanese
+                "kor",  # Korean
+                "ita",  # Italian
+                "nld",  # Dutch
+                "swe",  # Swedish
+                "tur",  # Turkish
+                "pol",  # Polish
+                "fin",  # Finnish
+                "dan",  # Danish
+                "nor",  # Norwegian
+                "hin",  # Hindi
+                "urd",  # Urdu
+                "ben"   # Bengali (Bangla)
+            ]
         )
 
         docs = loader.load()
