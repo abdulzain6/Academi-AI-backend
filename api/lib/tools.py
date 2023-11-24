@@ -18,7 +18,7 @@ class MarkdownToPDFConverter(BaseTool):
     name: str = "give_user_pdf"
     description: str = (
         "A tool to give the user a helpful pdf"
-        "Input should be a Markdown formatted string."
+        "Input should be the content of the pdf in Markdown formatted string."
         "Can be used to give the user study material"
     )
     cache_manager: object
