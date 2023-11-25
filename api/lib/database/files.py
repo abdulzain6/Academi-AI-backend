@@ -84,7 +84,6 @@ class FileDBManager:
         return None
 
     def file_exists(self, user_id: str, collection_uid: str, filename: str) -> bool:
-        print(user_id, collection_uid, filename)
         return (
             self.file_collection.count_documents(
                 {
