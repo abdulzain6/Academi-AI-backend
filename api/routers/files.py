@@ -58,19 +58,18 @@ def create_link_file(
     collection = collection_manager.get_collection_by_name_and_user(
         linkfile.collection_name, user_id
     )
+    logging.info(f"Collection: {collection}")
     if not collection:
         logging.error(f"Collection does not exist. {user_id}")
         raise HTTPException(detail="Collection does not exist", status_code=404)
 
     if not linkfile.youtube_link and not linkfile.web_link:
-        logging.error(f"Collection does not exist {user_id}")
         raise HTTPException(
             detail="Either weburl or youtube_link must be specified",
             status_code=status.HTTP_400_BAD_REQUEST,
         )
 
     if linkfile.youtube_link and linkfile.web_link:
-        logging.error(f"Collection does not exist {user_id}")
         raise HTTPException(
             detail="Either weburl or youtube_link must be specified. Not both.",
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -85,6 +84,7 @@ def create_link_file(
     extension = ".yt" if linkfile.youtube_link else ".html"
 
     try:
+        logging.info("Started loading")
         contents, ids, file_bytes = knowledge_manager.load_web_youtube_link(
             collection.vectordb_collection_name,
             metadata={"file": linkfile.filename},
@@ -110,7 +110,7 @@ def create_link_file(
             ),
         )
     except Exception as e:
-        raise HTTPException(detail=str(e), status=400)
+        raise HTTPException(detail=str(e), status_code=400)
     
     logging.info(f"File created, File name: {file_model.filename}, Collection: {linkfile.collection_name} {user_id}")
     return {
@@ -198,7 +198,7 @@ def create_file(
                     ),
                 )
             except Exception as e:
-                raise HTTPException(detail=str(e), status=400)
+                raise HTTPException(detail=str(e), status_code=400)
             
         logging.info(f"File created, File name: {file_model.filename}, Collection: {collection_name} {user_id}")
         return {

@@ -50,6 +50,7 @@ from langchain.callbacks.base import BaseCallbackManager
 from langchain.schema.language_model import BaseLanguageModel
 from langchain.tools.base import BaseTool
 from langchain.schema.agent import AgentFinish
+from langchain.document_loaders import SeleniumURLLoader
 
 
 def split_into_chunks(text, chunk_size):
@@ -156,6 +157,7 @@ class KnowledgeManager:
         qdrant_api_key: str,
         qdrant_url: str,
         chunk_size: int = 1000,
+        chrome_path: str = "/usr/bin/google-chrome"
     ) -> None:
         self.embeddings = embeddings
         self.unstructured_api_key = unstructured_api_key
@@ -166,6 +168,7 @@ class KnowledgeManager:
         self.client = QdrantClient(
             url=self.qdrant_url, api_key=self.qdrant_api_key, prefer_grpc=True
         )
+        self.chrome_path = chrome_path
 
     def split_docs(self, docs: Document) -> List[Document]:
         return RecursiveCharacterTextSplitter(
@@ -298,7 +301,7 @@ class KnowledgeManager:
             if not self.validate_url(web_url):
                 raise ValueError("Invalid URL")
 
-            loader = WebBaseLoader(web_url)
+            loader = SeleniumURLLoader([web_url], binary_location=self.chrome_path)
         else:
             loader = YoutubeLoader.from_youtube_url(youtube_link)
 

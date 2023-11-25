@@ -41,28 +41,18 @@ class CollectionDBManager:
         self.cache_manager = cache_manager
 
     def get_collection_name_by_uid(self, collection_uid: str) -> Optional[str]:
-        cache_key = f"collection_name:{collection_uid}"
-        if cached_data := self.cache_manager.get(cache_key):
-            return cached_data
-
         if doc := self.collection_collection.find_one(
             {"collection_uid": collection_uid}
         ):
-            self.cache_manager.set(cache_key, doc["name"])
             return doc["name"]
 
         return None
 
 
     def resolve_collection_uid(self, name: str, user_id: str) -> Optional[str]:
-        cache_key = f"collection_uid:{name}:{user_id}"
-        if cached_data := self.cache_manager.get(cache_key):
-            return cached_data
-
         if doc := self.collection_collection.find_one(
             {"name": name, "user_uid": user_id}
         ):
-            self.cache_manager.set(cache_key, doc["collection_uid"])
             return doc["collection_uid"]
 
         return None

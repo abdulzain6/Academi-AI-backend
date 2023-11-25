@@ -11,7 +11,7 @@ from ..auth import get_user_id, verify_play_integrity
 from ..globals import get_model
 from ..lib.cv_maker.cv_maker import CVMaker
 from ..lib.cv_maker.template_loader import template_loader
-from .utils import image_to_pdf_in_memory, file_to_base64
+from .utils import image_to_pdf_in_memory
 
 
 router = APIRouter()

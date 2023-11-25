@@ -1,4 +1,3 @@
-import logging
 from .config import *
 from langchain.embeddings import OpenAIEmbeddings
 from .lib.ocr import AzureOCR
@@ -37,10 +36,14 @@ from langchain.chat_models import ChatOpenAI, ChatAnyscale
 from .lib.purchases_play_store import SubscriptionChecker
 from .global_tools import CHAT_TOOLS
 from .ai_model import AIModel
-from copy import deepcopy
 from contextlib import suppress
 import langchain
 import redis
+import nltk
+import logging
+
+nltk.download('punkt')
+nltk.download('averaged_perceptron_tagger')
 
 
 langchain.verbose = False
