@@ -95,19 +95,23 @@ def create_link_file(
         logging.error(f"File not supported, Error: {e}")
         raise HTTPException(400, "Link has no data/ Invalid link") from e
 
-    file_model = file_manager.add_file(
-        FileModel(
-            friendly_filename=linkfile.filename,
-            collection_name=linkfile.collection_name,
-            user_id=user_id,
-            filename=linkfile.filename,
-            description=linkfile.description,
-            file_content=contents,
-            file_bytes=file_bytes,
-            vector_ids=ids,
-            filetype=extension,
-        ),
-    )
+    try:
+        file_model = file_manager.add_file(
+            FileModel(
+                friendly_filename=linkfile.filename,
+                collection_name=linkfile.collection_name,
+                user_id=user_id,
+                filename=linkfile.filename,
+                description=linkfile.description,
+                file_content=contents,
+                file_bytes=file_bytes,
+                vector_ids=ids,
+                filetype=extension,
+            ),
+        )
+    except Exception as e:
+        raise HTTPException(detail=str(e), status=400)
+    
     logging.info(f"File created, File name: {file_model.filename}, Collection: {linkfile.collection_name} {user_id}")
     return {
         "status": "success",
@@ -179,19 +183,23 @@ def create_file(
                 logging.error(f"File not supported, Error: {e}")
                 raise HTTPException(400, "FIle not supported/ FIle has no Data") from e
 
-            file_model = file_manager.add_file(
-                FileModel(
-                    friendly_filename=filename,
-                    collection_name=collection_name,
-                    filename=filename,
-                    description=description,
-                    file_content=contents,
-                    file_bytes=file_bytes,
-                    vector_ids=ids,
-                    filetype=get_file_extension(file.filename),
-                    user_id=user_id,
-                ),
-            )
+            try:
+                file_model = file_manager.add_file(
+                    FileModel(
+                        friendly_filename=filename,
+                        collection_name=collection_name,
+                        filename=filename,
+                        description=description,
+                        file_content=contents,
+                        file_bytes=file_bytes,
+                        vector_ids=ids,
+                        filetype=get_file_extension(file.filename),
+                        user_id=user_id,
+                    ),
+                )
+            except Exception as e:
+                raise HTTPException(detail=str(e), status=400)
+            
         logging.info(f"File created, File name: {file_model.filename}, Collection: {collection_name} {user_id}")
         return {
             "status": "success",

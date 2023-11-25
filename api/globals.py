@@ -89,18 +89,21 @@ def get_model(model_kwargs: dict, stream: bool, is_premium: bool, alt: bool = Fa
 
     fallbacks = []
     for fallback in fallback_chat_models:
-        if is_premium:
-            fallback_model = fallback.premium_model(**fallback.premium_args, **global_kwargs)
-        else:
-            fallback_model = fallback.regular_model(**fallback.regular_args, **global_kwargs)
-
-        for k, v in args.items():
-            with suppress(Exception):
-                setattr(fallback_model, k, v)
         try:
-            fallbacks.append(fallback_model)
-        except Exception as e:
-            logging.error(f"Error in fallback {e}")
+            if is_premium:
+                fallback_model = fallback.premium_model(**fallback.premium_args, **global_kwargs)
+            else:
+                fallback_model = fallback.regular_model(**fallback.regular_args, **global_kwargs)
+
+            for k, v in args.items():
+                with suppress(Exception):
+                    setattr(fallback_model, k, v)
+            try:
+                fallbacks.append(fallback_model)
+            except Exception as e:
+                logging.error(f"Error in fallback {e}")
+        except Exception:
+            pass
             
         logging.info(f"\nAdding fallback {fallback_model}\n")
 

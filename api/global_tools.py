@@ -14,6 +14,7 @@ CHAT_TOOLS = [
         cache_manager=RedisCacheManager(redis.from_url(REDIS_URL)),
         url_template=CACHE_DOCUMENT_URL_TEMPLATE,
     ),
+    # WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper()),
     YouTubeSearchTool(),
     ScholarlySearchRun(),
 ]

@@ -36,7 +36,7 @@ class MarkdownToPDFConverter(BaseTool):
                 pdf_bytes = file.read()
             
             # Store the PDF in Redis
-            self.cache_manager.set(key=doc_id, value=pdf_bytes, ttl=18000)
+            self.cache_manager.set(key=doc_id, value=pdf_bytes, ttl=18000, suppress=False)
 
             # Remove the temporary PDF file
             os.remove(pdf_filename)
