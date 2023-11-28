@@ -112,7 +112,7 @@ def solve_maths_stream(
                 maths_solver = MathSolver(
                     client,
                     llm=model_fallback,
-                    is_openai_functions=False,
+                    is_openai_functions=True,
                 )
                 maths_solver.run_agent(
                     maths_solver_input.question,

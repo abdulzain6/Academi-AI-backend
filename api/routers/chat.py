@@ -388,6 +388,7 @@ def chat_general_stream(
                 files=collection_manager.get_all_files_for_user_as_string(user_id)
             )
         except OpenAIError as e:
+            
             logging.error(f"Error in openai {e}")
             try:
                 chat_manager_agent_non_retrieval.chat(

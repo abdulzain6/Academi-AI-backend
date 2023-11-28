@@ -33,6 +33,7 @@ from .lib.maths_solver.python_exec_client import PythonClient, Urls
 from .lib.maths_solver.ocr import ImageOCR
 from .lib.redis_cache import RedisCache
 from langchain.chat_models import ChatOpenAI, ChatAnyscale
+from langchain.chat_models.azure_openai import AzureChatOpenAI
 from .lib.purchases_play_store import SubscriptionChecker
 from .global_tools import CHAT_TOOLS
 from .ai_model import AIModel
@@ -41,6 +42,7 @@ import langchain
 import redis
 import nltk
 import logging
+
 
 nltk.download('punkt')
 nltk.download('averaged_perceptron_tagger')
@@ -65,10 +67,10 @@ global_chat_model_alternative = AIModel(
 
 fallback_chat_models = [
     AIModel(
-        regular_model=ChatAnyscale,
-        regular_args={"model_name" : "meta-llama/Llama-2-70b-chat-hf"},
-        premium_model=ChatAnyscale,
-        premium_args={"model_name" : "meta-llama/Llama-2-70b-chat-hf"}
+        regular_model=AzureChatOpenAI,
+        regular_args={"openai_api_version" : "2023-05-15", "model" : "gpt-35-turbo", "azure_deployment" : "academi"},
+        premium_model=AzureChatOpenAI,
+        premium_args={"openai_api_version" : "2023-05-15", "model" : "gpt-35-turbo", "azure_deployment" : "academi"}
     )
 ]
 
