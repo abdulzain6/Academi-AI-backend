@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 from pydantic import BaseModel
 import logging
 import pymongo
-
+from pymongo.errors import DuplicateKeyError
 
 class UserPoints(BaseModel):
     uid: str
@@ -53,14 +53,19 @@ class UserPointsManager:
         return False
 
     def get_user_points(self, uid: str) -> UserPoints:
-        if not self.user_exists(uid):
-            logging.info(f"Creating points for user, {uid}")
-            self.points_collection.insert_one(
-                UserPoints(uid=uid, points=self.default_points).model_dump()
-            )
+        try:
+            if not self.user_exists(uid):
+                logging.info(f"Creating points for user, {uid}")
+                self.points_collection.insert_one(
+                    UserPoints(uid=uid, points=self.default_points).model_dump()
+                )
 
-        logging.info(f"Getting points for user, {uid}")
-        data = self.points_collection.find_one({"uid": uid}, {"_id": 0})
+            logging.info(f"Getting points for user, {uid}")
+            data = self.points_collection.find_one({"uid": uid}, {"_id": 0})
+        except DuplicateKeyError:
+            logging.error(f"dup key Error occured for {uid}")
+            data = self.points_collection.find_one({"uid" : uid}, {"_id": 0})
+            
         return UserPoints(**data)
 
     def user_exists(self, uid: str) -> bool:
