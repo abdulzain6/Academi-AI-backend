@@ -615,10 +615,13 @@ Do not leave a placeholder empty. Failure to do so, will cuase fatal error.
 
         for _ in range(3):
             logging.info("Creating and validating slide sequence...")
-            with contextlib.suppress(Exception):
+            try:
                 sequence = self.create_sequence(template, presentation_input)
                 if self.validate_slides(template, sequence):
                     break
+            except Exception as e:
+                logging.error(f"Erorr {e}")
+                
         else:
             raise NoValidSequenceException("Couldn't find the best sequence")
 
