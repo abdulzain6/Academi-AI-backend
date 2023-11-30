@@ -417,7 +417,7 @@ def chat_general_stream(
         try:
             model_name, premium_model = use_feature_with_premium_model_check("PRESENTATION", user_id=user_id)
         except Exception:
-            return "Limit reach user cannot make more ppts"
+            return "Limit reached user cannot make more ppts"
         
         llm = get_model({"temperature": 0.3}, False, premium_model)        
         ppt_pages = subscription_manager.get_feature_value(user_id, "ppt_pages").main_data or 12
@@ -453,7 +453,7 @@ def chat_general_stream(
             )
         except Exception as e:
             logging.error(f"Error in ppt {e}")
-            return "Error in ppt"
+            return f"Error in ppt {e}"
 
     extra_tools = [
         StructuredTool.from_function(
