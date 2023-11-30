@@ -34,6 +34,20 @@ class UserPointsManager:
         self.points_collection.create_index("uid", unique=True)
         self.ad_watch_timestamps = {}
 
+    def get_ads_watched(self, uid: str) -> int:
+        now = datetime.now(timezone.utc)
+        if uid not in self.ad_watch_timestamps:
+            self.ad_watch_timestamps[uid] = deque([], maxlen=self.max_ads_per_hour)
+
+        timestamps = self.ad_watch_timestamps[uid]
+
+        # Remove timestamps older than 1 hour
+        one_hour_ago = now - timedelta(hours=1)
+        while timestamps and timestamps[0] < one_hour_ago:
+            timestamps.popleft()
+
+        return len(timestamps)
+
     def can_increment_from_ad(self, uid: str) -> bool:
         now = datetime.now(timezone.utc)
         if uid not in self.ad_watch_timestamps:

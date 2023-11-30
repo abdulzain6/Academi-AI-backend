@@ -10,7 +10,7 @@ from ..globals import (
     DEFAULT_POINTS_INCREMENT,
     referral_manager,
     subscription_manager,
-    conversation_manager
+    conversation_manager,
 )
 from ..lib.database.users import UserModel
 from ..lib.database.points import UserPoints
@@ -43,6 +43,7 @@ def increment_points(
     play_integrity_verified: None = Depends(verify_play_integrity),
 ) -> dict:
     logging.info(f"Increment points request from {user_id}")
+    user_points_manager.can_increment_from_ad(uid=user_id)
     modified_count = user_points_manager.increment_user_points(
         user_id, DEFAULT_POINTS_INCREMENT
     )
@@ -58,6 +59,17 @@ def increment_points(
         )
 
 
+@router.post("/ads_watched", tags=["ads"])
+def get_number_of_ads_watched(
+    user_id: str = Depends(get_user_id),
+    play_integrity_verified: None = Depends(verify_play_integrity),
+) -> dict:
+    return {
+        "ads_watched": user_points_manager.get_ads_watched(user_id),
+        "max_allowed": user_points_manager.max_ads_per_hour,
+    }
+
+
 @router.get("/is_daily_bonus_claimed/", tags=["points", "daily bonus"])
 def is_daily_bonus_claimed(
     user_id: str = Depends(get_user_id),
@@ -70,16 +82,19 @@ def is_daily_bonus_claimed(
 
 @router.get("/points", tags=["points", "ads"])
 def get_user_points(
-    current_user=Depends(get_current_user), play_integrity_verified=Depends(verify_play_integrity)
+    current_user=Depends(get_current_user),
+    play_integrity_verified=Depends(verify_play_integrity),
 ):
     logging.info(f"Get points request from {current_user['user_id']}")
-    if user_points := user_points_manager.get_user_points(current_user['user_id']):
-        if model := subscription_manager.get_feature_value(current_user['user_id'], "MODEL"):
+    if user_points := user_points_manager.get_user_points(current_user["user_id"]):
+        if model := subscription_manager.get_feature_value(
+            current_user["user_id"], "MODEL"
+        ):
             return {
                 "points": user_points.model_dump(),
                 "model": model.model_dump(),
                 "model_enabled": subscription_manager.is_monthly_limit_feature_enabled(
-                    current_user['user_id'], "MODEL"
+                    current_user["user_id"], "MODEL"
                 ),
             }
         return {"points": user_points.model_dump()}
@@ -92,17 +107,18 @@ def get_user_points(
                 photo_url=current_user["photo_url"],
             )
         )
-        if model := subscription_manager.get_feature_value(current_user['user_id'], "MODEL"):
+        if model := subscription_manager.get_feature_value(
+            current_user["user_id"], "MODEL"
+        ):
             return {
                 "points": user_points.model_dump(),
                 "model": model.model_dump(),
                 "model_enabled": subscription_manager.is_monthly_limit_feature_enabled(
-                    current_user['user_id'], "MODEL"
+                    current_user["user_id"], "MODEL"
                 ),
             }
         return {"points": user_points.model_dump()}
-        
-        
+
 
 @router.post("/claim_daily_bonus/", tags=["points", "daily bonus"])
 def claim_daily_bonus(
@@ -194,7 +210,7 @@ def update_user(
     play_integrity_verified=Depends(verify_play_integrity),
 ):
     logging.info(f"Update user request from {current_user['user_id']}")
-    if not user_manager.user_exists(current_user['user_id']):
+    if not user_manager.user_exists(current_user["user_id"]):
         user = user_manager.add_user(
             UserModel(
                 uid=current_user["user_id"],
@@ -203,10 +219,10 @@ def update_user(
                 photo_url=current_user["photo_url"],
             )
         )
-    
+
     user_update = user_update.model_dump(exclude_none=True)
-    user_manager.update_user(current_user['user_id'], **user_update)
-    user = user_manager.get_user_by_uid(current_user['user_id'])
+    user_manager.update_user(current_user["user_id"], **user_update)
+    user = user_manager.get_user_by_uid(current_user["user_id"])
     return {"status": "success", "error": "", "user": user}
 
 
@@ -234,12 +250,13 @@ def delete_user(
 
 @router.get("/", response_model=UserResponse, tags=["user"])
 def get_user(
-    current_user=Depends(get_current_user), play_integrity_verified=Depends(verify_play_integrity)
+    current_user=Depends(get_current_user),
+    play_integrity_verified=Depends(verify_play_integrity),
 ):
     logging.info(f"Get user request from {current_user['user_id']}")
     if user := user_manager.get_user_by_uid(current_user["user_id"]):
         return {"status": "success", "error": "", "user": user}
-    
+
     user = user_manager.add_user(
         UserModel(
             uid=current_user["user_id"],
