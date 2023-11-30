@@ -410,11 +410,9 @@ def chat_general_stream(
         instructions: str,
         number_of_pages: int,
         negative_prompt: str,
-        subject_name: Optional[str] = None,
-        files: Optional[List[str]] = None,
     ):
         logging.info(
-            f"{topic}, {instructions}, {number_of_pages}, {negative_prompt}, {subject_name}, {files}"
+            f"{topic}, {instructions}, {number_of_pages}, {negative_prompt}"
         )
         try:
             model_name, premium_model = use_feature_with_premium_model_check("PRESENTATION", user_id=user_id)
@@ -444,8 +442,8 @@ def chat_general_stream(
                         instructions=instructions,
                         number_of_pages=number_of_pages,
                         negative_prompt=negative_prompt,
-                        collection_name=subject_name,
-                        files=files,
+                        collection_name=None,
+                        files=None,
                     ),
                     "cache_manager": redis_cache_manager,
                     "url_template": CACHE_DOCUMENT_URL_TEMPLATE,
@@ -459,13 +457,11 @@ def chat_general_stream(
 
     extra_tools = [
         StructuredTool.from_function(
-            func=lambda topic, instructions="", number_of_pages=5, negative_prompt="", subject_name=None, files=None, *args, **kwargs: make_presentation(
+            func=lambda topic, instructions="", number_of_pages=5, negative_prompt="", *args, **kwargs: make_presentation(
                 topic,
                 instructions,
                 number_of_pages,
                 negative_prompt,
-                subject_name,
-                files,
             ),
             name="make_ppt",
             description="Used to make ppt using AI",
