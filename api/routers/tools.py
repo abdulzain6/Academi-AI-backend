@@ -1,3 +1,4 @@
+import os
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel
@@ -20,9 +21,10 @@ def get_document(doc_id: str):
     if doc_bytes is None:
         raise HTTPException(status_code=404, detail="Document not found/ Link expired")
 
+    root, extension = os.path.splitext(doc_id)
     pdf_io = BytesIO(doc_bytes)
     logging.info(f"Getting redis doc for {doc_id}")
     headers = {
-        'Content-Disposition': f'attachment; filename={doc_id}.pdf'
+        'Content-Disposition': f'attachment; filename={doc_id}{extension}'
     }
-    return Response(content=pdf_io.read(), media_type="application/pdf", headers=headers)
+    return Response(content=pdf_io.read(), headers=headers)

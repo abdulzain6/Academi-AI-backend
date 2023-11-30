@@ -1,10 +1,14 @@
 import logging
 import queue
 import threading
-from typing import Generator, Optional
+from typing import Generator, List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi import Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
+from api.lib.database.purchases import SubscriptionManager
+from api.lib.presentation_maker.image_gen import PexelsImageSearch
+
+from api.lib.presentation_maker.presentation_maker import PresentationMaker
 from ..auth import get_user_id, verify_play_integrity
 from ..globals import (
     collection_manager,
@@ -13,13 +17,22 @@ from ..globals import (
     conversation_manager,
     chat_manager_agent_non_retrieval,
     knowledge_manager,
+    subscription_manager,
+    redis_cache_manager
+)
+from ..globals import (
+    template_manager,
+    temp_knowledge_manager,
+    get_model,
+    get_model_and_fallback
 )
 from ..lib.database.messages import MessagePair
 from ..lib.utils import split_into_chunks
 from ..dependencies import (
     can_use_premium_model,
     require_points_for_feature,
-    get_model_and_fallback,
+    deduct_points_for_feature,
+    use_feature_with_premium_model_check,
 )
 from pydantic import BaseModel
 from openai import OpenAIError
@@ -27,6 +40,8 @@ from langchain.tools import StructuredTool, Tool
 from .utils import select_random_chunks, find_most_similar
 from langchain.pydantic_v1 import BaseModel as OldBaseModel
 from langchain.pydantic_v1 import Field as OldField
+from ..lib.tools import MakePresentationInput, make_ppt
+from api.config import REDIS_URL, CACHE_DOCUMENT_URL_TEMPLATE
 
 router = APIRouter()
 
@@ -324,6 +339,29 @@ def chat_general_stream(
             description="The name of the file to read from the subject, if it is empty, the whole subject will be read/searched",
         )
 
+    class MakePptArgs(OldBaseModel):
+        topic: str = OldField(
+            ..., description="The main subject or title of the presentation."
+        )
+        instructions: str = OldField(
+            ...,
+            description="Specific guidelines or directives for creating the presentation content.",
+        )
+        number_of_pages: int = OldField(
+            ..., description="The desired number of pages/slides in the presentation."
+        )
+        negative_prompt: str = OldField(
+            ...,
+            description="Any themes, topics, or elements that should be avoided in the presentation.",
+        )
+        subject_name: Optional[str] = OldField(
+            None, description="Name of users subject to make ppt from"
+        )
+        files: Optional[List[str]] = OldField(
+            None,
+            description="An optional list of file names from the subject to make ppt from",
+        )
+
     def read_vector_db(
         subject_name: str, file_name: str = None, query: str = "all"
     ) -> str:
@@ -367,7 +405,72 @@ def chat_general_stream(
         logging.info(f"Read {data}")
         return data
 
+    def make_presentation(
+        topic: str,
+        instructions: str,
+        number_of_pages: int,
+        negative_prompt: str,
+        subject_name: Optional[str] = None,
+        files: Optional[List[str]] = None,
+    ):
+        logging.info(
+            f"{topic}, {instructions}, {number_of_pages}, {negative_prompt}, {subject_name}, {files}"
+        )
+        try:
+            model_name, premium_model = use_feature_with_premium_model_check("PRESENTATION", user_id=user_id)
+        except Exception:
+            return "Limit reach user cannot make more ppts"
+        
+        llm = get_model({"temperature": 0.3}, False, premium_model)        
+        ppt_pages = subscription_manager.get_feature_value(user_id, "ppt_pages").main_data or 12
+        number_of_pages = min(number_of_pages, ppt_pages)
+    
+        presentation_maker = PresentationMaker(
+            template_manager,
+            temp_knowledge_manager,
+            llm,
+            pexel_image_gen_cls=PexelsImageSearch,
+            image_gen_args={"image_cache_dir": "/tmp/.image_cache"},
+            vectorstore=knowledge_manager,
+        )
+        try:
+            return deduct_points_for_feature(
+                user_id,
+                make_ppt,
+                func_kwargs={
+                    "ppt_maker": presentation_maker,
+                    "ppt_input": MakePresentationInput(
+                        topic=topic,
+                        instructions=instructions,
+                        number_of_pages=number_of_pages,
+                        negative_prompt=negative_prompt,
+                        collection_name=subject_name,
+                        files=files,
+                    ),
+                    "cache_manager": redis_cache_manager,
+                    "url_template": CACHE_DOCUMENT_URL_TEMPLATE,
+                },
+                feature_key="PRESENTATION",
+                usage_key="PRESENTATION"
+            )
+        except Exception as e:
+            logging.error(f"Error in ppt {e}")
+            return "Error in ppt"
+
     extra_tools = [
+        StructuredTool.from_function(
+            func=lambda topic, instructions="", number_of_pages=5, negative_prompt="", subject_name=None, files=None, *args, **kwargs: make_presentation(
+                topic,
+                instructions,
+                number_of_pages,
+                negative_prompt,
+                subject_name,
+                files,
+            ),
+            name="make_ppt",
+            description="Used to make ppt using AI",
+            args_schema=MakePptArgs,
+        ),
         StructuredTool.from_function(
             func=lambda subject_name, file_name=None, query="all", *args, **kwargs: read_vector_db(
                 query=query, subject_name=subject_name, file_name=file_name

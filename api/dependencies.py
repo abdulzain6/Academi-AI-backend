@@ -21,6 +21,49 @@ from typing import Callable, Any, Optional, Union
 from inspect import isfunction
 
 
+def deduct_points_for_feature(user_id: str, func, feature_key: str, usage_key: str = None, func_args: list = [], func_kwargs: dict = {}):
+    logging.info(
+        f"Checking points for feature: {feature_key} and user: {user_id}"
+    )
+
+    user_points_data = user_points_manager.get_user_points(user_id)
+    user_points = user_points_data.points if user_points_data else 0
+
+    required_points = FEATURE_PRICING.get(feature_key, 0)
+
+    if user_points < required_points:
+        logging.warning(
+            f"Insufficient points for user: {user_id} on feature: {feature_key}"
+        )
+        raise ValueError(f"Insufficient coins, Required coins: {required_points}")
+
+    user_points_manager.decrement_user_points(user_id, required_points)
+    logging.info(
+        f"Points decremented for user: {user_id} on feature: {feature_key}"
+    )
+    try:
+        return func(*func_args, **func_kwargs)
+    except Exception as e:
+        logging.error(
+            f"An error occurred: {e}. Refunding points for user: {user_id} on feature: {feature_key}"
+        )
+        user_points_manager.increment_user_points(user_id, required_points)
+        if usage_key:
+            if not isinstance(e, LimitException):
+                logging.info(f"Refunding usage for user {user_id} for feature {usage_key}")
+                subscription_manager.undo_use_feature(user_id=user_id, feature_name=usage_key)
+        
+        if not isinstance(e, LimitException):
+            subscription_manager.undo_use_feature(user_id=user_id, feature_name="MODEL")
+        
+        if isinstance(e, LimitException):
+            raise ValueError("Error user cannot use feature limit reached")
+    
+
+        raise ValueError("Error occured in making ppt")
+
+
+
 def require_points_for_feature(feature_key: str, usage_key: str = None):
     def decorator(func):
         @wraps(func)

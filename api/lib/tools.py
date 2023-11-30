@@ -3,13 +3,15 @@ import uuid
 from typing import List, Dict, Union, Optional
 import pypandoc
 from scholarly import scholarly
-from langchain.tools.base import BaseTool
+from langchain.tools.base import BaseTool, StructuredTool
 from langchain.callbacks.manager import (
     CallbackManagerForToolRun,
 )
 from typing import IO
+from api.lib.presentation_maker.presentation_maker import PresentationMaker, PresentationInput
 
-
+class MakePresentationInput(PresentationInput):
+    template_name: Optional[str] = ""
 
 
 class MarkdownToPDFConverter(BaseTool):
@@ -87,4 +89,15 @@ class ScholarlySearchRun(BaseTool):
 
         return results
 
+def make_ppt(ppt_maker: PresentationMaker, ppt_input: MakePresentationInput, cache_manager, url_template: str):
+    ppt_path = ppt_maker.make_presentation(template_name=ppt_input.template_name, presentation_input=PresentationInput(**ppt_input.model_dump()))
+    doc_id = str(uuid.uuid4()) + ".pptx"
 
+    with open(ppt_path, "rb") as file:
+        pdf_bytes = file.read()
+    
+    cache_manager.set(key=doc_id, value=pdf_bytes, ttl=18000, suppress=False)
+    
+    os.remove(ppt_path)
+    document_url = url_template.format(doc_id=doc_id)
+    return document_url
