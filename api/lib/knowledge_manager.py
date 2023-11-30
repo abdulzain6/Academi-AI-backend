@@ -368,7 +368,9 @@ Let's think in a step by step, answer the humans question in {language}. Use the
 
 Human: {question}
 
-Use the help data to answer the student question, it might be referred to as a file or anything else. THis is from contents of webpages, youtube links, files, images and much more)
+Use the help data to answer the student question.
+help data = contents of webpages, youtube links, files, images and much more
+dont forget the above rules
 
 {ai_name} ({language}):"""
             ),
