@@ -22,48 +22,28 @@ class UserPointsManager:
         default_points: int = 15,
         daily_points: int = 3,
         weekly_daily_bonus_points: int = 10,
-        max_ads_per_hour: int = 5,
+        max_ads_per_day: int = 4,
     ) -> None:
         self.client = MongoClient(connection_string)
         self.db = self.client[database_name]
         self.points_collection: Collection = self.db["user_points"]
+        self.ad_timestamps_collection: Collection = self.db["ad_watch_timestamps"]
         self.default_points = default_points
         self.daily_points = daily_points
-        self.max_ads_per_hour = max_ads_per_hour
+        self.max_ads_per_day = max_ads_per_day
         self.weekly_daily_bonus_points = weekly_daily_bonus_points
         self.points_collection.create_index("uid", unique=True)
-        self.ad_watch_timestamps = {}
+        self.ad_timestamps_collection.create_index([("uid", pymongo.ASCENDING), ("timestamp", pymongo.ASCENDING)], unique=True)
 
-    def get_ads_watched(self, uid: str) -> int:
-        now = datetime.now(timezone.utc)
-        if uid not in self.ad_watch_timestamps:
-            self.ad_watch_timestamps[uid] = deque([], maxlen=self.max_ads_per_hour)
-
-        timestamps = self.ad_watch_timestamps[uid]
-
-        # Remove timestamps older than 1 hour
-        one_hour_ago = now - timedelta(hours=1)
-        while timestamps and timestamps[0] < one_hour_ago:
-            timestamps.popleft()
-
-        return len(timestamps)
+    def get_ads_watched_today(self, uid: str) -> int:
+        start_of_day = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        count = self.ad_timestamps_collection.count_documents({'uid': uid, 'timestamp': {'$gte': start_of_day}})
+        return count
 
     def can_increment_from_ad(self, uid: str) -> bool:
-        now = datetime.now(timezone.utc)
-        if uid not in self.ad_watch_timestamps:
-            self.ad_watch_timestamps[uid] = deque([], maxlen=self.max_ads_per_hour)
-
-        timestamps = self.ad_watch_timestamps[uid]
-
-        # Remove timestamps older than 1 hour
-        one_hour_ago = now - timedelta(hours=1)
-        while timestamps and timestamps[0] < one_hour_ago:
-            timestamps.popleft()
-
-        if len(timestamps) < self.max_ads_per_hour:
-            timestamps.append(now)
+        if self.get_ads_watched_today(uid) < self.max_ads_per_day:
+            self.ad_timestamps_collection.insert_one({'uid': uid, 'timestamp': datetime.now(timezone.utc)})
             return True
-
         return False
 
     def get_user_points(self, uid: str) -> UserPoints:

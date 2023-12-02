@@ -43,7 +43,9 @@ def increment_points(
     play_integrity_verified: None = Depends(verify_play_integrity),
 ) -> dict:
     logging.info(f"Increment points request from {user_id}")
-    user_points_manager.can_increment_from_ad(uid=user_id)
+    if not user_points_manager.can_increment_from_ad(uid=user_id):
+        raise HTTPException(detail="Ads limit reached", status_code=400)
+    
     modified_count = user_points_manager.increment_user_points(
         user_id, DEFAULT_POINTS_INCREMENT
     )
@@ -65,8 +67,8 @@ def get_number_of_ads_watched(
     play_integrity_verified: None = Depends(verify_play_integrity),
 ) -> dict:
     return {
-        "ads_watched": user_points_manager.get_ads_watched(user_id),
-        "max_allowed": user_points_manager.max_ads_per_hour,
+        "ads_watched": user_points_manager.get_ads_watched_today(user_id),
+        "max_allowed": user_points_manager.max_ads_per_day,
     }
 
 

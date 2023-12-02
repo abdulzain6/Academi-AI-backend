@@ -223,7 +223,7 @@ class KnowledgeManager:
             )
 
             docs = loader.load()
-            print(f"Documents loaded {docs}")
+        print(f"Documents loaded {docs}")
         docs = self.split_docs(docs)
         contents = "\n\n".join([doc.page_content for doc in docs])
 

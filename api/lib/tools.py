@@ -1,18 +1,59 @@
 import os
 import uuid
-from typing import List, Dict, Union, Optional
 import pypandoc
+from typing import List, Dict, Union, Optional, IO
 from scholarly import scholarly
-from langchain.tools.base import BaseTool, StructuredTool
+from langchain.tools.base import BaseTool
 from langchain.callbacks.manager import (
     CallbackManagerForToolRun,
 )
-from typing import IO
 from api.lib.presentation_maker.presentation_maker import PresentationMaker, PresentationInput
+from langchain.pydantic_v1 import BaseModel
+from langchain.callbacks.manager import (
+    AsyncCallbackManagerForToolRun,
+    CallbackManagerForToolRun,
+)
+
+from langchain.utilities.requests import TextRequestsWrapper
+from langchain.tools.base import BaseTool
+from bs4 import BeautifulSoup
+
+
+def _clean_url(url: str) -> str:
+    """Strips quotes from the url."""
+    return url.strip("\"'")
+
+def strip_html(html_content: str, max_length: int = 1000) -> str:
+    """Strip HTML tags and limit response length."""
+    soup = BeautifulSoup(html_content, 'html.parser')
+    text = soup.get_text(separator=' ', strip=True)
+    return text[:max_length]
+
+class BaseRequestsTool(BaseModel):
+    """Base class for requests tools."""
+    requests_wrapper: TextRequestsWrapper
+    
+class RequestsGetTool(BaseRequestsTool, BaseTool):
+    """Tool for making a GET request to an API endpoint."""
+    name: str = "requests_get"
+    description: str = "A portal to the internet. Use this when you need to get specific content from a website. Input should be a  url (i.e. https://www.google.com). The output will be the text response of the GET request."
+
+    def _run(self, url: str, run_manager: Optional[CallbackManagerForToolRun] = None) -> str:
+        """Run the tool."""
+        response = self.requests_wrapper.get(_clean_url(url))
+        return strip_html(response, max_length=5000)  # Set max length as needed
+
+    async def _arun(
+        self, 
+        url: str, 
+        run_manager: Optional[AsyncCallbackManagerForToolRun] = None,
+    ) -> str:
+        """Run the tool asynchronously."""
+        response = await self.requests_wrapper.aget(_clean_url(url))
+        return strip_html(response, max_length=5000) 
 
 class MakePresentationInput(PresentationInput):
     template_name: Optional[str] = ""
-
 
 class MarkdownToPDFConverter(BaseTool):
     """Tool that converts Markdown text to a PDF file in memory."""

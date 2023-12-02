@@ -37,9 +37,9 @@ FEATURE_PRICING = get_dict_from_env_var(
     {
         "QUIZ" : 3,
         "CHAT" : 1,
-        "OCR" : 1,
+        "OCR" : 2,
         "PRESENTATION" : 4,
-        "FLASHCARDS" : 2,
+        "FLASHCARDS" : 3,
         "WRITER" : 2,
         "SUMMARY" : 2,
         "CV" : 3,

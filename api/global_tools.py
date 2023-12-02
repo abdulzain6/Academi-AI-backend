@@ -1,12 +1,10 @@
 from langchain.tools.ddg_search.tool import DuckDuckGoSearchRun
-from langchain.tools.wikipedia.tool import WikipediaQueryRun
-from langchain.utilities.wikipedia import WikipediaAPIWrapper
 from langchain.tools.youtube.search import YouTubeSearchTool
 import redis
 from api.config import REDIS_URL, CACHE_DOCUMENT_URL_TEMPLATE
 from api.lib.database.cache_manager import RedisCacheManager
-from api.lib.tools import ScholarlySearchRun, MarkdownToPDFConverter
-
+from api.lib.tools import ScholarlySearchRun, MarkdownToPDFConverter, RequestsGetTool
+from langchain.utilities.requests import TextRequestsWrapper
 
 CHAT_TOOLS = [
     DuckDuckGoSearchRun(),
@@ -14,7 +12,7 @@ CHAT_TOOLS = [
         cache_manager=RedisCacheManager(redis.from_url(REDIS_URL)),
         url_template=CACHE_DOCUMENT_URL_TEMPLATE,
     ),
-    # WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper()),
+    RequestsGetTool(requests_wrapper=TextRequestsWrapper()),
     YouTubeSearchTool(),
     ScholarlySearchRun(),
 ]
