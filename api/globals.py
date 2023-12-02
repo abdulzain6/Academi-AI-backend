@@ -18,6 +18,7 @@ from .lib.database.purchases import (
     StaticFeature,
     MonthlyLimitFeature,
 )
+from langchain.chat_models.base import BaseChatModel
 from .lib.database.cache_manager import RedisCacheManager
 from .lib.knowledge_manager import (
     KnowledgeManager,
@@ -74,7 +75,7 @@ fallback_chat_models = [
     )
 ]
 
-def get_model(model_kwargs: dict, stream: bool, is_premium: bool, alt: bool = False):
+def get_model(model_kwargs: dict, stream: bool, is_premium: bool, alt: bool = False) -> BaseChatModel:
     args = {**model_kwargs, **{"streaming": stream}}
     
     if not alt:

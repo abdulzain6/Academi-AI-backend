@@ -620,6 +620,7 @@ Do not leave a placeholder empty. Failure to do so, will cuase fatal error.
                 if self.validate_slides(template, sequence):
                     break
             except Exception as e:
+                self.llm.cache = False
                 logging.error(f"Erorr {e}")
                 
         else:
