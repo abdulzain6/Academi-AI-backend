@@ -3,6 +3,8 @@ import logging
 import random
 import re
 import socket
+from PIL import Image
+from pathlib import Path
 from urllib.parse import urlparse
 from uuid import UUID
 from langchain.embeddings.base import Embeddings
@@ -11,29 +13,24 @@ from langchain.document_loaders import UnstructuredAPIFileLoader
 from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores import Qdrant
-from langchain.document_loaders import WebBaseLoader, YoutubeLoader
+from langchain.document_loaders import YoutubeLoader
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.schema import Document, LLMResult
 from langchain.chains import LLMChain
 from langchain.embeddings import OpenAIEmbeddings, FakeEmbeddings
-from langchain.agents.openai_functions_agent.base import OpenAIFunctionsAgent
 from langchain.prompts import (
-    PromptTemplate,
     ChatPromptTemplate,
     SystemMessagePromptTemplate,
-    StringPromptTemplate,
     HumanMessagePromptTemplate,
 )
 
-from typing import Type, Dict, List, Tuple, Union
+from typing import Dict, List, Tuple, Union
 from qdrant_client import QdrantClient
 import time
 
 from langchain.agents import Tool
 from langchain.agents import AgentExecutor
-from pydantic import BaseModel, Field
 from langchain.schema import (
-    SystemMessage,
     BaseMessage,
     HumanMessage,
     AIMessage,
@@ -41,9 +38,9 @@ from langchain.schema import (
 )
 from api.lib.maths_solver.modified_openai_agent import ModifiedOpenAIAgent
 from api.lib.maths_solver.python_exec_client import PythonClient
+from api.lib.ocr import AzureOCR
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.chat_models.base import BaseChatModel
-from langchain.chains import create_extraction_chain
 from typing import Any, Optional, Sequence
 from langchain.agents.agent import AgentExecutor
 from langchain.callbacks.base import BaseCallbackManager
@@ -156,9 +153,11 @@ class KnowledgeManager:
         unstructured_url: str,
         qdrant_api_key: str,
         qdrant_url: str,
+        azure_ocr: AzureOCR,
         chunk_size: int = 1000,
         chrome_path: str = "/usr/bin/google-chrome"
     ) -> None:
+        self.azure_ocr = azure_ocr
         self.embeddings = embeddings
         self.unstructured_api_key = unstructured_api_key
         self.chunk_size = chunk_size
@@ -174,42 +173,57 @@ class KnowledgeManager:
         return RecursiveCharacterTextSplitter(
             chunk_size=self.chunk_size
         ).split_documents(docs)
+        
+    def is_image_file(self, filename: str) -> bool:
+        if not Path(filename).is_file():
+            return False
+
+        try:
+            with Image.open(filename) as img:
+                img.verify()  # Verify if it's an image
+            return True
+        except (IOError, SyntaxError):
+            return False
 
     def load_data(self, file_path: str) -> Tuple[str, List[Document], bytes]:
         print(f"Loading {file_path}")
-        loader = UnstructuredAPIFileLoader(
-            file_path=file_path,
-            api_key=self.unstructured_api_key,
-            url=self.unstructured_url,
-            strategy="fast",
-            ocr_languages=[
-                "eng",  # English
-                "spa",  # Spanish
-                "fra",  # French
-                "deu",  # German
-                "chi_sim",  # Chinese (Simplified)
-                "chi_tra",  # Chinese (Traditional)
-                "ara",  # Arabic
-                "por",  # Portuguese
-                "rus",  # Russian
-                "jpn",  # Japanese
-                "kor",  # Korean
-                "ita",  # Italian
-                "nld",  # Dutch
-                "swe",  # Swedish
-                "tur",  # Turkish
-                "pol",  # Polish
-                "fin",  # Finnish
-                "dan",  # Danish
-                "nor",  # Norwegian
-                "hin",  # Hindi
-                "urd",  # Urdu
-                "ben"   # Bengali (Bangla)
-            ]
-        )
+        if self.is_image_file(file_path):
+            logging.info("Using azure ocr")
+            docs = [Document(page_content=self.azure_ocr.perform_ocr(file_path))]
+        else:
+            loader = UnstructuredAPIFileLoader(
+                file_path=file_path,
+                api_key=self.unstructured_api_key,
+                url=self.unstructured_url,
+                strategy="fast",
+                ocr_languages=[
+                    "eng",  # English
+                    "spa",  # Spanish
+                    "fra",  # French
+                    "deu",  # German
+                    "chi_sim",  # Chinese (Simplified)
+                    "chi_tra",  # Chinese (Traditional)
+                    "ara",  # Arabic
+                    "por",  # Portuguese
+                    "rus",  # Russian
+                    "jpn",  # Japanese
+                    "kor",  # Korean
+                    "ita",  # Italian
+                    "nld",  # Dutch
+                    "swe",  # Swedish
+                    "tur",  # Turkish
+                    "pol",  # Polish
+                    "fin",  # Finnish
+                    "dan",  # Danish
+                    "nor",  # Norwegian
+                    "hin",  # Hindi
+                    "urd",  # Urdu
+                    "ben"   # Bengali (Bangla)
+                ]
+            )
 
-        docs = loader.load()
-        print(f"Documents loaded {docs}")
+            docs = loader.load()
+            print(f"Documents loaded {docs}")
         docs = self.split_docs(docs)
         contents = "\n\n".join([doc.page_content for doc in docs])
 

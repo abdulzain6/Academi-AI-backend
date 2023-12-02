@@ -189,12 +189,17 @@ conversation_manager = MessageDBManager(
     cache_manager=RedisCacheManager(redis.from_url(REDIS_URL), 50000),
 )
 
+
+# OCR
+text_ocr = AzureOCR(AZURE_OCR_ENDPOINT, AZURE_OCR_KEY)
+
 knowledge_manager = KnowledgeManager(
     OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY),
     unstructured_api_key=UNSTRUCTURED_API_KEY,
     unstructured_url=UNSTRUCTURED_URL,
     qdrant_api_key=QDRANT_API_KEY,
     qdrant_url=QDRANT_URL,
+    azure_ocr=text_ocr
 )
 chat_manager = ChatManagerRetrieval(
     OpenAIEmbeddings(),
@@ -275,8 +280,6 @@ image_ocr = ImageOCR(
     app_key=MATHPIX_API_KEY,
 )
 
-# OCR
-text_ocr = AzureOCR(AZURE_OCR_ENDPOINT, AZURE_OCR_KEY)
 
 # Monetization
 user_points_manager = UserPointsManager(MONGODB_URL, DATABASE_NAME, DEFAULT_POINTS)

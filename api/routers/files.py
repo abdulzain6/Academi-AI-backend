@@ -200,7 +200,7 @@ def create_file(
             except Exception as e:
                 raise HTTPException(detail=str(e), status_code=400)
             
-        logging.info(f"File created, File name: {file_model.filename}, Collection: {collection_name} {user_id}")
+        logging.info(f"File created, File name: {file_model.filename}, Collection: {collection_name} {user_id} {contents}")
         return {
             "status": "success",
             "file": {
