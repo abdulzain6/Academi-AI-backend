@@ -26,7 +26,6 @@ class RedisCacheManager:
         try:
             if self.redis_client:
                 if value := self.redis_client.get(key):
-                    logging.info(f"Using cached value of {key}")
                     return loads(value)
         except Exception as e:
             logging.error(f"Error in getting cache {e}")
@@ -38,14 +37,10 @@ class RedisCacheManager:
         if suppress:
             with contextlib.suppress(Exception):
                 if self.redis_client:
-                    logging.info(f"Setting cached value for {key}")
                     self.redis_client.setex(key, ttl, dumps(value))
-                    logging.info(f"Set successfully cached value for {key}")
         else:
             if self.redis_client:
-                logging.info(f"Setting cached value for {key}")
                 self.redis_client.setex(key, ttl, dumps(value))
-                logging.info(f"Set successfully cached value for {key}")
                 
 
 

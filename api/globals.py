@@ -45,8 +45,8 @@ import nltk
 import logging
 
 
-nltk.download('punkt')
-nltk.download('averaged_perceptron_tagger')
+nltk.download("punkt")
+nltk.download("averaged_perceptron_tagger")
 
 
 langchain.verbose = False
@@ -54,41 +54,59 @@ current_directory = os.path.dirname(os.path.abspath(__file__))
 global_kwargs = {"request_timeout": 50, "max_retries": 4}
 global_chat_model = AIModel(
     regular_model=ChatOpenAI,
-    regular_args={"model_name" :"gpt-3.5-turbo"},
+    regular_args={"model_name": "gpt-3.5-turbo"},
     premium_model=ChatOpenAI,
-    premium_args={"model_name": "gpt-4-1106-preview", "max_tokens": 2700}
+    premium_args={"model_name": "gpt-4-1106-preview", "max_tokens": 2700},
 )
 
 global_chat_model_alternative = AIModel(
     regular_model=ChatAnyscale,
-    regular_args={"model_name" : "mistralai/Mistral-7B-Instruct-v0.1"},
+    regular_args={"model_name": "mistralai/Mistral-7B-Instruct-v0.1"},
     premium_model=ChatOpenAI,
-    premium_args={"model_name" : "gpt-4-1106-preview", "max_tokens" : 2700}
+    premium_args={"model_name": "gpt-4-1106-preview", "max_tokens": 2700},
 )
 
 fallback_chat_models = [
     AIModel(
         regular_model=AzureChatOpenAI,
-        regular_args={"openai_api_version" : "2023-05-15", "model" : "gpt-35-turbo", "azure_deployment" : "academi"},
+        regular_args={
+            "openai_api_version": "2023-05-15",
+            "model": "gpt-35-turbo",
+            "azure_deployment": "academi",
+        },
         premium_model=AzureChatOpenAI,
-        premium_args={"openai_api_version" : "2023-05-15", "model" : "gpt-35-turbo", "azure_deployment" : "academi"}
+        premium_args={
+            "openai_api_version": "2023-05-15",
+            "model": "gpt-35-turbo",
+            "azure_deployment": "academi",
+        },
     )
 ]
 
-def get_model(model_kwargs: dict, stream: bool, is_premium: bool, alt: bool = False) -> BaseChatModel:
-    args = {**model_kwargs, **{"streaming": stream}}
-    
+def get_model(
+    model_kwargs: dict, stream: bool, is_premium: bool, alt: bool = False, cache: bool = True
+) -> BaseChatModel:
+    args = {**model_kwargs, **{"streaming": stream, "cache" : cache}}
+
     if not alt:
         if is_premium:
-            model = global_chat_model.premium_model(**global_chat_model.premium_args, **global_kwargs)
+            model = global_chat_model.premium_model(
+                **global_chat_model.premium_args, **global_kwargs
+            )
         else:
-            model = global_chat_model.regular_model(**global_chat_model.regular_args, **global_kwargs)
+            model = global_chat_model.regular_model(
+                **global_chat_model.regular_args, **global_kwargs
+            )
     else:
         if is_premium:
-            model = global_chat_model_alternative.premium_model(**global_chat_model_alternative.premium_args, **global_kwargs)
+            model = global_chat_model_alternative.premium_model(
+                **global_chat_model_alternative.premium_args, **global_kwargs
+            )
         else:
-            model = global_chat_model_alternative.regular_model(**global_chat_model_alternative.regular_args, **global_kwargs)
-            
+            model = global_chat_model_alternative.regular_model(
+                **global_chat_model_alternative.regular_args, **global_kwargs
+            )
+
     for k, v in args.items():
         with suppress(Exception):
             setattr(model, k, v)
@@ -97,9 +115,13 @@ def get_model(model_kwargs: dict, stream: bool, is_premium: bool, alt: bool = Fa
     for fallback in fallback_chat_models:
         try:
             if is_premium:
-                fallback_model = fallback.premium_model(**fallback.premium_args, **global_kwargs)
+                fallback_model = fallback.premium_model(
+                    **fallback.premium_args, **global_kwargs
+                )
             else:
-                fallback_model = fallback.regular_model(**fallback.regular_args, **global_kwargs)
+                fallback_model = fallback.regular_model(
+                    **fallback.regular_args, **global_kwargs
+                )
 
             for k, v in args.items():
                 with suppress(Exception):
@@ -110,38 +132,52 @@ def get_model(model_kwargs: dict, stream: bool, is_premium: bool, alt: bool = Fa
                 logging.error(f"Error in fallback {e}")
         except Exception:
             pass
-            
+
         logging.info(f"\nAdding fallback {fallback_model}\n")
 
     logging.info(f"Model used : {model}")
     return model.with_fallbacks(fallbacks=fallbacks)
 
 
-def get_model_and_fallback(model_kwargs: dict, stream: bool, is_premium: bool, alt: bool = False):
-    model_kwargs = {**model_kwargs, "streaming" : stream}
+def get_model_and_fallback(
+    model_kwargs: dict, stream: bool, is_premium: bool, alt: bool = False
+):
+    model_kwargs = {**model_kwargs, "streaming": stream}
     if is_premium:
         if not alt:
-            model = global_chat_model.premium_model(**global_chat_model.premium_args, **global_kwargs)
+            model = global_chat_model.premium_model(
+                **global_chat_model.premium_args, **global_kwargs
+            )
         else:
-            model = global_chat_model_alternative.premium_model(**global_chat_model_alternative.premium_args, **global_kwargs)
-            
-        fallback_model = fallback_chat_models[-1].premium_model(**fallback_chat_models[-1].premium_args, **global_kwargs)
+            model = global_chat_model_alternative.premium_model(
+                **global_chat_model_alternative.premium_args, **global_kwargs
+            )
+
+        fallback_model = fallback_chat_models[-1].premium_model(
+            **fallback_chat_models[-1].premium_args, **global_kwargs
+        )
     else:
         if not alt:
-            model = global_chat_model.regular_model(**global_chat_model.regular_args, **global_kwargs)
+            model = global_chat_model.regular_model(
+                **global_chat_model.regular_args, **global_kwargs
+            )
         else:
-            model = global_chat_model_alternative.regular_model(**global_chat_model_alternative.regular_args, **global_kwargs)
-            
-        fallback_model = fallback_chat_models[-1].regular_model(**fallback_chat_models[-1].regular_args, **global_kwargs)
+            model = global_chat_model_alternative.regular_model(
+                **global_chat_model_alternative.regular_args, **global_kwargs
+            )
+
+        fallback_model = fallback_chat_models[-1].regular_model(
+            **fallback_chat_models[-1].regular_args, **global_kwargs
+        )
 
     for k, v in model_kwargs.items():
         with suppress(Exception):
             setattr(model, k, v)
         with suppress(Exception):
             setattr(fallback_model, k, v)
-    
+
     return model, fallback_model
-    
+
 
 try:
     langchain.llm_cache = RedisCache(redis_=redis.from_url(REDIS_URL), ttl=CACHE_TTL)
@@ -199,7 +235,7 @@ knowledge_manager = KnowledgeManager(
     unstructured_url=UNSTRUCTURED_URL,
     qdrant_api_key=QDRANT_API_KEY,
     qdrant_url=QDRANT_URL,
-    azure_ocr=text_ocr
+    azure_ocr=text_ocr,
 )
 chat_manager = ChatManagerRetrieval(
     OpenAIEmbeddings(),

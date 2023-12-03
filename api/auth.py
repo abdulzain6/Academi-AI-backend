@@ -34,7 +34,6 @@ def get_set_user_id(cache_key, token):
         logging.info("Returning cached user ID...")
         return cached_user_id
 
-    logging.info(f"Verifying token..... {token}")
     user = auth.verify_id_token(token, app=default_app)
     user_id = user["user_id"]
     logging.info("Verified token, storing in cache...")
@@ -95,7 +94,7 @@ def verify_play_integrity(x_firebase_appcheck: str = Header(...)) -> None:
         logging.error(f"Error in app check token. {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid Play Integrity token",
+            detail="Invalid Play Integrity token, switch to latest version",
         ) from e
         
 def verify_google_token(id_token_header: HTTPAuthorizationCredentials = Depends(security)):

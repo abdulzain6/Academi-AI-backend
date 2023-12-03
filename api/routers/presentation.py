@@ -70,8 +70,9 @@ def make_presentation(
     play_integrity_verified=Depends(verify_play_integrity),
 ):
     model_name, premium_model = use_feature_with_premium_model_check("PRESENTATION", user_id=user_id)
-    llm = get_model({"temperature": 0.3}, False, premium_model)        
+    llm = get_model({"temperature": 0.3}, False, premium_model, cache=False)        
     ppt_pages = subscription_manager.get_feature_value(user_id, "ppt_pages").main_data or 12
+    ppt_pages = max(ppt_pages, 4)
     presentation_input.number_of_pages = min(presentation_input.number_of_pages, ppt_pages)
     
     logging.info(f"Using model {model_name} to make presentation for user {user_id}")
