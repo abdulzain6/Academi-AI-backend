@@ -67,14 +67,14 @@ class MarkdownToPDFConverter(BaseTool):
     cache_manager: object
     url_template: str
 
-    def _run(self, markdown_text: str, run_manager: Optional[CallbackManagerForToolRun] = None) -> Union[IO[bytes], str]:
+    def _run(self, content: str, run_manager: Optional[CallbackManagerForToolRun] = None, *args, **kwargs) -> Union[IO[bytes], str]:
         """Convert Markdown text to a PDF file."""
         try:
             # Generate a unique ID for the document
             doc_id = str(uuid.uuid4())
             pdf_filename = f"/tmp/{doc_id}.pdf"
 
-            pypandoc.convert_text(markdown_text, 'pdf', format='md', outputfile=pdf_filename, extra_args=['--pdf-engine=xelatex'])
+            pypandoc.convert_text(content, 'pdf', format='md', outputfile=pdf_filename, extra_args=['--pdf-engine=xelatex'])
 
             with open(pdf_filename, "rb") as file:
                 pdf_bytes = file.read()
@@ -102,7 +102,7 @@ class ScholarlySearchRun(BaseTool):
         "Input should be a search query."
     )
 
-    def _run(self, query: str, run_manager: Optional[CallbackManagerForToolRun] = None) -> List[Dict[str, Union[str, Optional[str]]]]:
+    def _run(self, query: str, run_manager: Optional[CallbackManagerForToolRun] = None, *args, **kwargs) -> List[Dict[str, Union[str, Optional[str]]]]:
         """Use the tool."""
         search_query = scholarly.search_pubs(query)
         results: List[Dict[str, Union[str, Optional[str]]]] = []
