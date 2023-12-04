@@ -57,10 +57,10 @@ def deduct_points_for_feature(user_id: str, func, feature_key: str, usage_key: s
             subscription_manager.undo_use_feature(user_id=user_id, feature_name="MODEL")
         
         if isinstance(e, LimitException):
-            raise ValueError("Error user cannot use feature limit reached")
+            raise ValueError("Feature limit reached for current plan")
     
 
-        raise ValueError("Error occured in making ppt")
+        raise ValueError("Error occured")
 
 
 

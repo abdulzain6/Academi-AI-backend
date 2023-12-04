@@ -384,7 +384,7 @@ Human: {question}
 
 Use the help data to answer the student question.
 help data = contents of webpages, youtube links, files, images and much more
-Remember!, If there is no meaningful data in help data. The ocr might have not been able to detect handwritten text.
+Remember!, If there is no meaningful data in help data. The ocr might have not been able to detect handwritten text. Or link maybe broken. Tell the user if so
 dont forget the above rules
 
 {ai_name} ({language}):"""
