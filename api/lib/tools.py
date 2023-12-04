@@ -58,9 +58,10 @@ class MakePresentationInput(PresentationInput):
 class MarkdownToPDFConverter(BaseTool):
     """Tool that converts Markdown text to a PDF file in memory."""
     
-    name: str = "make_pdf"
+    name: str = "make_pdf_or_make_table"
     description: str = (
         "A tool to give the user a pdf with the content of your choice"
+        "Also Can be used to gice the user a timetable a routine or any other similar doc"
         "Input should be the content of the pdf in Markdown formatted string."
     )
     cache_manager: object
