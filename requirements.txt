@@ -41,3 +41,5 @@ docxtpl
 python-docx
 pypandoc
 azure-cognitiveservices-vision-computervision
+PyPDF2
+azure-ai-formrecognizer

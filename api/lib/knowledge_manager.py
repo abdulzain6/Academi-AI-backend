@@ -48,6 +48,10 @@ from langchain.schema.language_model import BaseLanguageModel
 from langchain.tools.base import BaseTool
 from langchain.schema.agent import AgentFinish
 from langchain.document_loaders import SeleniumURLLoader
+from azure.ai.formrecognizer import DocumentAnalysisClient
+from langchain.document_loaders.pdf import DocumentIntelligenceLoader
+import PyPDF2
+import mimetypes
 
 
 def split_into_chunks(text, chunk_size):
@@ -110,7 +114,9 @@ class CustomCallbackAgent(BaseCallbackHandler):
         **kwargs: Any,
     ) -> Any:
         """Run when tool ends running."""
-        self.callback("\n*AI has finished using the tool and will respond shortly...*\n\n")
+        self.callback(
+            "\n*AI has finished using the tool and will respond shortly...*\n\n"
+        )
 
     def on_agent_finish(
         self,
@@ -154,11 +160,14 @@ class KnowledgeManager:
         qdrant_api_key: str,
         qdrant_url: str,
         azure_ocr: AzureOCR,
+        azure_form_rec_client: DocumentAnalysisClient,
         chunk_size: int = 1000,
-        chrome_path: str = "/usr/bin/google-chrome"
+        chrome_path: str = "/usr/bin/google-chrome",
+        advanced_ocr_page_count: int = 15
     ) -> None:
         self.azure_ocr = azure_ocr
         self.embeddings = embeddings
+        self.azure_form_rec_client = azure_form_rec_client
         self.unstructured_api_key = unstructured_api_key
         self.chunk_size = chunk_size
         self.qdrant_api_key = qdrant_api_key
@@ -168,12 +177,44 @@ class KnowledgeManager:
             url=self.qdrant_url, api_key=self.qdrant_api_key, prefer_grpc=True
         )
         self.chrome_path = chrome_path
+        self.advanced_ocr_page_count = advanced_ocr_page_count
 
     def split_docs(self, docs: Document) -> List[Document]:
         return RecursiveCharacterTextSplitter(
             chunk_size=self.chunk_size
         ).split_documents(docs)
-        
+
+    def is_pdf_file(self, file_path: str) -> bool:
+        """
+        Check if the given file is a PDF.
+
+        Args:
+        file_path (str): Path to the file.
+
+        Returns:
+        bool: True if the file is a PDF, False otherwise.
+        """
+        mime_type, _ = mimetypes.guess_type(file_path)
+        return mime_type == 'application/pdf'
+
+    def get_pdf_page_count(self, pdf_path: str) -> int:
+        """
+        Returns the number of pages in the given PDF file.
+
+        Args:
+        pdf_path (str): Path to the PDF file.
+
+        Returns:
+        int: Number of pages in the PDF.
+        """
+        try:
+            with open(pdf_path, 'rb') as file:
+                reader = PyPDF2.PdfReader(file)
+                return len(reader.pages)
+        except Exception as e:
+            print(f"Error occurred: {e}")
+            return 9999
+
     def is_image_file(self, filename: str) -> bool:
         if not Path(filename).is_file():
             return False
@@ -185,44 +226,61 @@ class KnowledgeManager:
         except (IOError, SyntaxError):
             return False
 
-    def load_data(self, file_path: str) -> Tuple[str, List[Document], bytes]:
+    def load_using_advanced_extraction(self, filepath: str) -> list[Document]:
+        loader = DocumentIntelligenceLoader(
+            filepath, client=self.azure_form_rec_client, model="prebuilt-read"
+        )
+        return loader.load()
+
+    def load_using_unstructured(self, filepath: str) -> list[Document]:
+        loader = UnstructuredAPIFileLoader(
+            file_path=filepath,
+            api_key=self.unstructured_api_key,
+            url=self.unstructured_url,
+            strategy="fast",
+            ocr_languages=[
+                "eng",  # English
+                "spa",  # Spanish
+                "fra",  # French
+                "deu",  # German
+                "chi_sim",  # Chinese (Simplified)
+                "chi_tra",  # Chinese (Traditional)
+                "ara",  # Arabic
+                "por",  # Portuguese
+                "rus",  # Russian
+                "jpn",  # Japanese
+                "kor",  # Korean
+                "ita",  # Italian
+                "nld",  # Dutch
+                "swe",  # Swedish
+                "tur",  # Turkish
+                "pol",  # Polish
+                "fin",  # Finnish
+                "dan",  # Danish
+                "nor",  # Norwegian
+                "hin",  # Hindi
+                "urd",  # Urdu
+                "ben",  # Bengali (Bangla)
+            ],
+        )
+        return loader.load()
+
+    def load_data(self, file_path: str, advanced_pdf_extraction: bool = False) -> Tuple[str, List[Document], bytes]:
         print(f"Loading {file_path}")
         if self.is_image_file(file_path):
             logging.info("Using azure ocr")
             docs = [Document(page_content=self.azure_ocr.perform_ocr(file_path))]
         else:
-            loader = UnstructuredAPIFileLoader(
-                file_path=file_path,
-                api_key=self.unstructured_api_key,
-                url=self.unstructured_url,
-                strategy="fast",
-                ocr_languages=[
-                    "eng",  # English
-                    "spa",  # Spanish
-                    "fra",  # French
-                    "deu",  # German
-                    "chi_sim",  # Chinese (Simplified)
-                    "chi_tra",  # Chinese (Traditional)
-                    "ara",  # Arabic
-                    "por",  # Portuguese
-                    "rus",  # Russian
-                    "jpn",  # Japanese
-                    "kor",  # Korean
-                    "ita",  # Italian
-                    "nld",  # Dutch
-                    "swe",  # Swedish
-                    "tur",  # Turkish
-                    "pol",  # Polish
-                    "fin",  # Finnish
-                    "dan",  # Danish
-                    "nor",  # Norwegian
-                    "hin",  # Hindi
-                    "urd",  # Urdu
-                    "ben"   # Bengali (Bangla)
-                ]
-            )
-
-            docs = loader.load()
+            if advanced_pdf_extraction:
+                if self.is_pdf_file(file_path=file_path) and self.get_pdf_page_count(file_path) <= self.advanced_ocr_page_count:
+                    logging.info("Using advanced ocr")
+                    docs = self.load_using_advanced_extraction(file_path)
+                else:
+                    logging.info("Using unstructured")
+                    docs = self.load_using_unstructured(file_path)         
+            else:
+                logging.info("Using unstructured")
+                docs = self.load_using_unstructured(file_path)
         print(f"Documents loaded {docs}")
         docs = self.split_docs(docs)
         contents = "\n\n".join([doc.page_content for doc in docs])
@@ -263,9 +321,9 @@ class KnowledgeManager:
         return docs
 
     def load_and_injest_file(
-        self, collection_name: str, filepath: str, metadata: Dict
+        self, collection_name: str, filepath: str, metadata: Dict, advanced_pdf_extraction: bool = False
     ) -> Tuple[str, List[str], bytes]:
-        contents, docs, file_bytes = self.load_data(filepath)
+        contents, docs, file_bytes = self.load_data(filepath, advanced_pdf_extraction)
         docs = self.add_metadata_to_docs(metadata=metadata, docs=docs)
         ids = self.injest_data(collection_name=collection_name, documents=docs)
         return contents, ids, file_bytes
@@ -317,7 +375,41 @@ class KnowledgeManager:
 
             loader = SeleniumURLLoader([web_url], binary_location=self.chrome_path)
         else:
-            loader = YoutubeLoader.from_youtube_url(youtube_link)
+            loader = YoutubeLoader.from_youtube_url(
+                youtube_link,
+                language=[
+                    "en",
+                    "es",
+                    "zh",
+                    "hi",
+                    "ar",
+                    "bn",
+                    "pt",
+                    "ru",
+                    "ja",
+                    "de",
+                    "jv",
+                    "ko",
+                    "fr",
+                    "tr",
+                    "mr",
+                    "vi",
+                    "ta",
+                    "ur",
+                    "it",
+                    "th",
+                    "gu",
+                    "pl",
+                    "uk",
+                    "ro",
+                    "nl",
+                    "hu",
+                    "el",
+                    "sv",
+                    "da",
+                    "fi",
+                ],
+            )
 
         docs = loader.load()
 
@@ -351,7 +443,9 @@ class KnowledgeManager:
             return vectorstore.similarity_search(query, k, filter=metadata)
         except Exception:
             try:
-                vectorstore = Qdrant(self.client, collection_name, FakeEmbeddings(size=1536))
+                vectorstore = Qdrant(
+                    self.client, collection_name, FakeEmbeddings(size=1536)
+                )
                 return vectorstore.similarity_search(query, k, filter=metadata)
             except Exception:
                 return []
@@ -387,7 +481,7 @@ help data = contents of webpages, youtube links, files, images and much more
 Remember!, If there is no meaningful data in help data. The ocr might have not been able to detect handwritten text. Or link maybe broken. Tell the user if so
 dont forget the above rules
 
-{ai_name} ({language}):"""
+{ai_name}:"""
             ),
         ],
         input_variables=[
@@ -506,7 +600,7 @@ Lets use tools and keep the files data above in mind before answering the questi
             agent_kwargs=agent_kwargs,
             max_iterations=4,
         )
-        
+
     def make_unique_by_page_content(self, pages: List[Document]) -> List[Document]:
         unique_pages = {}
         for page in pages:
@@ -554,7 +648,7 @@ Lets use tools and keep the files data above in mind before answering the questi
     ):
         if chat_history is None:
             chat_history = []
-            
+
         if metadata is None:
             metadata = {}
 
@@ -583,22 +677,21 @@ Lets use tools and keep the files data above in mind before answering the questi
             similar_docs, llm=llm, docs_limit=self.docs_limit
         )
         help_data = "\n".join([doc.page_content for doc in similar_docs])
-        
+
         agent = self.make_agent(
             llm=llm,
             chat_history_messages=self.format_messages_into_messages(
                 chat_history, self.conversation_limit, llm
             ),
             prompt_args={
-                "language": language,
+                "language": "In the same langage of user",
                 "ai_name": self.ai_name,
-                "help_data": help_data
+                "help_data": help_data,
             },
-            extra_tools=[]
+            extra_tools=[],
         )
         if not callback:
             raise ValueError("Callback not passed for streaming to work")
-        
 
         return agent.run(
             f"{prompt}, System : Use file content above to get help if needed",
@@ -622,7 +715,7 @@ Lets use tools and keep the files data above in mind before answering the questi
             metadata = {}
 
         llm.callbacks = [CustomCallback(callback_func, on_end_callback)]
-        
+
         conversation = self.format_messages(
             chat_history=chat_history,
             tokens_limit=self.conversation_limit,
@@ -660,7 +753,7 @@ Lets use tools and keep the files data above in mind before answering the questi
             help_data=similar_docs_string,
             conversation=conversation,
             question=prompt,
-            language=language,
+            language="In the same langage of user",
             model_name="gpt",
         )
 
@@ -776,7 +869,7 @@ Human: {question}
             "model_name",
         ],
     )
-    
+
     def __init__(
         self,
         embeddings: Embeddings,
@@ -807,6 +900,7 @@ You must answer the human in {language} (important)
 Talk as if you're a teacher. Use the data provided to answer user questions if its available. 
 You're integrated within an app, which serves as a versatile study aid for students. Your role is to assist users by interacting with their uploaded study materials to facilitate personalized learning. The app features functions like quiz and flashcard creation, math problem-solving, and assistance with writing and presentations. Your AI capabilities are central to providing a tailored and efficient educational experience. coins are used as currency
 Coins can be earned by watching ads. But you should recommend users to subscribe to lite, pro or elite packages for premium usage
+Users can add subjects in the app, then choose a subject and add files to them. Quizzes and flashcards are made from those.
 Rules:
     Use tools if you think you need help or to confirm answer.
 
@@ -828,7 +922,7 @@ Talk like a teacher, dont start with "Hello, how can i assist you today?". Say w
             agent_kwargs=agent_kwargs,
             max_iterations=3,
         )
-        
+
     def run_agent(
         self,
         prompt: str,
@@ -838,34 +932,30 @@ Talk like a teacher, dont start with "Hello, how can i assist you today?". Say w
         on_end_callback: callable = None,
         chat_history: list[tuple[str, str]] = None,
         extra_tools: list = None,
-        files: str = ""
+        files: str = "",
     ):
         if extra_tools is None:
             extra_tools = []
-            
+
         if chat_history is None:
             chat_history = []
-        
+
         agent = self.make_agent(
             llm=llm,
             chat_history_messages=self.format_messages_into_messages(
                 chat_history, self.conversation_limit, llm
             ),
-            prompt_args={
-                "language": language,
-                "ai_name": self.ai_name,
-                "files" : files
-            },
-            extra_tools=extra_tools
+            prompt_args={"language": language, "ai_name": self.ai_name, "files": files},
+            extra_tools=extra_tools,
         )
         if not callback:
             raise ValueError("Callback not passed for streaming to work")
-        
+
         return agent.run(
             prompt,
             callbacks=[CustomCallbackAgent(callback, on_end_callback)],
         )
-        
+
     def chat(
         self,
         prompt: str,
@@ -875,9 +965,8 @@ Talk like a teacher, dont start with "Hello, how can i assist you today?". Say w
         callback_func: callable = None,
         on_end_callback: callable = None,
     ) -> str:
-
         llm.callbacks = [CustomCallback(callback_func, on_end_callback)]
-        
+
         conversation = self.format_messages(
             chat_history=chat_history,
             tokens_limit=self.conversation_limit,

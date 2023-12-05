@@ -4,10 +4,11 @@ import tempfile
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse
 from fastapi import Depends, HTTPException, status
-from ..globals import collection_manager, knowledge_manager, file_manager
+from ..globals import collection_manager, knowledge_manager, file_manager, subscription_manager
 from ..lib.database.files import FileModel
-from ..lib.utils import contains_emoji, get_file_extension, format_url, convert_youtube_url_to_standard
-from pydantic import BaseModel, validator
+from ..lib.database.purchases import SubscriptionType
+from ..lib.utils import get_file_extension, format_url, convert_youtube_url_to_standard
+from pydantic import BaseModel
 from typing import Optional
 from ..auth import get_user_id, verify_play_integrity
 from ..dependencies import can_add_more_data
@@ -15,7 +16,7 @@ from ..dependencies import can_add_more_data
 
 router = APIRouter()
 
-MAX_FILE_SIZE = 20 * 1024 * 1024
+MAX_FILE_SIZE = 10 * 1024 * 1024
 
 
 class FileCreate(BaseModel):
@@ -157,6 +158,14 @@ def create_file(
                 detail="File Already exists", status_code=status.HTTP_400_BAD_REQUEST
             )
 
+        user_plan = subscription_manager.get_subscription_type(user_id)
+        if user_plan in {SubscriptionType.PRO, SubscriptionType.ELITE}:
+            advanced_extraction = True
+        else:
+            advanced_extraction = False
+            
+        logging.info(f"Advanced extraction : {advanced_extraction}, User plan : {user_plan}, uid: {user_id}")
+            
         _, file_extension = os.path.splitext(file.filename)
 
         # Create a secure temporary file with the same extension
@@ -168,7 +177,7 @@ def create_file(
                 logging.error(f"File is too big {user_id}")
                 raise HTTPException(
                     status_code=400,
-                    detail="File size exceeds the maximum limit of 20 MB",
+                    detail="File size exceeds the maximum limit of 10 MB",
                 )
             temp_file.write(contents)
             temp_file.seek(0)
@@ -178,6 +187,7 @@ def create_file(
                     collection.vectordb_collection_name,
                     temp_file.name,
                     {"file": filename},
+                    advanced_pdf_extraction=advanced_extraction
                 )
             except Exception as e:
                 logging.error(f"File not supported, Error: {e}")
@@ -200,7 +210,7 @@ def create_file(
             except Exception as e:
                 raise HTTPException(detail=str(e), status_code=400)
             
-        logging.info(f"File created, File name: {file_model.filename}, Collection: {collection_name} {user_id} {contents}")
+        logging.info(f"File created, File name: {file_model.filename}, Collection: {collection_name} {user_id}")
         return {
             "status": "success",
             "file": {

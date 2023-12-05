@@ -39,14 +39,21 @@ from .lib.purchases_play_store import SubscriptionChecker
 from .global_tools import CHAT_TOOLS
 from .ai_model import AIModel
 from contextlib import suppress
+from azure.ai.formrecognizer import DocumentAnalysisClient
+from azure.core.credentials import AzureKeyCredential
 import langchain
 import redis
 import nltk
 import logging
+import threading
 
 
-nltk.download("punkt")
-nltk.download("averaged_perceptron_tagger")
+def download_stuff():
+    nltk.download("punkt")
+    nltk.download("averaged_perceptron_tagger")
+
+
+threading.Thread(target=download_stuff).start()
 
 
 langchain.verbose = False
@@ -83,10 +90,15 @@ fallback_chat_models = [
     )
 ]
 
+
 def get_model(
-    model_kwargs: dict, stream: bool, is_premium: bool, alt: bool = False, cache: bool = True
+    model_kwargs: dict,
+    stream: bool,
+    is_premium: bool,
+    alt: bool = False,
+    cache: bool = True,
 ) -> BaseChatModel:
-    args = {**model_kwargs, **{"streaming": stream, "cache" : cache}}
+    args = {**model_kwargs, **{"streaming": stream, "cache": cache}}
 
     if not alt:
         if is_premium:
@@ -228,7 +240,6 @@ conversation_manager = MessageDBManager(
 
 # OCR
 text_ocr = AzureOCR(AZURE_OCR_ENDPOINT, AZURE_OCR_KEY)
-
 knowledge_manager = KnowledgeManager(
     OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY),
     unstructured_api_key=UNSTRUCTURED_API_KEY,
@@ -236,6 +247,10 @@ knowledge_manager = KnowledgeManager(
     qdrant_api_key=QDRANT_API_KEY,
     qdrant_url=QDRANT_URL,
     azure_ocr=text_ocr,
+    azure_form_rec_client=DocumentAnalysisClient(
+        endpoint=DOC_INTELLIGENCE_ENDPOINT,
+        credential=AzureKeyCredential(AZURE_DOC_INTELLIGENCE_KEY),
+    ),
 )
 chat_manager = ChatManagerRetrieval(
     OpenAIEmbeddings(),
