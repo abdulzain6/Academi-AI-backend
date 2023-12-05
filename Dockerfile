@@ -32,6 +32,8 @@ COPY ./requirements.txt /app/requirements.txt
 
 RUN pip install --no-cache-dir -r requirements.txt
 
+RUN python -m nltk.downloader punkt averaged_perceptron_tagger
+
 COPY . /app
 
 EXPOSE 8000

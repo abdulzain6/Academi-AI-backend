@@ -43,17 +43,8 @@ from azure.ai.formrecognizer import DocumentAnalysisClient
 from azure.core.credentials import AzureKeyCredential
 import langchain
 import redis
-import nltk
 import logging
-import threading
 
-
-def download_stuff():
-    nltk.download("punkt")
-    nltk.download("averaged_perceptron_tagger")
-
-
-threading.Thread(target=download_stuff).start()
 
 
 langchain.verbose = False
