@@ -475,7 +475,7 @@ def chat_general_stream(
             description="Used to read students subject of a file in that subject",
             args_schema=ReadDataArgs,
         ),
-        Tool.from_function(
+        StructuredTool.from_function(
             func=lambda *args, **kwargs: collection_manager.get_all_files_for_user_as_string(
                 user_id
             ),

@@ -42,7 +42,11 @@ def deduct_points_for_feature(user_id: str, func, feature_key: str, usage_key: s
         f"Points decremented for user: {user_id} on feature: {feature_key}"
     )
     try:
-        return func(*func_args, **func_kwargs)
+        with get_openai_callback() as cb:
+            val = func(*func_args, **func_kwargs)
+            logging.info(f"Total tokens used: {cb.total_tokens}")
+            logging.info(f"Total cost: {cb.total_cost}")
+            return val
     except Exception as e:
         logging.error(
             f"An error occurred: {e}. Refunding points for user: {user_id} on feature: {feature_key}"
@@ -95,7 +99,11 @@ def require_points_for_feature(feature_key: str, usage_key: str = None):
             )
 
             try:
-                return func(*args, **kwargs)
+                with get_openai_callback() as cb:
+                    val = func(*args, **kwargs)
+                    logging.info(f"Total tokens used: {cb.total_tokens}")
+                    logging.info(f"Total cost: {cb.total_cost}")
+                    return val
             except Exception as e:
                 logging.error(
                     f"An error occurred: {e}. Refunding points for user: {user_id} on feature: {feature_key}"

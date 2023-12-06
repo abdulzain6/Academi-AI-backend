@@ -135,6 +135,8 @@ class CollectionDBManager:
         try:
             data = list(self.collection_collection.aggregate(pipeline))
             output_string = ""
+            if not data:
+                return "No subjects or files found"
             for subject in data:
                 subject_name = subject['name']
                 output_string += f"Subject name: '{subject_name}'\nFiles:\n"
