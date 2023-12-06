@@ -13,8 +13,16 @@ RUN apt-get update && \
     wget \
     gnupg2 \
     texlive-xetex \
+    fonts-freefont-ttf \
+    fonts-dejavu \
+    fonts-liberation \
+    fonts-noto-cjk \
+    fonts-noto-color-emoji \
+    fonts-indic \
+    fonts-noto \
     && apt-get clean && \
-    rm -rf /var/lib/apt/lists/* 
+    rm -rf /var/lib/apt/lists/*
+
 
 RUN sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list'
 
