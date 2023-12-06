@@ -17,6 +17,7 @@ from .routers.cv_maker import router as cv_router
 from .routers.notes_maker import router as notes_router
 from .routers.grammar_checker import router as grammar_router
 from .routers.tools import router as tool_router
+from .routers.uml import router as uml_router
 
 from fastapi import FastAPI, Request, HTTPException, status, Depends
 from fastapi.responses import JSONResponse
@@ -111,6 +112,7 @@ app.include_router(cv_router, prefix="/api/v1/cv_maker", tags=["cv maker"])
 app.include_router(notes_router, prefix="/api/v1/notes_maker", tags=["notes maker"])
 app.include_router(grammar_router, prefix="/api/v1/grammar_checker", tags=["grammar checker"])
 app.include_router(tool_router, prefix="/api/v1/tools", tags=["tools"])
+app.include_router(uml_router, prefix="/api/v1/uml", tags=["uml"])
 
 
 

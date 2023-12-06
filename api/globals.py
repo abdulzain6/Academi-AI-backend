@@ -1,3 +1,4 @@
+from api.lib.uml_diagram_maker import PlantUML
 from .config import *
 from langchain.embeddings import OpenAIEmbeddings
 from .lib.ocr import AzureOCR
@@ -322,6 +323,7 @@ image_ocr = ImageOCR(
     app_key=MATHPIX_API_KEY,
 )
 
+plantuml_server = PlantUML(url=PLANTUML_URL)
 
 # Monetization
 user_points_manager = UserPointsManager(MONGODB_URL, DATABASE_NAME, DEFAULT_POINTS)
@@ -332,3 +334,4 @@ credentials_path = os.path.join(
     current_directory, "creds", "academi-ai-6173d917c2a1.json"
 )
 subscription_checker = SubscriptionChecker(credentials_path)
+

@@ -22,7 +22,7 @@ MONGODB_URL = os.getenv("MONGODB_URL")
 DATABASE_NAME = os.getenv("DATABASE_NAME", "study-app")
 PEXELS_API_KEY = os.getenv("PEXELS_API_KEY")
 QUIZ_MAX_API_CALLS = int(os.getenv("QUIZ_MAX_API_CALLS", 4))
-
+PLANTUML_URL = os.getenv("PLANTUML_URL", "http://localhost:9080/img/")
 MAIN_URL_EXECUTOR = os.getenv("MAIN_URL_EXECUTOR", "http://127.0.0.1:9000/")
 EVALUATE_URL_EXECUTOR = os.getenv("EVALUATE_URL_EXECUTOR", "http://127.0.0.1:9000/evaluate")
 AVAILABLE_LIBRARIES_URL = os.getenv("AVAILABLE_LIBRARIES_URL", "http://127.0.0.1:9000/allowed_libraries")
@@ -44,7 +44,8 @@ FEATURE_PRICING = get_dict_from_env_var(
         "SUMMARY" : 2,
         "CV" : 3,
         "NOTES" : 3,
-        "GRAMMAR" : 2
+        "GRAMMAR" : 2,
+        "UML" : 2
     }
 )
 

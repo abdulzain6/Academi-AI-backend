@@ -137,11 +137,11 @@ class MarkdownToPDFConverter(BaseTool):
 class ScholarlySearchRun(BaseTool):
     """Tool that queries the scholarly search API."""
 
-    name: str = "scholarly_search"
+    name: str = "google_scholar"
     description: str = (
-        "A wrapper around Scholarly Search. "
+        "A wrapper around google search "
         "Useful for finding scholarly articles. "
-        "Input should be a search query."
+        "Use only if needed"
     )
 
     def _run(
