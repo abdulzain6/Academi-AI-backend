@@ -11,6 +11,7 @@ from api.lib.presentation_maker.presentation_maker import (
     PresentationMaker,
     PresentationInput,
 )
+from api.lib.uml_diagram_maker import AIPlantUMLGenerator
 from langchain.pydantic_v1 import BaseModel
 from langchain.callbacks.manager import (
     AsyncCallbackManagerForToolRun,
@@ -96,22 +97,19 @@ class MarkdownToPDFConverter(BaseTool):
             # Convert Markdown to HTML
             pypandoc.convert_text(
                 content,
-                'html5',
-                format='md',
+                "html5",
+                format="md",
                 outputfile=html_filename,
-                extra_args=['-s', '--webtex']
+                extra_args=["-s", "--webtex"],
             )
 
             # Convert HTML to PDF using wkhtmltopdf
             options = {
-                'encoding': "UTF-8",
-                'custom-header' : [
-                    ('Accept-Encoding', 'gzip')
-                ],
-                'no-outline': None
+                "encoding": "UTF-8",
+                "custom-header": [("Accept-Encoding", "gzip")],
+                "no-outline": None,
             }
             pdfkit.from_file(html_filename, pdf_filename, options=options)
-
 
             with open(pdf_filename, "rb") as file:
                 pdf_bytes = file.read()
@@ -128,7 +126,6 @@ class MarkdownToPDFConverter(BaseTool):
             # Format and return the URL with the document ID
             document_url = self.url_template.format(doc_id=doc_id)
             return document_url
-
 
         except Exception as e:
             return f"An error occurred: {e}"
@@ -200,5 +197,18 @@ def make_ppt(
     cache_manager.set(key=doc_id, value=pdf_bytes, ttl=18000, suppress=False)
 
     os.remove(ppt_path)
+    document_url = url_template.format(doc_id=doc_id)
+    return document_url
+
+
+def make_uml_diagram(
+    uml_maker: AIPlantUMLGenerator,
+    cache_manager,
+    prompt: str,
+    url_template: str,
+):
+    doc_id = str(uuid.uuid4()) + ".png"
+    img_bytes = uml_maker.run(prompt=prompt)
+    cache_manager.set(key=doc_id, value=img_bytes, ttl=18000, suppress=False)
     document_url = url_template.format(doc_id=doc_id)
     return document_url

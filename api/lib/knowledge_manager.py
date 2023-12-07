@@ -354,6 +354,15 @@ class KnowledgeManager:
 
         return True
 
+    def is_youtube_video(self, url: str) -> bool:
+        try:
+            YoutubeLoader.extract_video_id(url)
+            logging.info("It is yt video")
+            return True
+        except Exception as e:
+            logging.info(f"It is not yt video {e}")
+            return False
+
     def load_web_youtube_link(
         self,
         collection_name: str,
@@ -369,12 +378,14 @@ class KnowledgeManager:
                 "Either weburl or youtube_link must be specified. Not both."
             )
 
-        if web_url:
+        if web_url and not self.is_youtube_video(web_url):
             if not self.validate_url(web_url):
                 raise ValueError("Invalid URL")
 
             loader = SeleniumURLLoader([web_url], binary_location=self.chrome_path)
         else:
+            if self.is_youtube_video(web_url):
+                youtube_link = web_url
             loader = YoutubeLoader.from_youtube_url(
                 youtube_link,
                 language=[

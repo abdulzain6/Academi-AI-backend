@@ -9,6 +9,7 @@ from api.lib.database.purchases import SubscriptionManager
 from api.lib.presentation_maker.image_gen import PexelsImageSearch
 
 from api.lib.presentation_maker.presentation_maker import PresentationMaker
+from api.lib.uml_diagram_maker import AIPlantUMLGenerator
 from ..auth import get_user_id, verify_play_integrity
 from ..globals import (
     collection_manager,
@@ -18,7 +19,8 @@ from ..globals import (
     chat_manager_agent_non_retrieval,
     knowledge_manager,
     subscription_manager,
-    redis_cache_manager
+    redis_cache_manager,
+    plantuml_server
 )
 from ..globals import (
     template_manager,
@@ -40,7 +42,7 @@ from langchain.tools import StructuredTool, Tool
 from .utils import select_random_chunks, find_most_similar
 from langchain.pydantic_v1 import BaseModel as OldBaseModel
 from langchain.pydantic_v1 import Field as OldField
-from ..lib.tools import MakePresentationInput, make_ppt
+from ..lib.tools import MakePresentationInput, make_ppt, make_uml_diagram
 from api.config import REDIS_URL, CACHE_DOCUMENT_URL_TEMPLATE
 
 router = APIRouter()
@@ -329,6 +331,9 @@ def chat_general_stream(
     )
     data_queue = queue.Queue()
 
+    class MakeUMLArgs(OldBaseModel):
+        detailed_instructions: str = OldField("random diagram", description="Details of the diagram to make")
+        
     class ReadDataArgs(OldBaseModel):
         query: str = OldField("all", description="What you want to search")
         subject_name: str = OldField(
@@ -455,6 +460,30 @@ def chat_general_stream(
             logging.error(f"Error in ppt {e}")
             return f"Error in ppt {e}"
 
+    def make_uml_digram(detailed_instructions: str):
+        logging.info(f"Making uml diagram on {detailed_instructions}")
+        model_name, premium_model = can_use_premium_model(user_id=user_id)     
+        model = get_model({"temperature": 0}, False, premium_model, alt=False)
+        uml_maker = AIPlantUMLGenerator(model, generator=plantuml_server)
+        logging.info(f"UML request from {user_id}, Data: {detailed_instructions}")
+        try:
+            return deduct_points_for_feature(
+                user_id,
+                make_uml_diagram,
+                func_kwargs={
+                    "uml_maker": uml_maker,
+                    "prompt": detailed_instructions,
+                    "cache_manager": redis_cache_manager,
+                    "url_template": CACHE_DOCUMENT_URL_TEMPLATE,
+                },
+                feature_key="UML",
+                usage_key="UML"
+            )
+        except Exception as e:
+            logging.error(f"Error in uml diagram {e}")
+            return f"Error in uml diagram {e}"        
+
+        
     extra_tools = [
         StructuredTool.from_function(
             func=lambda topic, instructions="", number_of_pages=5, negative_prompt="", *args, **kwargs: make_presentation(
@@ -474,6 +503,14 @@ def chat_general_stream(
             name="read_user_subject_or_file",
             description="Used to read students subject of a file in that subject",
             args_schema=ReadDataArgs,
+        ),
+        StructuredTool.from_function(
+            func=lambda detailed_instructions="Random", *args, **kwargs: make_uml_digram(
+                detailed_instructions=detailed_instructions
+            ),
+            name="make_uml_diagram",
+            description="Used to make uml diagrams using AI",
+            args_schema=MakeUMLArgs,
         ),
         StructuredTool.from_function(
             func=lambda *args, **kwargs: collection_manager.get_all_files_for_user_as_string(

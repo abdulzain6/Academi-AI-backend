@@ -22,7 +22,7 @@ class UserPointsManager:
         default_points: int = 15,
         daily_points: int = 3,
         weekly_daily_bonus_points: int = 10,
-        max_ads_per_day: int = 4,
+        max_ads_per_day: int = 3,
     ) -> None:
         self.client = MongoClient(connection_string)
         self.db = self.client[database_name]

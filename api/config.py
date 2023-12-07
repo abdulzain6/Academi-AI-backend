@@ -45,12 +45,12 @@ FEATURE_PRICING = get_dict_from_env_var(
         "CV" : 3,
         "NOTES" : 3,
         "GRAMMAR" : 2,
-        "UML" : 2
+        "UML" : 3
     }
 )
 
 DEFAULT_POINTS_INCREMENT = int(os.getenv("DEFAULT_POINTS_INCREMENT", 2))
-DEFAULT_REFERRAL_POINTS = int(os.getenv("DEFAULT_REFERRAL_POINTS", 15))
+DEFAULT_REFERRAL_POINTS = int(os.getenv("DEFAULT_REFERRAL_POINTS", 10))
 FILE_COLLECTION_LIMITS = {
     SubscriptionType.FREE : 4
 }
