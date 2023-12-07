@@ -7,7 +7,7 @@ from api.lib.tools import ScholarlySearchRun, MarkdownToPDFConverter, RequestsGe
 from langchain.utilities.requests import TextRequestsWrapper
 
 CHAT_TOOLS = [
-    DuckDuckGoSearchRun(),
+    #DuckDuckGoSearchRun(),
     MarkdownToPDFConverter(
         cache_manager=RedisCacheManager(redis.from_url(REDIS_URL)),
         url_template=CACHE_DOCUMENT_URL_TEMPLATE,
