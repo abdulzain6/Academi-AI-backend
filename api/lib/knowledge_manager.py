@@ -237,7 +237,7 @@ class KnowledgeManager:
             file_path=filepath,
             api_key=self.unstructured_api_key,
             url=self.unstructured_url,
-            strategy="auto",
+            strategy="fast",
             ocr_languages=[
                 "eng",  # English
                 "spa",  # Spanish
