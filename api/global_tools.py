@@ -1,13 +1,15 @@
-from langchain.tools.ddg_search.tool import DuckDuckGoSearchRun
+from langchain.utilities.searx_search import SearxSearchWrapper
 from langchain.tools.youtube.search import YouTubeSearchTool
-import redis
-from api.config import REDIS_URL, CACHE_DOCUMENT_URL_TEMPLATE
+from api.config import REDIS_URL, CACHE_DOCUMENT_URL_TEMPLATE, SEARCHX_HOST
 from api.lib.database.cache_manager import RedisCacheManager
-from api.lib.tools import ScholarlySearchRun, MarkdownToPDFConverter, RequestsGetTool
+from api.lib.tools import ScholarlySearchRun, MarkdownToPDFConverter, RequestsGetTool, SearchTool
 from langchain.utilities.requests import TextRequestsWrapper
+import redis
 
 CHAT_TOOLS = [
-    #DuckDuckGoSearchRun(),
+    SearchTool(
+        seachx_wrapper=SearxSearchWrapper(searx_host=SEARCHX_HOST, unsecure=True, k=3)
+    ),
     MarkdownToPDFConverter(
         cache_manager=RedisCacheManager(redis.from_url(REDIS_URL)),
         url_template=CACHE_DOCUMENT_URL_TEMPLATE,

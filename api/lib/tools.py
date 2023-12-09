@@ -21,6 +21,8 @@ from langchain.callbacks.manager import (
 from langchain.utilities.requests import TextRequestsWrapper
 from langchain.tools.base import BaseTool
 from bs4 import BeautifulSoup
+from langchain.utilities.searx_search import SearxSearchWrapper
+
 
 
 def _clean_url(url: str) -> str:
@@ -177,6 +179,21 @@ class ScholarlySearchRun(BaseTool):
                 return f"An error occurred: {e}"
 
         return results
+
+
+class SearchTool(BaseTool):
+    seachx_wrapper: SearxSearchWrapper
+    
+    name: str = "search_web"
+    description: str = "A portal to the internet. Use this when you need to use a search engine to search for things"
+
+    def _run(
+        self, query: str, run_manager: Optional[CallbackManagerForToolRun] = None
+    ) -> str:
+        """Run the tool."""
+        response = self.seachx_wrapper.run(query=query)
+        return response
+
 
 
 def make_ppt(

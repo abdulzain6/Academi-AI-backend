@@ -177,6 +177,8 @@ to create a sequence of slides that can be used to create a perfect presentation
 Do not choose slide types that are not shown to you.
 
 {format_instructions}
+
+Dont make slides with same heading and detail failure to do so will cause error. Last time you caused one!
 """
                 ),
             ],

@@ -44,8 +44,7 @@ def increment_points(
 ) -> dict:
     logging.info(f"Increment points request from {user_id}")
     if not user_points_manager.can_increment_from_ad(uid=user_id):
-        ...
-        #raise HTTPException(detail="Ads limit reached", status_code=400)
+        raise HTTPException(detail="Ads limit reached", status_code=400)
     
     modified_count = user_points_manager.increment_user_points(
         user_id, DEFAULT_POINTS_INCREMENT
