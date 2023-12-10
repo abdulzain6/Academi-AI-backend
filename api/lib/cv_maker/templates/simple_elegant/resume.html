@@ -6,122 +6,131 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="resume.css">
     <title>{{ first_name }} {{ last_name }} - Resume</title>
+    <script>
+        function showContent() {
+            document.getElementById("content").style.display = 'block';
+        }
+        // Wait for 5 seconds before showing the content
+        setTimeout(showContent, 5000);
+    </script>
 </head>
 
 <body>
-    <div class="resume-wrapper">
-        <section class="profile section-padding">
-            <div class="container">
-                <div class="picture-resume-wrapper">
-                    <div class="picture-resume">
-                        <span>
-                            <img src="{{ image_link if image_link else 'https://cdn.dribbble.com/users/760319/screenshots/3907189/man.png?resize=400x0'}}"
-                                onerror="this.onerror=null; this.src='https://cdn.dribbble.com/users/760319/screenshots/3907189/man.png?resize=400x0';"
-                                alt="" />
-                        </span>
-                        <svg version="1.1" viewBox="0 0 350 350">
+    <div id="content" style="display: none;">
+        <div class="resume-wrapper">
+            <section class="profile section-padding">
+                <div class="container">
+                    <div class="picture-resume-wrapper">
+                        <div class="picture-resume">
+                            <span>
+                                <img src="{{ image_link if image_link else 'https://cdn.dribbble.com/users/760319/screenshots/3907189/man.png?resize=400x0'}}"
+                                    onerror="this.onerror=null; this.src='https://cdn.dribbble.com/users/760319/screenshots/3907189/man.png?resize=400x0';"
+                                    alt="" />
+                            </span>
+                            <svg version="1.1" viewBox="0 0 350 350">
 
-                            <defs>
-                                <filter id="goo">
-                                    <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blur" />
-                                    <feColorMatrix in="blur" mode="matrix"
-                                        values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 21 -9" result="cm" />
-                                </filter>
-                            </defs>
+                                <defs>
+                                    <filter id="goo">
+                                        <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blur" />
+                                        <feColorMatrix in="blur" mode="matrix"
+                                            values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 21 -9" result="cm" />
+                                    </filter>
+                                </defs>
 
 
-                            <g filter="url(#goo)">
+                                <g filter="url(#goo)">
 
-                                <circle id="main_circle" class="st0" cx="171.5" cy="175.6" r="130" />
+                                    <circle id="main_circle" class="st0" cx="171.5" cy="175.6" r="130" />
 
-                                <circle id="circle" class="bubble0 st1" cx="171.5" cy="175.6" r="122.7" />
-                                <circle id="circle" class="bubble1 st1" cx="171.5" cy="175.6" r="122.7" />
-                                <circle id="circle" class="bubble2 st1" cx="171.5" cy="175.6" r="122.7" />
-                                <circle id="circle" class="bubble3 st1" cx="171.5" cy="175.6" r="122.7" />
-                                <circle id="circle" class="bubble4 st1" cx="171.5" cy="175.6" r="122.7" />
-                                <circle id="circle" class="bubble5 st1" cx="171.5" cy="175.6" r="122.7" />
-                                <circle id="circle" class="bubble6 st1" cx="171.5" cy="175.6" r="122.7" />
-                                <circle id="circle" class="bubble7 st1" cx="171.5" cy="175.6" r="122.7" />
-                                <circle id="circle" class="bubble8 st1" cx="171.5" cy="175.6" r="122.7" />
-                                <circle id="circle" class="bubble9 st1" cx="171.5" cy="175.6" r="122.7" />
-                                <circle id="circle" class="bubble10 st1" cx="171.5" cy="175.6" r="122.7" />
+                                    <circle id="circle" class="bubble0 st1" cx="171.5" cy="175.6" r="122.7" />
+                                    <circle id="circle" class="bubble1 st1" cx="171.5" cy="175.6" r="122.7" />
+                                    <circle id="circle" class="bubble2 st1" cx="171.5" cy="175.6" r="122.7" />
+                                    <circle id="circle" class="bubble3 st1" cx="171.5" cy="175.6" r="122.7" />
+                                    <circle id="circle" class="bubble4 st1" cx="171.5" cy="175.6" r="122.7" />
+                                    <circle id="circle" class="bubble5 st1" cx="171.5" cy="175.6" r="122.7" />
+                                    <circle id="circle" class="bubble6 st1" cx="171.5" cy="175.6" r="122.7" />
+                                    <circle id="circle" class="bubble7 st1" cx="171.5" cy="175.6" r="122.7" />
+                                    <circle id="circle" class="bubble8 st1" cx="171.5" cy="175.6" r="122.7" />
+                                    <circle id="circle" class="bubble9 st1" cx="171.5" cy="175.6" r="122.7" />
+                                    <circle id="circle" class="bubble10 st1" cx="171.5" cy="175.6" r="122.7" />
 
-                            </g>
-                        </svg>
+                                </g>
+                            </svg>
+                        </div>
+                        <div class="clearfix"></div>
                     </div>
-                    <div class="clearfix"></div>
-                </div>
-                <div class="name-wrapper">
-                    <h1>{{ first_name }} <br />{{ last_name }}</h1>
-                </div>
-                <div class="contact-info clearfix">
-                    <ul class="list-content">
-                        <li>{{ phone }}</li>
-                        <li>{{ email }}</li>
-                        <li><a href="{{ website }}">{{ website }}</a></li>
-                        <li>{{ location }}</li>
-                    </ul>
-                </div>
-                <div class="contact-presentation">
-                    <p>{{ presentation }}</p>
-                </div>
-                <div class="contact-social clearfix">
-                    {% if social %}
-                    <ul class="list-titles">
-                        {% for platform, user in social.items() %}
-                        <li>{{ platform.capitalize() }}</li>
-                        {% endfor %}
-                    </ul>
-                    <ul class="list-content">
-                        {% for platform, user in social.items() %}
-                        <li><a href="{{ user.url }}">{{ user.username }}</a></li>
-                        {% endfor %}
-                    </ul>
-                    {% endif %}
-                </div>
-            </div>
-        </section>
-
-        <section class="experience section-padding">
-            <div class="container">
-                <h3 class="experience-title">Experience</h3>
-                {% for experience in experiences %}
-                <div class="experience-wrapper">
-                    <div class="company-wrapper clearfix">
-                        <div class="experience-title">{{ experience.company_name }}</div>
-                        <div class="time">{{ experience.start_date }} - {% if experience.current %}Present{% else %}{{
-                            experience.end_date }}{% endif %}</div>
+                    <div class="name-wrapper">
+                        <h1>{{ first_name }} <br />{{ last_name }}</h1>
                     </div>
-                    <div class="job-wrapper clearfix">
-                        <div class="experience-title">{{ experience.job_title }}</div>
-                        <div class="company-description">
-                            <p>{{ experience.job_description }}</p>
+                    <div class="contact-info clearfix">
+                        <ul class="list-content">
+                            <li>{{ phone }}</li>
+                            <li>{{ email }}</li>
+                            <li><a href="{{ website }}">{{ website }}</a></li>
+                            <li>{{ location }}</li>
+                        </ul>
+                    </div>
+                    <div class="contact-presentation">
+                        <p>{{ presentation }}</p>
+                    </div>
+                    <div class="contact-social clearfix">
+                        {% if social %}
+                        <ul class="list-titles">
+                            {% for platform, user in social.items() %}
+                            <li>{{ platform.capitalize() }}</li>
+                            {% endfor %}
+                        </ul>
+                        <ul class="list-content">
+                            {% for platform, user in social.items() %}
+                            <li><a href="{{ user.url }}">{{ user.username }}</a></li>
+                            {% endfor %}
+                        </ul>
+                        {% endif %}
+                    </div>
+                </div>
+            </section>
+
+            <section class="experience section-padding">
+                <div class="container">
+                    <h3 class="experience-title">Experience</h3>
+                    {% for experience in experiences %}
+                    <div class="experience-wrapper">
+                        <div class="company-wrapper clearfix">
+                            <div class="experience-title">{{ experience.company_name }}</div>
+                            <div class="time">{{ experience.start_date }} - {% if experience.current %}Present{% else %}{{
+                                experience.end_date }}{% endif %}</div>
+                        </div>
+                        <div class="job-wrapper clearfix">
+                            <div class="experience-title">{{ experience.job_title }}</div>
+                            <div class="company-description">
+                                <p>{{ experience.job_description }}</p>
+                            </div>
                         </div>
                     </div>
-                </div>
-                {% endfor %}
-
-                {% if skills %}
-                <div class="section-wrapper clearfix">
-                    <h3 class="section-title">Skills</h3>
-                    <ul>
-                        {% for skill in skills %}
-                        <li class="skill-percentage">{{ skill }}</li>
-                        {% endfor %}
-                    </ul>
-                </div>
-                {% endif %}
-
-                {% if hobbies %}
-                <div class="section-wrapper clearfix">
-                    <h3 class="section-title">Hobbies</h3>
-                    {% for hobby in hobbies %}
-                    <p>{{ hobby }}</p>
                     {% endfor %}
+
+                    {% if skills %}
+                    <div class="section-wrapper clearfix">
+                        <h3 class="section-title">Skills</h3>
+                        <ul>
+                            {% for skill in skills %}
+                            <li class="skill-percentage">{{ skill }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+
+                    {% if hobbies %}
+                    <div class="section-wrapper clearfix">
+                        <h3 class="section-title">Hobbies</h3>
+                        {% for hobby in hobbies %}
+                        <p>{{ hobby }}</p>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
                 </div>
-                {% endif %}
-            </div>
-        </section>
+            </section>
+        </div>
     </div>
 </body>
 
