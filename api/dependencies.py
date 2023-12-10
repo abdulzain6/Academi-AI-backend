@@ -19,6 +19,7 @@ from functools import wraps
 from langchain.callbacks import get_openai_callback
 from typing import Callable, Any, Optional, Union
 from inspect import isfunction
+import traceback
 
 
 def deduct_points_for_feature(user_id: str, func, feature_key: str, usage_key: str = None, func_args: list = [], func_kwargs: dict = {}):
@@ -49,7 +50,7 @@ def deduct_points_for_feature(user_id: str, func, feature_key: str, usage_key: s
             return val
     except Exception as e:
         logging.error(
-            f"An error occurred: {e}. Refunding points for user: {user_id} on feature: {feature_key}"
+            f"An error occurred: {traceback.format_exception(e)}. Refunding points for user: {user_id} on feature: {feature_key}"
         )
         user_points_manager.increment_user_points(user_id, required_points)
         if usage_key:
@@ -106,7 +107,7 @@ def require_points_for_feature(feature_key: str, usage_key: str = None):
                     return val
             except Exception as e:
                 logging.error(
-                    f"An error occurred: {e}. Refunding points for user: {user_id} on feature: {feature_key}"
+                    f"An error occurred: {traceback.format_exception(e)}. Refunding points for user: {user_id} on feature: {feature_key}"
                 )
                 user_points_manager.increment_user_points(user_id, required_points)
                 if usage_key:

@@ -21,7 +21,8 @@ math_libraries = [
     "numexpr",  # Fast numerical expression evaluation
     "cmath",
     "statistics",
-    "pandas"
+    "pandas",
+    "pubchempy"
 ]
 
 

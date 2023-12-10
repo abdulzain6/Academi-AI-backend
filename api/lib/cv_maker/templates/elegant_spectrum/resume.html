@@ -34,7 +34,7 @@
         </div>
         <div class="bubble2">
           <span class="the-arrow2"></span>
-          <img src="{{ personal_details.image_url }}" alt="{{ personal_details.first_name }}"/>
+          <img src="{{ personal_details.image_url if personal_details.image_url else 'https://cdn.dribbble.com/users/760319/screenshots/3907189/man.png?resize=400x0'}}" alt="{{ personal_details.first_name }}"      onerror="this.onerror=null; this.src='https://cdn.dribbble.com/users/760319/screenshots/3907189/man.png?resize=400x0';"           />
         </div>
         <div class="bubble3">
           <span class="the-arrow3"></span>
@@ -49,7 +49,7 @@
         <div class="bubble4">
           <span class="the-arrow4"></span>
           {% for job in employment_history %}
-            {{ job.position }} {{ job.years }}<br/>
+            {{ job.position }} {{ job.years }} Years<br/>
             {{ job.details }}<br/><br/>
           {% endfor %}
         </div>

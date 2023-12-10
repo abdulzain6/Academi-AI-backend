@@ -23,6 +23,13 @@ class CVMaker:
     def get_template_names(self) -> list[str]:
         return [template.name for template in self.templates]
 
+    @staticmethod
+    def get_all_templates_static(templates: list[ResumeTemplate]) -> list[dict]:
+        return [
+            {"name": template.name, "schema": json.loads(template.json_schema)}
+            for template in templates
+        ]
+        
     def get_all_templates(self) -> list[dict]:
         return [
             {"name": template.name, "schema": json.loads(template.json_schema)}
@@ -34,6 +41,30 @@ class CVMaker:
             if template.name == name:
                 return template
 
+    def find_empty_or_placeholder_keys(self, data, placeholder_text="placeholder"):
+        """
+        Recursively search for keys with empty string or 'placeholder' values in a dictionary.
+
+        :param data: Dictionary to search through.
+        :param placeholder_text: Text to be considered as a placeholder.
+        :return: List of keys with empty string or 'placeholder' values.
+        """
+        keys_with_empty_or_placeholder = []
+
+        def recursive_search(dict_data, parent_key=''):
+            for key, value in dict_data.items():
+                full_key = f"{parent_key}.{key}" if parent_key else key
+
+                if isinstance(value, dict):
+                    recursive_search(value, full_key)
+                elif isinstance(value, str) and (not value or value.lower() == placeholder_text):
+                    keys_with_empty_or_placeholder.append(full_key)
+                elif not value:
+                    keys_with_empty_or_placeholder.append(full_key)
+
+        recursive_search(data)
+        return keys_with_empty_or_placeholder
+    
     def make_cv_from_string(
         self,
         template_name: str,
@@ -77,7 +108,7 @@ The json with no missing fields and schema followed:"""
             input_dict,
             output_file_path=output_file_path,
             output_file_name=output_file_name,
-        )
+        ), self.find_empty_or_placeholder_keys(input_dict)
 
     def make_cv(
         self,

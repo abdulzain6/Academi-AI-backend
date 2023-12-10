@@ -16,8 +16,10 @@
             {% if profile.image_url %}
             <div class="profile">
                 <div class="photo">
-                    <img src="{{ profile.image_url }}" alt="Profile Photo">
-                </div>
+                    <img src="{{ profile.image_url if profile.image_url else 'https://cdn.dribbble.com/users/760319/screenshots/3907189/man.png?resize=400x0'}}" 
+                    onerror="this.onerror=null; this.src='https://cdn.dribbble.com/users/760319/screenshots/3907189/man.png?resize=400x0';" 
+                    alt="Profile Photo">
+                               </div>
             </div>
             {% endif %}
             <div class="bio">

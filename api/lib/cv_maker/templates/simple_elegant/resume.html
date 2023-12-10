@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="resume.css">
-    <title>{{ candidate.first_name }} {{ candidate.last_name }} - Resume</title>
+    <title>{{ first_name }} {{ last_name }} - Resume</title>
 </head>
 
 <body>
@@ -14,7 +14,11 @@
             <div class="container">
                 <div class="picture-resume-wrapper">
                     <div class="picture-resume">
-                        <span><img src="{{ candidate.image_link }}" alt="" /></span>
+                        <span>
+                            <img src="{{ image_link if image_link else 'https://cdn.dribbble.com/users/760319/screenshots/3907189/man.png?resize=400x0'}}"
+                                onerror="this.onerror=null; this.src='https://cdn.dribbble.com/users/760319/screenshots/3907189/man.png?resize=400x0';"
+                                alt="" />
+                        </span>
                         <svg version="1.1" viewBox="0 0 350 350">
 
                             <defs>
@@ -48,28 +52,28 @@
                     <div class="clearfix"></div>
                 </div>
                 <div class="name-wrapper">
-                    <h1>{{ candidate.first_name }} <br />{{ candidate.last_name }}</h1>
+                    <h1>{{ first_name }} <br />{{ last_name }}</h1>
                 </div>
                 <div class="contact-info clearfix">
                     <ul class="list-content">
-                        <li>{{ candidate.phone }}</li>
-                        <li>{{ candidate.email }}</li>
-                        <li><a href="{{ candidate.website }}">{{ candidate.website }}</a></li>
-                        <li>{{ candidate.location }}</li>
+                        <li>{{ phone }}</li>
+                        <li>{{ email }}</li>
+                        <li><a href="{{ website }}">{{ website }}</a></li>
+                        <li>{{ location }}</li>
                     </ul>
                 </div>
                 <div class="contact-presentation">
-                    <p>{{ candidate.presentation }}</p>
+                    <p>{{ presentation }}</p>
                 </div>
                 <div class="contact-social clearfix">
-                    {% if candidate.social %}
+                    {% if social %}
                     <ul class="list-titles">
-                        {% for platform, user in candidate.social.items() %}
+                        {% for platform, user in social.items() %}
                         <li>{{ platform.capitalize() }}</li>
                         {% endfor %}
                     </ul>
                     <ul class="list-content">
-                        {% for platform, user in candidate.social.items() %}
+                        {% for platform, user in social.items() %}
                         <li><a href="{{ user.url }}">{{ user.username }}</a></li>
                         {% endfor %}
                     </ul>
@@ -81,11 +85,12 @@
         <section class="experience section-padding">
             <div class="container">
                 <h3 class="experience-title">Experience</h3>
-                {% for experience in candidate.experiences %}
+                {% for experience in experiences %}
                 <div class="experience-wrapper">
                     <div class="company-wrapper clearfix">
                         <div class="experience-title">{{ experience.company_name }}</div>
-                        <div class="time">{{ experience.start_date }} - {% if experience.current %}Present{% else %}{{ experience.end_date }}{% endif %}</div>
+                        <div class="time">{{ experience.start_date }} - {% if experience.current %}Present{% else %}{{
+                            experience.end_date }}{% endif %}</div>
                     </div>
                     <div class="job-wrapper clearfix">
                         <div class="experience-title">{{ experience.job_title }}</div>
@@ -95,22 +100,22 @@
                     </div>
                 </div>
                 {% endfor %}
-                
-                {% if candidate.skills %}
+
+                {% if skills %}
                 <div class="section-wrapper clearfix">
                     <h3 class="section-title">Skills</h3>
                     <ul>
-                        {% for skill in candidate.skills %}
+                        {% for skill in skills %}
                         <li class="skill-percentage">{{ skill }}</li>
                         {% endfor %}
                     </ul>
                 </div>
                 {% endif %}
 
-                {% if candidate.hobbies %}
+                {% if hobbies %}
                 <div class="section-wrapper clearfix">
                     <h3 class="section-title">Hobbies</h3>
-                    {% for hobby in candidate.hobbies %}
+                    {% for hobby in hobbies %}
                     <p>{{ hobby }}</p>
                     {% endfor %}
                 </div>

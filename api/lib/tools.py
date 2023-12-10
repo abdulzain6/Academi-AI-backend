@@ -1,9 +1,12 @@
 import os
+import random
+import tempfile
 import uuid
 import pypandoc, pdfkit
+import json
 from typing import List, Dict, Union, Optional, IO
 from scholarly import scholarly
-from langchain.tools.base import BaseTool
+from langchain.tools.base import BaseTool, Tool
 from langchain.callbacks.manager import (
     CallbackManagerForToolRun,
 )
@@ -19,9 +22,11 @@ from langchain.callbacks.manager import (
 )
 
 from langchain.utilities.requests import TextRequestsWrapper
-from langchain.tools.base import BaseTool
 from bs4 import BeautifulSoup
 from langchain.utilities.searx_search import SearxSearchWrapper
+
+from api.routers.utils import image_to_pdf_in_memory
+from ..lib.cv_maker.cv_maker import CVMaker
 
 
 
@@ -183,7 +188,7 @@ class ScholarlySearchRun(BaseTool):
 
 class SearchTool(BaseTool):
     seachx_wrapper: SearxSearchWrapper
-    
+
     name: str = "search_web"
     description: str = "A portal to the internet. Use this when you need to use a search engine to search for things"
 
@@ -191,9 +196,39 @@ class SearchTool(BaseTool):
         self, query: str, run_manager: Optional[CallbackManagerForToolRun] = None
     ) -> str:
         """Run the tool."""
-        response = self.seachx_wrapper.run(query=query)
+        response = self.seachx_wrapper.results(
+            query=query, num_results=self.seachx_wrapper.k
+        )
         return response
 
+
+def make_cv_from_string(
+    cv_maker: CVMaker, template_name: str, string: str, cache_manager, url_template: str
+):
+    doc_id = str(uuid.uuid4()) + ".pdf"
+    with tempfile.NamedTemporaryFile(
+        delete=True, suffix=".png", mode="w+b"
+    ) as tmp_file:
+        try:
+            tmp_file_path = tmp_file.name
+            output_file_name = os.path.basename(tmp_file_path)
+            output_file_directory = os.path.dirname(tmp_file_path)
+            _, missing = cv_maker.make_cv_from_string(
+                template_name=template_name,
+                string=string,
+                output_file_path=output_file_directory,
+                output_file_name=output_file_name,
+            )
+            if missing:
+                missing_str = f"An average looking cv was made, There were missing fields: \n"  + '\n'.join(missing)  + "\nAsk the user to get better result more info is needed."
+            else:
+                missing_str = ""
+            pdf_bytes = image_to_pdf_in_memory(tmp_file_path)
+            cache_manager.set(key=doc_id, value=pdf_bytes, ttl=18000, suppress=False)
+            document_url = url_template.format(doc_id=doc_id)
+            return f"{missing_str}. Give the following link to the user {document_url}. "
+        except Exception as e:
+            return f"There was an error : {e}"
 
 
 def make_ppt(

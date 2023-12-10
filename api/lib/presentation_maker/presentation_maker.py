@@ -136,6 +136,15 @@ class PresentationMaker:
             formatted_str += self.format_placeholders(slide.placeholders, True)
             formatted_str += "=" * 40 + "\n"
         return formatted_str
+    
+    def make_slide_sequence_unique(self, slide_sequence: List[PresentationSequencePart]) -> List[PresentationSequencePart]:
+        seen = set()
+        unique_sequence = []
+        for slide in slide_sequence:
+            if slide.slide_detail not in seen:
+                unique_sequence.append(slide)
+                seen.add(slide.slide_detail)
+        return unique_sequence
 
     def create_sequence(
         self, template: TemplateModel, presentation_input: PresentationInput
@@ -571,6 +580,7 @@ Do not leave a placeholder empty. Failure to do so, will cuase fatal error.
                     slide_content_obtained = True  # Set the flag to True if content is obtained
                     break
                 except Exception as e:
+                    self.llm.cache = False
                     logging.error(f"Error in presentation {e}")
 
             if not slide_content_obtained:
@@ -618,7 +628,11 @@ Do not leave a placeholder empty. Failure to do so, will cuase fatal error.
         for _ in range(3):
             logging.info("Creating and validating slide sequence...")
             try:
-                sequence = self.create_sequence(template, presentation_input)
+                sequence = PresentationSequence(
+                    slide_sequence=self.make_slide_sequence_unique(
+                        self.create_sequence(template, presentation_input).slide_sequence
+                    )
+                )
                 if self.validate_slides(template, sequence):
                     break
             except Exception as e:

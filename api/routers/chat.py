@@ -1,13 +1,14 @@
 import logging
 import queue
+import random
 import threading
 from typing import Generator, List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi import Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
-from api.lib.database.purchases import SubscriptionManager
 from api.lib.presentation_maker.image_gen import PexelsImageSearch
-
+from ..lib.cv_maker.cv_maker import CVMaker
+from ..lib.cv_maker.template_loader import template_loader
 from api.lib.presentation_maker.presentation_maker import PresentationMaker
 from api.lib.uml_diagram_maker import AIPlantUMLGenerator
 from ..auth import get_user_id, verify_play_integrity
@@ -29,7 +30,7 @@ from ..globals import (
     get_model_and_fallback
 )
 from ..lib.database.messages import MessagePair
-from ..lib.utils import split_into_chunks
+from ..lib.utils import split_into_chunks, extract_schema_fields, timed_random_choice, flatten_dict_to_string
 from ..dependencies import (
     can_use_premium_model,
     require_points_for_feature,
@@ -38,12 +39,12 @@ from ..dependencies import (
 )
 from pydantic import BaseModel
 from openai import OpenAIError
-from langchain.tools import StructuredTool, Tool
+from langchain.tools import StructuredTool
 from .utils import select_random_chunks, find_most_similar
 from langchain.pydantic_v1 import BaseModel as OldBaseModel
 from langchain.pydantic_v1 import Field as OldField
-from ..lib.tools import MakePresentationInput, make_ppt, make_uml_diagram
-from api.config import REDIS_URL, CACHE_DOCUMENT_URL_TEMPLATE
+from ..lib.tools import MakePresentationInput, make_ppt, make_uml_diagram, make_cv_from_string
+from api.config import CACHE_DOCUMENT_URL_TEMPLATE
 
 router = APIRouter()
 
@@ -331,6 +332,11 @@ def chat_general_stream(
     )
     data_queue = queue.Queue()
 
+    random_template = timed_random_choice(CVMaker.get_all_templates_static(template_loader()))
+
+    class MakeCVArgs(OldBaseModel):
+        cv_details_text: str = OldField("random CV", description="Details of the CV formatted as short text, it must have the following user details ask them if needed:\n " + extract_schema_fields(random_template["schema"]))
+        
     class MakeUMLArgs(OldBaseModel):
         detailed_instructions: str = OldField("random diagram", description="Details of the diagram to make")
         
@@ -384,7 +390,7 @@ def chat_general_stream(
         )
 
         if collection.number_of_files == 0:
-            return ("Subject has no files, but it exists",)
+            return "Subject has no files, but it exists. Ask the user to upload a file or use your knowledge to answer"
 
         if file_name:
             all_file_names = [
@@ -482,8 +488,35 @@ def chat_general_stream(
         except Exception as e:
             logging.error(f"Error in uml diagram {e}")
             return f"Error in uml diagram {e}"        
-
         
+    def make_cv(string: str, template_name: str):
+        logging.info(f"Making cv for text {string}")
+        model_name, premium_model = can_use_premium_model(user_id=user_id)     
+        model = get_model({"temperature": 0}, False, premium_model, alt=False)
+        cv_maker = CVMaker(
+            templates=template_loader(),
+            chrome_path="/usr/bin/google-chrome",
+            chat_model=model
+        )
+        try:
+            return deduct_points_for_feature(
+                user_id,
+                make_cv_from_string,
+                func_kwargs={
+                    "cv_maker": cv_maker,
+                    "template_name": template_name,
+                    "cache_manager": redis_cache_manager,
+                    "url_template": CACHE_DOCUMENT_URL_TEMPLATE,
+                    "string" : string  + "\n Make things up if needed keep it detailed."
+                },
+                feature_key="CV",
+                usage_key="CV"
+            ) 
+        except Exception as e:
+            logging.error(f"Error in cv generation {e}")
+            return f"Error in cv generation {e}"           
+    
+    
     extra_tools = [
         StructuredTool.from_function(
             func=lambda topic, instructions="", number_of_pages=5, negative_prompt="", *args, **kwargs: make_presentation(
@@ -519,6 +552,16 @@ def chat_general_stream(
             name="list_user_subjects_files",
             description="Used to list the subjects the students has added and files in them.",
         ),
+        StructuredTool.from_function(
+            func=lambda *args, **kwargs: make_cv(
+                template_name=random_template["name"],
+                string=args[0] if args else kwargs.get("cv_details_text")
+            ),   
+            name="make_cv",
+            description="Used to make a cv, Ask the user for details if needed. You can make things up except for the image url",
+            args_schema=MakeCVArgs,
+        )
+        
     ]
 
     def data_generator() -> Generator[str, None, None]:

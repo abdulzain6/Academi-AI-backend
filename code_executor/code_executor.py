@@ -54,6 +54,7 @@ safe_builtins_2 = {
     'tuple': tuple,
     'type': type,
     'zip': zip,
+    "dict" : dict
 }
 
 

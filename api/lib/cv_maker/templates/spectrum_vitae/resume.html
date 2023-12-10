@@ -14,7 +14,8 @@
     <div id="container">
         <div id="profile">
             <div id="image">
-                <img id="profile-photo" src="{{ profile.image_url }}" alt="Profile-Image">
+                <img id="profile-photo" src="{{ profile.image_url if profile.image_url else 'https://cdn.dribbble.com/users/760319/screenshots/3907189/man.png?resize=400x0' }}"      onerror="this.onerror=null; this.src='https://cdn.dribbble.com/users/760319/screenshots/3907189/man.png?resize=400x0';" 
+                 alt="Profile-Image">
             </div>
             <p id="name">{{ profile.name }}<br><span id="email">{{ profile.email }}</span></p>
             <p id="designation">{{ profile.designation }}<br><span id="college">{{ profile.institution }}</span></p>
@@ -34,7 +35,7 @@
                 <ul>
                 {% for job in profile.work_experience %}
                     <li>
-                        <p class="tags">{{ job.title }}<br><span>{{ job.company }} | <span>{{ job.year }}</span></span></p>
+                        <p class="tags">{{ job.title }}<br><span>{{ job.company }} | <span>{{ job.year }} Years</span></span></p>
                     </li>
                 {% endfor %}
                 </ul>
