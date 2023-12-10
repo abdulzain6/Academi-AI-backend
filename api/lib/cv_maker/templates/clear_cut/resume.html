@@ -14,7 +14,7 @@
   <div class="wrapper clearfix">
     <div class="left">
       <div class="name-hero">
-        <div class="me-img" style="background-image: url({{ profile.image_url if profile.image_url else 'https://cdn.dribbble.com/users/760319/screenshots/3907189/man.png?resize=400x0'}});"></div>
+        <div id="profileImage" class="me-img" style="background-image: url('{{ profile.image_url if profile.image_url else 'https://cdn.dribbble.com/users/760319/screenshots/3907189/man.png?resize=400x0'}}');"></div>
         <div class="name-text">
           <h1>{{ profile.first_name }} <em>{{ profile.last_name }}</em></h1>
           {% if profile.contact_methods %}
@@ -77,5 +77,16 @@
       </div>
     </div>
   </div>
+  <script>
+    var imageUrl = "{{ profile.image_url if profile.image_url else 'https://cdn.dribbble.com/users/760319/screenshots/3907189/man.png?resize=400x0'}}";
+    var fallbackUrl = 'https://cdn.dribbble.com/users/760319/screenshots/3907189/man.png?resize=400x0';
+
+    var img = new Image();
+    img.src = imageUrl;
+
+    img.onerror = function() {
+        document.getElementById('profileImage').style.backgroundImage = 'url(' + fallbackUrl + ')';
+    }
+</script>
 </body>
 </html>
