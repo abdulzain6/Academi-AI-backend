@@ -490,6 +490,8 @@ def chat_general_stream(
             return f"Error in uml diagram {e}"        
         
     def make_cv(string: str, template_name: str):
+        if not string:
+            string = "Make a random cv"
         logging.info(f"Making cv for text {string}")
         model_name, premium_model = can_use_premium_model(user_id=user_id)     
         model = get_model({"temperature": 0}, False, premium_model, alt=False)
