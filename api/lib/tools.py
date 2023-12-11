@@ -1,9 +1,8 @@
 import os
-import random
 import tempfile
 import uuid
 import pypandoc, pdfkit
-import json
+import vl_convert as vlc
 from typing import List, Dict, Union, Optional, IO
 from scholarly import scholarly
 from langchain.tools.base import BaseTool, Tool
@@ -26,6 +25,7 @@ from bs4 import BeautifulSoup
 from langchain.utilities.searx_search import SearxSearchWrapper
 
 from api.routers.utils import image_to_pdf_in_memory
+from typing import Tuple
 from ..lib.cv_maker.cv_maker import CVMaker
 
 
@@ -264,3 +264,27 @@ def make_uml_diagram(
     cache_manager.set(key=doc_id, value=img_bytes, ttl=18000, suppress=False)
     document_url = url_template.format(doc_id=doc_id)
     return document_url
+
+def make_vega_graph(
+    vl_spec: str,
+    cache_manager,
+    url_template: str,
+):
+    doc_id = str(uuid.uuid4()) + ".svg"
+    img_bytes = vega_lite_to_images(vl_spec=vl_spec)
+    cache_manager.set(key=doc_id, value=img_bytes, ttl=18000, suppress=False)
+    document_url = url_template.format(doc_id=doc_id)
+    return document_url
+
+
+def vega_lite_to_images(vl_spec: str) -> bytes:
+    """
+    Convert a Vega-Lite specification to SVG and PNG formats.
+
+    :param vl_spec: Vega-Lite specification as a string.
+    :return: SVG Bytes
+    """
+
+    svg_data = vlc.vegalite_to_svg(vl_spec=vl_spec).encode('utf-8')
+    #png_data = vlc.vegalite_to_png(vl_spec=vl_spec, scale=2)
+    return svg_data

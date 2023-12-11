@@ -65,7 +65,7 @@ def deduct_points_for_feature(user_id: str, func, feature_key: str, usage_key: s
             raise ValueError("Feature limit reached for current plan")
     
 
-        raise ValueError("Error occured")
+        raise ValueError(e)
 
 
 

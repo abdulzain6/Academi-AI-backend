@@ -21,16 +21,16 @@ from ..globals import (
     knowledge_manager,
     subscription_manager,
     redis_cache_manager,
-    plantuml_server
+    plantuml_server,
 )
 from ..globals import (
     template_manager,
     temp_knowledge_manager,
     get_model,
-    get_model_and_fallback
+    get_model_and_fallback,
 )
 from ..lib.database.messages import MessagePair
-from ..lib.utils import split_into_chunks, extract_schema_fields, timed_random_choice, flatten_dict_to_string
+from ..lib.utils import split_into_chunks, extract_schema_fields, timed_random_choice
 from ..dependencies import (
     can_use_premium_model,
     require_points_for_feature,
@@ -43,7 +43,13 @@ from langchain.tools import StructuredTool
 from .utils import select_random_chunks, find_most_similar
 from langchain.pydantic_v1 import BaseModel as OldBaseModel
 from langchain.pydantic_v1 import Field as OldField
-from ..lib.tools import MakePresentationInput, make_ppt, make_uml_diagram, make_cv_from_string
+from ..lib.tools import (
+    MakePresentationInput,
+    make_ppt,
+    make_uml_diagram,
+    make_cv_from_string,
+    make_vega_graph,
+)
 from api.config import CACHE_DOCUMENT_URL_TEMPLATE
 
 router = APIRouter()
@@ -332,14 +338,27 @@ def chat_general_stream(
     )
     data_queue = queue.Queue()
 
-    random_template = timed_random_choice(CVMaker.get_all_templates_static(template_loader()))
+    random_template = timed_random_choice(
+        CVMaker.get_all_templates_static(template_loader())
+    )
+
+    class MakeGraphArgs(OldBaseModel):
+        vega_lite_spec: str = OldField(
+            description="Vega lite spec to render"
+        )
 
     class MakeCVArgs(OldBaseModel):
-        cv_details_text: str = OldField("random CV", description="Details of the CV formatted as short text, it must have the following user details ask them if needed:\n " + extract_schema_fields(random_template["schema"]))
-        
+        cv_details_text: str = OldField(
+            "random CV",
+            description="Details of the CV formatted as short text, it must have the following user details ask them if needed:\n "
+            + extract_schema_fields(random_template["schema"]),
+        )
+
     class MakeUMLArgs(OldBaseModel):
-        detailed_instructions: str = OldField("random diagram", description="Details of the diagram to make")
-        
+        detailed_instructions: str = OldField(
+            "random diagram", description="Details of the diagram to make"
+        )
+
     class ReadDataArgs(OldBaseModel):
         query: str = OldField("all", description="What you want to search")
         subject_name: str = OldField(
@@ -422,18 +441,20 @@ def chat_general_stream(
         number_of_pages: int,
         negative_prompt: str,
     ):
-        logging.info(
-            f"{topic}, {instructions}, {number_of_pages}, {negative_prompt}"
-        )
+        logging.info(f"{topic}, {instructions}, {number_of_pages}, {negative_prompt}")
         try:
-            model_name, premium_model = use_feature_with_premium_model_check("PRESENTATION", user_id=user_id)
+            model_name, premium_model = use_feature_with_premium_model_check(
+                "PRESENTATION", user_id=user_id
+            )
         except Exception:
             return "Limit reached user cannot make more ppts"
-        
-        llm = get_model({"temperature": 0.3}, False, premium_model)        
-        ppt_pages = subscription_manager.get_feature_value(user_id, "ppt_pages").main_data or 12
+
+        llm = get_model({"temperature": 0.3}, False, premium_model)
+        ppt_pages = (
+            subscription_manager.get_feature_value(user_id, "ppt_pages").main_data or 12
+        )
         number_of_pages = min(number_of_pages, ppt_pages)
-    
+
         presentation_maker = PresentationMaker(
             template_manager,
             temp_knowledge_manager,
@@ -460,7 +481,7 @@ def chat_general_stream(
                     "url_template": CACHE_DOCUMENT_URL_TEMPLATE,
                 },
                 feature_key="PRESENTATION",
-                usage_key="PRESENTATION"
+                usage_key="PRESENTATION",
             )
         except Exception as e:
             logging.error(f"Error in ppt {e}")
@@ -468,7 +489,7 @@ def chat_general_stream(
 
     def make_uml_digram(detailed_instructions: str):
         logging.info(f"Making uml diagram on {detailed_instructions}")
-        model_name, premium_model = can_use_premium_model(user_id=user_id)     
+        model_name, premium_model = can_use_premium_model(user_id=user_id)
         model = get_model({"temperature": 0}, False, premium_model, alt=False)
         uml_maker = AIPlantUMLGenerator(model, generator=plantuml_server)
         logging.info(f"UML request from {user_id}, Data: {detailed_instructions}")
@@ -483,22 +504,22 @@ def chat_general_stream(
                     "url_template": CACHE_DOCUMENT_URL_TEMPLATE,
                 },
                 feature_key="UML",
-                usage_key="UML"
+                usage_key="UML",
             )
         except Exception as e:
             logging.error(f"Error in uml diagram {e}")
-            return f"Error in uml diagram {e}"        
-        
+            return f"Error in uml diagram {e}"
+
     def make_cv(string: str, template_name: str):
         if not string:
             string = "Make a random cv"
         logging.info(f"Making cv for text {string}")
-        model_name, premium_model = can_use_premium_model(user_id=user_id)     
+        model_name, premium_model = can_use_premium_model(user_id=user_id)
         model = get_model({"temperature": 0}, False, premium_model, alt=False)
         cv_maker = CVMaker(
             templates=template_loader(),
             chrome_path="/usr/bin/google-chrome",
-            chat_model=model
+            chat_model=model,
         )
         try:
             return deduct_points_for_feature(
@@ -509,16 +530,34 @@ def chat_general_stream(
                     "template_name": template_name,
                     "cache_manager": redis_cache_manager,
                     "url_template": CACHE_DOCUMENT_URL_TEMPLATE,
-                    "string" : string  + "\n Make things up if needed keep it detailed."
+                    "string": string + "\n Make things up if needed keep it detailed.",
                 },
                 feature_key="CV",
-                usage_key="CV"
-            ) 
+                usage_key="CV",
+            )
         except Exception as e:
             logging.error(f"Error in cv generation {e}")
-            return f"Error in cv generation {e}"           
-    
-    
+            return f"Error in cv generation {e}"
+
+    def make_graph(vega_lite_spec: str):
+        if not vega_lite_spec:
+            return "Enter a valid spec recieved none"
+        try:
+            return deduct_points_for_feature(
+                user_id,
+                make_vega_graph,
+                func_kwargs={
+                    "vl_spec": vega_lite_spec,
+                    "cache_manager": redis_cache_manager,
+                    "url_template": CACHE_DOCUMENT_URL_TEMPLATE,
+                },
+                feature_key="GRAPH",
+                usage_key="GRAPH",
+            )
+        except Exception as e:
+            logging.error(f"Error in graph generation {e}")
+            return f"Error in graph generation {e}"
+
     extra_tools = [
         StructuredTool.from_function(
             func=lambda topic, instructions="", number_of_pages=5, negative_prompt="", *args, **kwargs: make_presentation(
@@ -557,13 +596,20 @@ def chat_general_stream(
         StructuredTool.from_function(
             func=lambda *args, **kwargs: make_cv(
                 template_name=random_template["name"],
-                string=args[0] if args else kwargs.get("cv_details_text")
-            ),   
+                string=args[0] if args else kwargs.get("cv_details_text"),
+            ),
             name="make_cv",
             description="Used to make a cv, Ask the user for details if needed. You can make things up except for the image url",
             args_schema=MakeCVArgs,
-        )
-        
+        ),
+        StructuredTool.from_function(
+            func=lambda vega_lite_spec, *args, **kwargs: make_graph(
+                vega_lite_spec=vega_lite_spec
+            ),
+            name="make_vega_lite_graph",
+            description="Used to make graphs using vega lite. Takes in a vega lite spec in json format.",
+            #args_schema=MakeGraphArgs,
+        ),
     ]
 
     def data_generator() -> Generator[str, None, None]:

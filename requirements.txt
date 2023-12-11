@@ -44,3 +44,4 @@ azure-cognitiveservices-vision-computervision
 PyPDF2
 azure-ai-formrecognizer
 markdown2
+vl-convert-python

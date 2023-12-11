@@ -45,7 +45,8 @@ FEATURE_PRICING = get_dict_from_env_var(
         "CV" : 3,
         "NOTES" : 3,
         "GRAMMAR" : 2,
-        "UML" : 3
+        "UML" : 3,
+        "GRAPH" : 1
     }
 )
 
