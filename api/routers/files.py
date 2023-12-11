@@ -16,7 +16,7 @@ from ..dependencies import can_add_more_data
 
 router = APIRouter()
 
-MAX_FILE_SIZE = 10 * 1024 * 1024
+MAX_FILE_SIZE = 25 * 1024 * 1024
 
 
 class FileCreate(BaseModel):
@@ -177,7 +177,7 @@ def create_file(
                 logging.error(f"File is too big {user_id}")
                 raise HTTPException(
                     status_code=400,
-                    detail="File size exceeds the maximum limit of 10 MB",
+                    detail="File size exceeds the maximum limit of 25 MB",
                 )
             temp_file.write(contents)
             temp_file.seek(0)
