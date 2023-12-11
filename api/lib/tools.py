@@ -270,7 +270,7 @@ def make_vega_graph(
     cache_manager,
     url_template: str,
 ):
-    doc_id = str(uuid.uuid4()) + ".svg"
+    doc_id = str(uuid.uuid4()) + ".png"
     img_bytes = vega_lite_to_images(vl_spec=vl_spec)
     cache_manager.set(key=doc_id, value=img_bytes, ttl=18000, suppress=False)
     document_url = url_template.format(doc_id=doc_id)
@@ -285,6 +285,6 @@ def vega_lite_to_images(vl_spec: str) -> bytes:
     :return: SVG Bytes
     """
 
-    svg_data = vlc.vegalite_to_svg(vl_spec=vl_spec).encode('utf-8')
-    #png_data = vlc.vegalite_to_png(vl_spec=vl_spec, scale=2)
-    return svg_data
+    #svg_data = vlc.vegalite_to_svg(vl_spec=vl_spec).encode('utf-8')
+    png_data = vlc.vegalite_to_png(vl_spec=vl_spec, scale=2)
+    return png_data
