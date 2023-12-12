@@ -409,7 +409,7 @@ def chat_general_stream(
         )
 
         if collection.number_of_files == 0:
-            return "Subject has no files, but it exists. Ask the user to upload a file or use your knowledge to answer"
+            return "Subject has no files, but it exists. Ask the user to upload a file. AI can also use its own knowledge to answer."
 
         if file_name:
             all_file_names = [
