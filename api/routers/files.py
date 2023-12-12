@@ -37,7 +37,12 @@ class LinkFileInput(BaseModel):
     youtube_link: Optional[str]
     web_link: Optional[str]
 
-    
+
+def is_safe_filename(filename: str) -> bool:
+    """
+    Check if the filename is safe to use.
+    """
+    return not any(seg in ["..", "/"] for seg in os.path.split(filename))
 
 
 @router.post("/linkfile")
@@ -139,7 +144,7 @@ def create_file(
     
     try:
         logging.info(f"Create file request from {user_id}, collection={collection_name}, filename={filename}")
-        if "../" in filename or "../" in file.filename:
+        if not is_safe_filename(filename) or not is_safe_filename(file.filename):
             logging.warning(f"{user_id} is a sus user!")
             raise HTTPException(
                 detail="Invalid filename", status_code=status.HTTP_400_BAD_REQUEST
@@ -157,6 +162,16 @@ def create_file(
             raise HTTPException(
                 detail="File Already exists", status_code=status.HTTP_400_BAD_REQUEST
             )
+            
+        # Check file size before reading it completely
+        file_size = file.file.seek(0, os.SEEK_END)
+        file.file.seek(0)  # Reset file pointer to the beginning
+        if file_size > MAX_FILE_SIZE:
+            logging.error(f"File is too big {user_id}")
+            raise HTTPException(
+                status_code=400,
+                detail="File size exceeds the maximum limit",
+            )
 
         user_plan = subscription_manager.get_subscription_type(user_id)
         if user_plan in {SubscriptionType.PRO, SubscriptionType.ELITE}:
@@ -173,12 +188,6 @@ def create_file(
             delete=True, suffix=file_extension, mode="w+b"
         ) as temp_file:
             contents = file.file.read()
-            if len(contents) > MAX_FILE_SIZE:
-                logging.error(f"File is too big {user_id}")
-                raise HTTPException(
-                    status_code=400,
-                    detail="File size exceeds the maximum limit of 25 MB",
-                )
             temp_file.write(contents)
             temp_file.seek(0)
 

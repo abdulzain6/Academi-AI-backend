@@ -267,6 +267,11 @@ class KnowledgeManager:
 
     def load_data(self, file_path: str, advanced_pdf_extraction: bool = False) -> Tuple[str, List[Document], bytes]:
         print(f"Loading {file_path}")
+        
+        if not file_path.startswith("/tmp/"):
+            logging.error(f"Invalid file path: {file_path}. Access outside /tmp directory is not allowed.")
+            raise ValueError("Invalid file path")
+
         if self.is_image_file(file_path):
             logging.info("Using azure ocr")
             docs = [Document(page_content=self.azure_ocr.perform_ocr(file_path))]
