@@ -2,6 +2,7 @@ import os
 import tempfile
 import uuid
 import pypandoc, pdfkit
+import requests
 import vl_convert as vlc
 from typing import List, Dict, Union, Optional, IO
 from scholarly import scholarly
@@ -201,6 +202,28 @@ class SearchTool(BaseTool):
         )
         return response
 
+class SearchImage(BaseTool):
+    name: str = "search_image"
+    description: str = "Used to search image from the internet, can be used to look for search aids"
+    instance_url: str = 'http://localhost:8090'
+    limit: int = 1
+    
+    def _run(
+        self, query: str, run_manager: Optional[CallbackManagerForToolRun] = None
+    ) -> str:
+        params = {
+            'q': query,
+            'categories': 'images',
+            'format': 'json'
+        }
+        
+        response = requests.get(f"{self.instance_url}/search", params=params)
+        if response.status_code == 200:
+            results = response.json()['results']
+            return [result['img_src'] for result in results][:self.limit]  # Limit the results here
+        else:
+            return "No image found"
+
 
 def make_cv_from_string(
     cv_maker: CVMaker, template_name: str, string: str, cache_manager, url_template: str
@@ -230,7 +253,6 @@ def make_cv_from_string(
         except Exception as e:
             return f"There was an error : {e}"
 
-
 def make_ppt(
     ppt_maker: PresentationMaker,
     ppt_input: MakePresentationInput,
@@ -251,7 +273,6 @@ def make_ppt(
     os.remove(ppt_path)
     document_url = url_template.format(doc_id=doc_id)
     return document_url
-
 
 def make_uml_diagram(
     uml_maker: AIPlantUMLGenerator,

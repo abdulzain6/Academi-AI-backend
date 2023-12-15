@@ -2,7 +2,7 @@ from langchain.utilities.searx_search import SearxSearchWrapper
 from langchain.tools.youtube.search import YouTubeSearchTool
 from api.config import REDIS_URL, CACHE_DOCUMENT_URL_TEMPLATE, SEARCHX_HOST
 from api.lib.database.cache_manager import RedisCacheManager
-from api.lib.tools import ScholarlySearchRun, MarkdownToPDFConverter, RequestsGetTool, SearchTool
+from api.lib.tools import ScholarlySearchRun, MarkdownToPDFConverter, RequestsGetTool, SearchTool, SearchImage
 from langchain.utilities.requests import TextRequestsWrapper
 import redis
 
@@ -17,4 +17,6 @@ CHAT_TOOLS = [
     RequestsGetTool(requests_wrapper=TextRequestsWrapper()),
     YouTubeSearchTool(),
     ScholarlySearchRun(),
+    SearchImage(instance_url=SEARCHX_HOST)
 ]
+

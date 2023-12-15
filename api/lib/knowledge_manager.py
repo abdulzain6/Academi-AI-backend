@@ -1,4 +1,5 @@
 import ipaddress
+import time
 import logging
 import random
 import re
@@ -22,12 +23,12 @@ from langchain.prompts import (
     ChatPromptTemplate,
     SystemMessagePromptTemplate,
     HumanMessagePromptTemplate,
+    PromptTemplate
 )
 
 from typing import Dict, List, Tuple, Union
 from qdrant_client import QdrantClient
-import time
-
+from langchain.pydantic_v1 import BaseModel, Field
 from langchain.agents import Tool
 from langchain.agents import AgentExecutor
 from langchain.schema import (
@@ -36,6 +37,7 @@ from langchain.schema import (
     AIMessage,
     LLMResult,
 )
+from langchain.chains import create_extraction_chain_pydantic
 from api.lib.maths_solver.modified_openai_agent import ModifiedOpenAIAgent
 from api.lib.maths_solver.python_exec_client import PythonClient
 from api.lib.ocr import AzureOCR
@@ -919,16 +921,17 @@ Coins can be earned by watching ads. But you should recommend users to subscribe
 Users can add subjects in the app, then choose a subject and add files to them. Quizzes and flashcards are made from those.
 Rules:
     Use tools if you think you need help or to confirm answer.
+    You can also use tools to give the student pdfs as study material also.
+    Lets keep tools in mind before answering the questions.
+    Talk like a teacher! Start the conversation with "Hello, I'm your AI teacher, ready to explore the world of knowledge together. Let's start this journey of learning and discovery!"
 
 Student has also made subjects in the app and added files to them also.
 They are:
 {files}
 ==========
 
-You can also use tools to give the student pdfs also.
-Lets keep tools in mind before answering the questions. Good luck mr teacher
-Talk like a teacher, dont start with "Hello, how can i assist you today?". Say what a teacher would
-Use graphs from graphviz to better explain concepts. You can make mindmaps etc also.
+Follow all above rules (Important)
+Always use visual aids to better explain stuff!! use tools for this you can search for images, use graphviz or any other tool! (Very very important. Don't forget)
 """
             ).format(**prompt_args),
             "extra_prompt_messages": chat_history_messages,
@@ -939,6 +942,26 @@ Use graphs from graphviz to better explain concepts. You can make mindmaps etc a
             agent_kwargs=agent_kwargs,
             max_iterations=3,
         )
+        
+    def tool_picker(self, llm: BaseChatModel, tools: List[Tool], query: str):
+        class Tool(BaseModel):
+            name: str = Field(json_schema_extra={'description' : "Exact name of the chosen tool"})
+            
+        tool_names = "\n".join([tool.name for tool in tools])
+        prompt = """You are to pick 5 tools relavant to the user's query. You must pick 5 no matter what!
+Available tools:
+{tools}
+
+Query:
+{query}
+
+The 5 relavent tools:"""
+        prompt = PromptTemplate(template=prompt, input_variables=["tools", "query"])
+        chain = create_extraction_chain_pydantic(Tool, llm, prompt=prompt)
+        picked_tools = chain.run(tools=tool_names, query=query)
+       # picked_tools = [for tool in tools if tool.name in picked_]
+        return picked_tools
+        
 
     def run_agent(
         self,
@@ -967,6 +990,8 @@ Use graphs from graphviz to better explain concepts. You can make mindmaps etc a
         )
         if not callback:
             raise ValueError("Callback not passed for streaming to work")
+        
+        #picked_tools = self.tool_picker(llm, tools=[*self.make_code_runner(), *extra_tools, *self.base_tools], query=prompt)
 
         return agent.run(
             prompt,

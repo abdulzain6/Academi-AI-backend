@@ -335,18 +335,13 @@ def chat_general_stream(
 
     model_name, premium_model = can_use_premium_model(user_id=user_id)
     model_default, model_fallback = get_model_and_fallback(
-        {"temperature": 0.3}, True, premium_model
+        {"temperature": 0.5}, True, premium_model
     )
     data_queue = queue.Queue()
 
     random_template = timed_random_choice(
         CVMaker.get_all_templates_static(template_loader())
     )
-
-    class MakeGraphArgs(OldBaseModel):
-        vega_lite_spec: str = OldField(
-            description="Vega lite spec to render"
-        )
 
     class MakeCVArgs(OldBaseModel):
         cv_details_text: str = OldField(
