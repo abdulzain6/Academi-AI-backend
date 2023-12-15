@@ -20,6 +20,7 @@ RUN apt-get update && \
     fonts-noto-color-emoji \
     fonts-indic \
     fonts-noto \
+    graphviz \
     && apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
