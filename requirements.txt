@@ -19,7 +19,7 @@ retrying
 python-Levenshtein
 six
 tiktoken
-unstructured[all]
+unstructured[all]==0.11.2
 uvicorn
 XlsxWriter
 youtube-transcript-api
