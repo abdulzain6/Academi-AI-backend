@@ -13,7 +13,7 @@ from langchain.chat_models.base import BaseChatModel
 from langchain.document_loaders import UnstructuredAPIFileLoader
 from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.vectorstores import Qdrant
+from langchain.vectorstores.qdrant import Qdrant
 from langchain.document_loaders import YoutubeLoader
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.schema import Document, LLMResult
@@ -648,8 +648,11 @@ Lets use tools and keep the files data above in mind before answering the questi
     def query_data(
         self, query: str, collection_name: str, k: int, metadata: Dict[str, str] = None
     ):
-        vectorstore = Qdrant(self.client, collection_name, self.embeddings)
-        return vectorstore.similarity_search(query, k, filter=metadata)
+        try:
+            vectorstore = Qdrant(self.client, collection_name, self.embeddings)
+            return vectorstore.similarity_search(query, k, filter=metadata)
+        except Exception as e:
+            return []
 
     def run_agent(
         self,
@@ -704,7 +707,7 @@ Lets use tools and keep the files data above in mind before answering the questi
             prompt_args={
                 "language": "In the same langage of user",
                 "ai_name": self.ai_name,
-                "help_data": help_data,
+                "help_data": help_data or "Ask the user to delete the file and make a new one there was an issue in the backend!",
             },
             extra_tools=[],
         )
