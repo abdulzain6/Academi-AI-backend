@@ -247,7 +247,7 @@ knowledge_manager = KnowledgeManager(
 chat_manager = ChatManagerRetrieval(
     OpenAIEmbeddings(),
     conversation_limit=800,
-    docs_limit=1700,
+    docs_limit=2100,
     qdrant_api_key=QDRANT_API_KEY,
     qdrant_url=QDRANT_URL,
     python_client=client,
