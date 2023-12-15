@@ -60,7 +60,7 @@ global_chat_model = AIModel(
 
 global_chat_model_alternative = AIModel(
     regular_model=ChatAnyscale,
-    regular_args={"model_name": "mistralai/Mistral-7B-Instruct-v0.1"},
+    regular_args={"model_name": "mistralai/Mixtral-8x7B-Instruct-v0.1"},
     premium_model=ChatOpenAI,
     premium_args={"model_name": "gpt-4-1106-preview", "max_tokens": 2700},
 )
