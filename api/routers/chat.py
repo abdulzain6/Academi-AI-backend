@@ -49,6 +49,7 @@ from ..lib.tools import (
     make_uml_diagram,
     make_cv_from_string,
     make_vega_graph,
+    make_graphviz_graph
 )
 from api.config import CACHE_DOCUMENT_URL_TEMPLATE
 
@@ -558,6 +559,16 @@ def chat_general_stream(
             logging.error(f"Error in graph generation {e}")
             return f"Error in graph generation {e}"
 
+    def create_graphviz_graph(dot_code: str):
+        if not dot_code:
+            return "Enter valid graphviz dot code"
+        try:
+            return make_graphviz_graph(dot_code, cache_manager=redis_cache_manager, url_template=CACHE_DOCUMENT_URL_TEMPLATE)
+        except Exception as e:
+            logging.error(f"Error in graph generation {e}")
+            return f"Error in graph generation {e}"
+
+
     extra_tools = [
         StructuredTool.from_function(
             func=lambda topic, instructions="", number_of_pages=5, negative_prompt="", *args, **kwargs: make_presentation(
@@ -608,6 +619,14 @@ def chat_general_stream(
             ),
             name="make_vega_lite_graph",
             description="Used to make graphs using vega lite. Takes in a vega lite spec in json format.",
+            #args_schema=MakeGraphArgs,
+        ),
+        StructuredTool.from_function(
+            func=lambda dot_code, *args, **kwargs: create_graphviz_graph(
+                dot_code=dot_code
+            ),
+            name="make_graphviz_graph",
+            description="Used to make graphs using graphviz. Takes in valid dot language code for graphviz",
             #args_schema=MakeGraphArgs,
         ),
     ]

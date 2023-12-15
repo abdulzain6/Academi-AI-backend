@@ -5,7 +5,7 @@ import pypandoc, pdfkit
 import vl_convert as vlc
 from typing import List, Dict, Union, Optional, IO
 from scholarly import scholarly
-from langchain.tools.base import BaseTool, Tool
+from langchain.tools.base import BaseTool
 from langchain.callbacks.manager import (
     CallbackManagerForToolRun,
 )
@@ -25,8 +25,8 @@ from bs4 import BeautifulSoup
 from langchain.utilities.searx_search import SearxSearchWrapper
 
 from api.routers.utils import image_to_pdf_in_memory
-from typing import Tuple
 from ..lib.cv_maker.cv_maker import CVMaker
+from graphviz import Source
 
 
 
@@ -276,6 +276,17 @@ def make_vega_graph(
     document_url = url_template.format(doc_id=doc_id)
     return document_url
 
+def make_graphviz_graph(
+    dot_code: str,
+    cache_manager,
+    url_template: str
+) -> str:
+    doc_id = str(uuid.uuid4()) + ".png"
+    dot = Source(dot_code)
+    img_bytes = dot.pipe(format='png')
+    cache_manager.set(key=doc_id, value=img_bytes, ttl=18000, suppress=False)
+    document_url = url_template.format(doc_id=doc_id)
+    return document_url
 
 def vega_lite_to_images(vl_spec: str) -> bytes:
     """
