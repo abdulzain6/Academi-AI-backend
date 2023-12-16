@@ -291,6 +291,7 @@ You will not generate unimportant or incomplete questions.
 You will not generate too many questions as this is not the full set but a part of it. (Important) 
 The flashcard set is to be of {number_of_questions} questions. (Important)
 Follow the schema provided to generate the flashcards, failing to do so will raise an error. (Important!!)
+Only return the json!!
 """
                 ),
                 HumanMessagePromptTemplate.from_template(
@@ -306,8 +307,7 @@ The schema:
 {format_instructions}
 
 If there is no data, Use your knowledge to generate the flashcards about '{collection_name}, Description: {description}'. if you dont know about the term, make general flashcards
-
-The generated flashcards in proper schema. You must follow the schema(Important):
+The generated flashcards in proper schema. You must follow the schema and return json only!!:
 """
                 ),
             ],
