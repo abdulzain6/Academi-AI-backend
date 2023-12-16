@@ -19,6 +19,31 @@ from langchain.agents.openai_functions_agent.base import OpenAIFunctionsAgent
 from langchain.agents.format_scratchpad.openai_functions import (
     format_to_openai_function_messages,
 )
+"""Module implements an agent that uses OpenAI's APIs function enabled API."""
+from typing import Any, List, Optional, Sequence, Tuple, Union
+
+from langchain.agents import BaseSingleActionAgent
+from langchain.agents.format_scratchpad.openai_functions import (
+    format_to_openai_function_messages,
+)
+from langchain.agents.output_parsers.openai_functions import (
+    OpenAIFunctionsAgentOutputParser,
+)
+from langchain.callbacks.base import BaseCallbackManager
+from langchain.prompts.chat import (
+    BaseMessagePromptTemplate,
+)
+from langchain.schema import (
+    AgentAction,
+    AgentFinish,
+)
+from langchain.schema.language_model import BaseLanguageModel
+from langchain.schema.messages import (
+    BaseMessage,
+    SystemMessage,
+)
+from langchain.tools.base import BaseTool
+from langchain.tools.render import format_tool_to_openai_function
 
 class OpenAIFunctionsAgentOutputParser(AgentOutputParser):
     """Parses a message into agent action/finish.
@@ -139,3 +164,28 @@ class ModifiedOpenAIAgent(OpenAIFunctionsAgent):
             predicted_message
         )
         return agent_decision
+    
+    @classmethod
+    def from_llm_and_tools(
+        cls,
+        llm: BaseLanguageModel,
+        tools: Sequence[BaseTool],
+        callback_manager: Optional[BaseCallbackManager] = None,
+        extra_prompt_messages: Optional[List[BaseMessagePromptTemplate]] = None,
+        system_message: Optional[SystemMessage] = SystemMessage(
+            content="You are a helpful AI assistant."
+        ),
+        **kwargs: Any,
+    ) -> BaseSingleActionAgent:
+
+        prompt = cls.create_prompt(
+            extra_prompt_messages=extra_prompt_messages,
+            system_message=system_message,
+        )
+        return cls(
+            llm=llm,
+            prompt=prompt,
+            tools=tools,
+            callback_manager=callback_manager,
+            **kwargs,
+        )

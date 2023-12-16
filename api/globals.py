@@ -53,27 +53,33 @@ current_directory = os.path.dirname(os.path.abspath(__file__))
 global_kwargs = {"request_timeout": 35, "max_retries": 4}
 global_chat_model = AIModel(
     regular_model=ChatOpenAI,
-    regular_args={"model_name": "gpt-3.5-turbo"},
+    regular_binds={"response_format" : {"type": "json_object"}},
+    regular_args={"model_name": "gpt-3.5-turbo-1106"},
     premium_model=ChatOpenAI,
+    premium_binds={},
     premium_args={"model_name": "gpt-4-1106-preview", "max_tokens": 2700},
 )
 
 global_chat_model_alternative = AIModel(
     regular_model=ChatAnyscale,
+    regular_binds={},
     regular_args={"model_name": "mistralai/Mixtral-8x7B-Instruct-v0.1", "max_tokens": 7000},
     premium_model=ChatOpenAI,
+    premium_binds={},
     premium_args={"model_name": "gpt-4-1106-preview", "max_tokens": 2700},
 )
 
 fallback_chat_models = [
     AIModel(
         regular_model=AzureChatOpenAI,
+        regular_binds={},
         regular_args={
             "openai_api_version": "2023-05-15",
             "model": "gpt-35-turbo",
             "azure_deployment": "academi",
         },
         premium_model=AzureChatOpenAI,
+        premium_binds={},
         premium_args={
             "openai_api_version": "2023-05-15",
             "model": "gpt-35-turbo",
@@ -89,6 +95,7 @@ def get_model(
     is_premium: bool,
     alt: bool = False,
     cache: bool = True,
+    enable_bindings: bool = True
 ) -> BaseChatModel:
     args = {**model_kwargs, **{"streaming": stream, "cache": cache}}
 
@@ -97,19 +104,27 @@ def get_model(
             model = global_chat_model.premium_model(
                 **global_chat_model.premium_args, **global_kwargs
             )
+            if global_chat_model.premium_binds and enable_bindings:
+                model = model.bind(**global_chat_model.premium_binds)
         else:
             model = global_chat_model.regular_model(
                 **global_chat_model.regular_args, **global_kwargs
             )
+            if global_chat_model.regular_model and enable_bindings:
+                model = model.bind(**global_chat_model.regular_binds)
     else:
         if is_premium:
             model = global_chat_model_alternative.premium_model(
                 **global_chat_model_alternative.premium_args, **global_kwargs
             )
+            if global_chat_model_alternative.premium_binds and enable_bindings:
+                model = model.bind(**global_chat_model_alternative.premium_binds)
         else:
             model = global_chat_model_alternative.regular_model(
                 **global_chat_model_alternative.regular_args, **global_kwargs
             )
+            if global_chat_model_alternative.regular_binds and enable_bindings:
+                model = model.bind(**global_chat_model_alternative.regular_binds)
 
     for k, v in args.items():
         with suppress(Exception):
@@ -122,10 +137,14 @@ def get_model(
                 fallback_model = fallback.premium_model(
                     **fallback.premium_args, **global_kwargs
                 )
+                if fallback.premium_binds and enable_bindings:
+                    fallback_model = fallback_model.bind(**fallback.premium_binds)
             else:
                 fallback_model = fallback.regular_model(
                     **fallback.regular_args, **global_kwargs
                 )
+                if fallback.regular_binds and enable_bindings:
+                    fallback_model = fallback_model.bind(**fallback.regular_binds)
 
             for k, v in args.items():
                 with suppress(Exception):
@@ -144,7 +163,7 @@ def get_model(
 
 
 def get_model_and_fallback(
-    model_kwargs: dict, stream: bool, is_premium: bool, alt: bool = False
+    model_kwargs: dict, stream: bool, is_premium: bool, alt: bool = False, enable_bindings: bool = True
 ):
     model_kwargs = {**model_kwargs, "streaming": stream}
     if is_premium:
@@ -152,28 +171,40 @@ def get_model_and_fallback(
             model = global_chat_model.premium_model(
                 **global_chat_model.premium_args, **global_kwargs
             )
+            if global_chat_model.premium_binds and enable_bindings:
+                model = model.bind(**global_chat_model.premium_binds)
         else:
             model = global_chat_model_alternative.premium_model(
                 **global_chat_model_alternative.premium_args, **global_kwargs
             )
+            if global_chat_model_alternative.premium_binds and enable_bindings:
+                model = model.bind(**global_chat_model_alternative.premium_binds)
 
         fallback_model = fallback_chat_models[-1].premium_model(
             **fallback_chat_models[-1].premium_args, **global_kwargs
         )
+        if fallback_chat_models[-1].premium_binds and enable_bindings:
+            model = model.bind(**fallback_chat_models[-1].premium_binds)
     else:
         if not alt:
             model = global_chat_model.regular_model(
                 **global_chat_model.regular_args, **global_kwargs
             )
+            if global_chat_model.regular_binds and enable_bindings:
+                model = model.bind(**global_chat_model.regular_binds)
         else:
             model = global_chat_model_alternative.regular_model(
                 **global_chat_model_alternative.regular_args, **global_kwargs
             )
-
+            if global_chat_model_alternative.regular_binds and enable_bindings:
+                model = model.bind(**global_chat_model_alternative.regular_binds)
+                
         fallback_model = fallback_chat_models[-1].regular_model(
             **fallback_chat_models[-1].regular_args, **global_kwargs
         )
-
+        if fallback_chat_models[-1].regular_binds and enable_bindings:
+            model = model.bind(**fallback_chat_models[-1].regular_binds)
+            
     for k, v in model_kwargs.items():
         with suppress(Exception):
             setattr(model, k, v)

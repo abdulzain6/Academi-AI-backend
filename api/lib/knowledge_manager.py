@@ -635,7 +635,7 @@ Lets use tools and keep the files data above in mind before answering the questi
         **kwargs: Any,
     ):
         agent_obj = ModifiedOpenAIAgent.from_llm_and_tools(
-            llm, tools, callback_manager=callback_manager, **agent_kwargs
+            llm=llm, tools=tools, callback_manager=callback_manager, **agent_kwargs
         )
         return AgentExecutor.from_agent_and_tools(
             agent=agent_obj,
