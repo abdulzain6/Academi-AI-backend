@@ -92,7 +92,7 @@ def evaluate_quiz(
     play_integrity_verified=Depends(verify_play_integrity),
 ):
     logging.info(f"Got quiz evaluation request, {user_id}... Input: {user_answers}")
-    model = get_model({"temperature": 0.3}, False, False, alt=True)
+    model = get_model({"temperature": 0.3}, False, False, alt=False)
     quiz_generator = QuizGenerator(
         file_manager,
         None,
