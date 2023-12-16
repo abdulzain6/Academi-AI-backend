@@ -61,7 +61,7 @@ def make_quiz(
         data = f"Make quiz about '{quiz_input.collection_name}' if the term doesnt make sense make general quiz"
     
     model_name, premium_model = use_feature_with_premium_model_check(user_id=user_id, feature_name="QUIZ")     
-    model = get_model({"temperature": 0}, False, premium_model, alt=True)    
+    model = get_model({"temperature": 0}, False, premium_model, alt=False)    
     quiz_generator = QuizGenerator(
         file_manager,
         None,

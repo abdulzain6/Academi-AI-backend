@@ -24,5 +24,5 @@ def make_uml(
         return Response(content=img_bytes, media_type="image/png")
     except Exception as e:
         logging.error(f"Error in making uml diagram {e}")
-        raise HTTPException(400, detail="AI was not able to make the diagram")
+        raise HTTPException(400, detail="AI was not able to make the diagram, explain in more detail")
     
