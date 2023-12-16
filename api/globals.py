@@ -50,7 +50,7 @@ import logging
 
 langchain.verbose = False
 current_directory = os.path.dirname(os.path.abspath(__file__))
-global_kwargs = {"request_timeout": 50, "max_retries": 4}
+global_kwargs = {"request_timeout": 35, "max_retries": 4}
 global_chat_model = AIModel(
     regular_model=ChatOpenAI,
     regular_args={"model_name": "gpt-3.5-turbo"},
@@ -60,7 +60,7 @@ global_chat_model = AIModel(
 
 global_chat_model_alternative = AIModel(
     regular_model=ChatAnyscale,
-    regular_args={"model_name": "mistralai/Mixtral-8x7B-Instruct-v0.1"},
+    regular_args={"model_name": "mistralai/Mixtral-8x7B-Instruct-v0.1", "max_tokens": 7000},
     premium_model=ChatOpenAI,
     premium_args={"model_name": "gpt-4-1106-preview", "max_tokens": 2700},
 )

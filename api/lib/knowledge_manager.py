@@ -165,7 +165,7 @@ class KnowledgeManager:
         azure_form_rec_client: DocumentAnalysisClient,
         chunk_size: int = 1000,
         chrome_path: str = "/usr/bin/google-chrome",
-        advanced_ocr_page_count: int = 15
+        advanced_ocr_page_count: int = 30
     ) -> None:
         self.azure_ocr = azure_ocr
         self.embeddings = embeddings

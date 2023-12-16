@@ -17,10 +17,10 @@ def check_grammar(
     user_id=Depends(get_user_id),
     play_integrity_verified=Depends(verify_play_integrity),
 ):     
-    if len(input.text) > 2500:
-        raise HTTPException(400, detail="Text cannot be above 2500 characters")
+    if len(input.text) > 4500:
+        raise HTTPException(400, detail="Text cannot be above 4500 characters")
     
     model_name, premium_model = can_use_premium_model(user_id=user_id)
-    model = get_model({"temperature": 0.2}, False, premium_model)
+    model = get_model({"temperature": 0.2}, False, premium_model, alt=True, cache=False)
     grammar_checker = GrammarChecker(model)
     return grammar_checker.check_grammar(input.text)

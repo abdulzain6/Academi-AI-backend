@@ -1,5 +1,6 @@
 from __future__ import print_function
 import base64
+import logging
 import string
 import httplib2
 import six
@@ -199,6 +200,7 @@ The plantuml code, nothing else:"""
                 return data
             except Exception as e:
                 string_exception = str(e)
+                logging.error(f"Error in uml maker: {e}")
                 errors.append(string_exception)
         raise ValueError("Requirements too difficult for AI")
 

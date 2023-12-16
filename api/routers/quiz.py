@@ -5,7 +5,7 @@ from ..auth import get_user_id, verify_play_integrity
 from ..globals import file_manager, collection_manager
 from pydantic import BaseModel
 from ..dependencies import get_model, require_points_for_feature, can_use_premium_model, use_feature_with_premium_model_check
-from ..lib.quiz import QuizGenerator, UserResponse, Result
+from ..lib.quiz import QuizGenerator, UserResponse
 from .utils import select_random_chunks
 import logging
 
@@ -61,7 +61,7 @@ def make_quiz(
         data = f"Make quiz about '{quiz_input.collection_name}' if the term doesnt make sense make general quiz"
     
     model_name, premium_model = use_feature_with_premium_model_check(user_id=user_id, feature_name="QUIZ")     
-    model = get_model({"temperature": 0}, False, premium_model)    
+    model = get_model({"temperature": 0}, False, premium_model, alt=True)    
     quiz_generator = QuizGenerator(
         file_manager,
         None,
@@ -92,7 +92,7 @@ def evaluate_quiz(
     play_integrity_verified=Depends(verify_play_integrity),
 ):
     logging.info(f"Got quiz evaluation request, {user_id}... Input: {user_answers}")
-    model = get_model({"temperature": 0.3}, False, False)
+    model = get_model({"temperature": 0.3}, False, False, alt=True)
     quiz_generator = QuizGenerator(
         file_manager,
         None,
@@ -145,7 +145,7 @@ def make_flashcards(
         data = f"Make flashcards about '{fc_input.collection_name}' if the term doesnt make sense make general flashcards"
     
     model_name, premium_model = can_use_premium_model(user_id=user_id)     
-    model = get_model({"temperature": 0}, False, premium_model)
+    model = get_model({"temperature": 0}, False, premium_model, alt=True)
     
     quiz_generator = QuizGenerator(
         file_manager,

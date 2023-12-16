@@ -1,3 +1,4 @@
+import logging
 from typing import List
 from langchain.chat_models.base import BaseChatModel
 from langchain.chains import LLMChain
@@ -27,14 +28,14 @@ class GrammarChecker:
         prompt = ChatPromptTemplate(
             messages=[
                 SystemMessagePromptTemplate.from_template(
-                    """You are an AI designed to detect and correct grammar issues from text.
+                    """You are an AI designed to detect and correct grammar issues or any language issues from text.
 You must check the complete text.
 You will return json in the schema told to you (Important).
 If there is no issue return an empty list (IMportant)
 """
                 ),
                 HumanMessagePromptTemplate.from_template(
-                    """Look at the following text for grammar issues:
+                    """Look at the following text for grammar issues and any other language issues:
 ===========
 {data}
 ============
@@ -44,6 +45,9 @@ The issues must be formatted in the schema below:
 =====================
 
 If there is no issue return an empty list (IMportant)
+Dont use invalid escapes!
+Before outputting, you must check if the text your about to output is valid or not.
+Lets think step by step, Correcting an issue may raise a new one. so fix recursively.
 The issues in proper format (Failure causes big error):"""
                 ),
             ],
@@ -53,6 +57,12 @@ The issues in proper format (Failure causes big error):"""
             partial_variables={"format_instructions" : parser.get_format_instructions()}
         )
         chain = LLMChain(prompt=prompt, llm=self.llm, output_parser=parser)
-        issues: GrammarIssues = chain.run(data=text)
+        for _ in range(3):
+            try:
+                issues: GrammarIssues = chain.run(data=text)
+                break
+            except Exception as e:
+                logging.error(f"Error in grammar checker {e}")
+            
         return {"issues" : issues.model_dump()}
         
