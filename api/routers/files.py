@@ -98,7 +98,8 @@ def create_link_file(
             web_url=linkfile.web_link,
         )
     except Exception as e:
-        logging.error(f"File not supported, Error: {e}")
+        import traceback
+        logging.error(f"File not supported, Error: {traceback.format_exception(e)}")
         raise HTTPException(400, "Link has no data/ Invalid link") from e
 
     try:
@@ -199,7 +200,8 @@ def create_file(
                     advanced_pdf_extraction=advanced_extraction
                 )
             except Exception as e:
-                logging.error(f"File not supported, Error: {e}")
+                import traceback
+                logging.error(f"File not supported, Error: {traceback.format_exception(e)}")
                 raise HTTPException(400, "FIle not supported/ FIle has no Data") from e
 
             try:

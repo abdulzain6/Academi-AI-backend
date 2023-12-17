@@ -49,7 +49,7 @@ from langchain.callbacks.base import BaseCallbackManager
 from langchain.schema.language_model import BaseLanguageModel
 from langchain.tools.base import BaseTool
 from langchain.schema.agent import AgentFinish
-from langchain.document_loaders import SeleniumURLLoader
+from langchain.document_loaders import WebBaseLoader
 from azure.ai.formrecognizer import DocumentAnalysisClient
 from langchain.document_loaders.pdf import DocumentIntelligenceLoader
 import PyPDF2
@@ -164,7 +164,6 @@ class KnowledgeManager:
         azure_ocr: AzureOCR,
         azure_form_rec_client: DocumentAnalysisClient,
         chunk_size: int = 1000,
-        chrome_path: str = "/usr/bin/google-chrome",
         advanced_ocr_page_count: int = 30
     ) -> None:
         self.azure_ocr = azure_ocr
@@ -178,7 +177,6 @@ class KnowledgeManager:
         self.client = QdrantClient(
             url=self.qdrant_url, api_key=self.qdrant_api_key, prefer_grpc=True
         )
-        self.chrome_path = chrome_path
         self.advanced_ocr_page_count = advanced_ocr_page_count
 
     def split_docs(self, docs: Document) -> List[Document]:
@@ -389,7 +387,7 @@ class KnowledgeManager:
             if not self.validate_url(web_url):
                 raise ValueError("Invalid URL")
 
-            loader = SeleniumURLLoader([web_url], binary_location=self.chrome_path)
+            loader = WebBaseLoader(web_path=web_url)
         else:
             if self.is_youtube_video(web_url):
                 youtube_link = web_url

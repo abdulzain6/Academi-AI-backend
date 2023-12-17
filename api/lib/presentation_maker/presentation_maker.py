@@ -580,7 +580,6 @@ Do not leave a placeholder empty. Failure to do so, will cuase fatal error.
                     slide_content_obtained = True  # Set the flag to True if content is obtained
                     break
                 except Exception as e:
-                    self.llm.cache = False
                     logging.error(f"Error in presentation {e}")
 
             if not slide_content_obtained:
@@ -636,7 +635,6 @@ Do not leave a placeholder empty. Failure to do so, will cuase fatal error.
                 if self.validate_slides(template, sequence):
                     break
             except Exception as e:
-                self.llm.cache = False
                 logging.error(f"Erorr {e}")
                 
         else:
