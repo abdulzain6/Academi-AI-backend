@@ -295,7 +295,7 @@ def make_vega_graph(
     img_bytes = vega_lite_to_images(vl_spec=vl_spec)
     cache_manager.set(key=doc_id, value=img_bytes, ttl=18000, suppress=False)
     document_url = url_template.format(doc_id=doc_id)
-    return document_url
+    return f"{document_url} give this url to the user"
 
 def make_graphviz_graph(
     dot_code: str,
@@ -307,7 +307,7 @@ def make_graphviz_graph(
     img_bytes = dot.pipe(format='png')
     cache_manager.set(key=doc_id, value=img_bytes, ttl=18000, suppress=False)
     document_url = url_template.format(doc_id=doc_id)
-    return document_url
+    return f"{document_url} Give this link to the user"
 
 def vega_lite_to_images(vl_spec: str) -> bytes:
     """
