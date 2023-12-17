@@ -934,7 +934,7 @@ They are:
 ==========
 
 Follow all above rules (Important)
-Always use visual aids to better explain stuff!! use tools for this you can search for images, use graphviz or any other tool! (Very very important. Don't forget)
+use tools to better explain things if needed for this you can search for images, use graphviz or any other tool! (Very very important. Don't forget)
 """
             ).format(**prompt_args),
             "extra_prompt_messages": chat_history_messages,
