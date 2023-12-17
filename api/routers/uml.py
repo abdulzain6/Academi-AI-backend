@@ -15,7 +15,7 @@ def make_uml(
     play_integrity_verified=Depends(verify_play_integrity),
 ):     
     model_name, premium_model = can_use_premium_model(user_id=user_id)     
-    model = get_model({"temperature": 0}, False, premium_model, alt=True, cache=False)
+    model = get_model({"temperature": 0}, False, premium_model, alt=False, cache=False)
     uml_maker = AIPlantUMLGenerator(model, generator=plantuml_server)
     logging.info(f"UML request from {user_id}, Data: {prompt}")
     
