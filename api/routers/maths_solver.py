@@ -63,7 +63,7 @@ def solve_maths_stream(
     ) or []
     
     model_name, premium_model = can_use_premium_model(user_id=user_id)        
-    model_default, model_fallback  = get_model_and_fallback({"temperature": 0}, True, premium_model)
+    model_default, model_fallback  = get_model_and_fallback({"temperature": 0}, True, premium_model, enable_bindings=False)
     logging.info(f"Default {model_default}, Fallback {model_fallback}")
     if isinstance(model_default, ChatOpenAI):
         functions = True
