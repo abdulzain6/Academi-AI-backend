@@ -70,8 +70,6 @@ class CollectionDBManager:
 
     def add_collection(self, collection_model: CollectionModel) -> CollectionModel:
         if not self.collection_exists(collection_model.name, collection_model.user_uid):
-            cache_key = f"all_collections_by_user:{collection_model.user_uid}"
-            self.cache_manager.delete(cache_key)
             self.collection_collection.insert_one(collection_model.model_dump())
             return collection_model
         else:
@@ -182,7 +180,6 @@ class CollectionDBManager:
             if self.collection_exists(new_name, user_id):
                 raise ValueError("A collection with this new name already exists")
 
-        self.clear_cache(collection_name, user_id, collection_uid)
         result = self.collection_collection.update_one(
             {"collection_uid": collection_uid}, {"$set": kwargs}
         )
@@ -191,28 +188,13 @@ class CollectionDBManager:
     def delete_collection(self, user_id: str, collection_name: str) -> int:
         collection_uid = self.resolve_collection_uid(collection_name, user_id)
         deleted_count = self.file_manager.delete_many_files(user_id, collection_name)
-        self.clear_cache(collection_name, user_id, collection_uid)
         result = self.collection_collection.delete_one({"name": collection_name})
         return result.deleted_count
 
-    def clear_cache(self, collection_name, user_id, collection_uid):
-        self.cache_manager.delete(
-            f"collection_by_name_and_user:{collection_name}:{user_id}"
-        )
-        self.cache_manager.delete(f"all_collections_by_user:{user_id}")
-        self.cache_manager.delete(f"collection_name:{collection_uid}")
-        self.cache_manager.delete(f"collection_uid:{collection_name}:{user_id}")
-
     def delete_all(self, user_id: str) -> int:
-        self.cache_manager.delete(f"all_collections_by_user:{user_id}")
         collections = self.get_all_by_user(user_id)
         total_deleted_count = 0
         for collection in collections:
-            self.clear_cache(
-                collection_name=collection.name,
-                user_id=user_id,
-                collection_uid=self.resolve_collection_uid(collection.name, user_id),
-            )
             name = collection.name
             deleted_count = self.file_manager.delete_many_files(user_id, name)
             total_deleted_count += deleted_count
