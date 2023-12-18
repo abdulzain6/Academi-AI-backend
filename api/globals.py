@@ -50,7 +50,7 @@ import logging
 
 langchain.verbose = False
 current_directory = os.path.dirname(os.path.abspath(__file__))
-global_kwargs = {"request_timeout": 35, "max_retries": 4}
+global_kwargs = {"request_timeout": 60, "max_retries": 4}
 global_chat_model = AIModel(
     regular_model=ChatOpenAI,
     regular_binds={"response_format" : {"type": "json_object"}},
