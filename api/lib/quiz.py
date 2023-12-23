@@ -168,7 +168,7 @@ class QuizGenerator:
         number_of_questions: int,
         collection_name: str = "Anything",
         maximum_questions: int = 10,
-        collection_description: str = "ANything"
+        collection_description: str = "ANything",
     ) -> list[QuizQuestionResponse]:
         parser = PydanticOutputParser(pydantic_object=Quiz)
         prompt_template = ChatPromptTemplate(
@@ -196,7 +196,6 @@ The schema:
 {format_instructions}
 
 
-If there is no data, Use your knowledge to generate the quiz about '{collection_name}' Description : {description}. if you dont know about the term, make a general quiz
 The generated quiz in proper schema without useless and incomplete questions, while picking a variety of question types. You must follow the schema(Important)
 Failure to follow schema causes error
 THe quiz with all rules above followed:
@@ -207,9 +206,9 @@ THe quiz with all rules above followed:
             partial_variables={
                 "format_instructions": parser.get_format_instructions(),
                 "collection_name": collection_name,
-                "description" : collection_description
+                "description": collection_description,
             },
-        ) 
+        )
         questions: List[QuizQuestion] = []
         chain = LLMChain(
             prompt=prompt_template,
@@ -217,15 +216,12 @@ THe quiz with all rules above followed:
             llm=self.llm,
         )
 
-
-        if not data:
-            questions = self.run_chain(
-                chain, "", min(number_of_questions, maximum_questions)
-            )
-        else:
-            questions = self.run_chain(
-                chain, data, min(number_of_questions, maximum_questions)
-            )
+        questions = self.run_chain(
+            chain,
+            data
+            or f"Use your knowledge to generate the quiz about '{collection_name}' Description : {collection_description}. if you dont know about the term, make a general quiz",
+            min(number_of_questions, maximum_questions),
+        )
 
         return [
             QuizQuestionResponse(**question.dict(), id=str(uuid.uuid4()))
@@ -279,7 +275,7 @@ THe quiz with all rules above followed:
         number_of_flashcards: int,
         collection_name: str = "Anything",
         maximium_flashcards: int = 10,
-        collection_description: str = "Anything"
+        collection_description: str = "Anything",
     ) -> list[FlashCard]:
         parser = PydanticOutputParser(pydantic_object=FlashCards)
         prompt_template = ChatPromptTemplate(
@@ -302,11 +298,9 @@ Here is the data used to generate the flashcards
 ===========
 
 You will follow the following schema and will not return anything else
-
 The schema:
 {format_instructions}
 
-If there is no data, Use your knowledge to generate the flashcards about '{collection_name}, Description: {description}'. if you dont know about the term, make general flashcards
 The generated flashcards in proper schema. You must follow the schema and return json only!!:
 """
                 ),
@@ -315,22 +309,45 @@ The generated flashcards in proper schema. You must follow the schema and return
             partial_variables={
                 "format_instructions": parser.get_format_instructions(),
                 "collection_name": collection_name,
-                "description" : collection_description
+                "description": collection_description,
             },
         )
-    
         flashcards: List[FlashCard] = []
-        chain = LLMChain(
-            prompt=prompt_template,
-            output_parser=parser,
-            llm=self.llm,
-        )
-        
-        if not data:
-            flashcards = self.run_chain_fc(chain, "", min(number_of_flashcards, maximium_flashcards))
-        else:
+
+        try:
+            chain = LLMChain(
+                prompt=prompt_template,
+                output_parser=parser,
+                llm=self.llm,
+                llm_kwargs={
+                    "response_format": {
+                        "type": "json_object",
+                        "schema": FlashCards.model_json_schema(),
+                    }
+                },
+            )
             flashcards = self.run_chain_fc(
-                chain, data, min(number_of_flashcards, maximium_flashcards)
+                chain,
+                data
+                or f"Make flashcards about {collection_name}, {collection_description}, if it doesnt make sense make general flashcards on the world",
+                min(number_of_flashcards, maximium_flashcards),
+            )
+        except Exception as e:
+            chain = LLMChain(
+                prompt=prompt_template,
+                output_parser=parser,
+                llm=self.llm,
+                llm_kwargs={
+                    "response_format": {
+                        "type": "json_object",
+                    }
+                },
+            )
+            flashcards = self.run_chain_fc(
+                chain,
+                data
+                or f"Make flashcards about {collection_name}, {collection_description}",
+                min(number_of_flashcards, maximium_flashcards),
             )
 
         return flashcards[:number_of_flashcards]
@@ -426,7 +443,7 @@ You will not check word to word, which means even if the answers wording is a bi
                 )
                 results.extend(short_answer_result)
         except Exception as e:
-        #    logging.error(f"Error in oai chain {e}")
+            #    logging.error(f"Error in oai chain {e}")
             chain = LLMChain(
                 prompt=prompt_template,
                 output_parser=parser,
