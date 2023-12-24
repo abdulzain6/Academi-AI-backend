@@ -166,4 +166,5 @@ def make_flashcards(
             status.HTTP_400_BAD_REQUEST, detail=f"Error: {str(e)}"
         ) from e
 
+    logging.info(f"Generated flashcards: {questions}")
     return {"flashcards": [flashcards.dict() for flashcards in questions]}

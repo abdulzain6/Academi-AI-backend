@@ -2,23 +2,22 @@ import uuid
 
 from .database import FileDBManager
 from .knowledge_manager import KnowledgeManager
-from langchain.text_splitter import TokenTextSplitter
 from langchain.chains import LLMChain
 from langchain.prompts import (
     ChatPromptTemplate,
     SystemMessagePromptTemplate,
     HumanMessagePromptTemplate,
-    PromptTemplate,
 )
 from langchain.output_parsers import PydanticOutputParser
 from langchain.schema.language_model import BaseLanguageModel
 from langchain.pydantic_v1 import BaseModel, Field
 from pydantic import BaseModel as RealBaseModel
 from pydantic import BaseModel, Field
-from typing import Any, Generator, List, Union
+from typing import List
 from enum import Enum
 from retrying import retry
 from langchain.chains import create_extraction_chain_pydantic
+from openai import BadRequestError
 
 
 class Answer(BaseModel):
@@ -332,7 +331,7 @@ The generated flashcards in proper schema. You must follow the schema and return
                 or f"Make flashcards about {collection_name}, {collection_description}, if it doesnt make sense make general flashcards on the world",
                 min(number_of_flashcards, maximium_flashcards),
             )
-        except Exception as e:
+        except BadRequestError as e:
             chain = LLMChain(
                 prompt=prompt_template,
                 output_parser=parser,
