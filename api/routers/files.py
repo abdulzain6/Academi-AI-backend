@@ -202,7 +202,7 @@ def create_file(
             except Exception as e:
                 import traceback
                 logging.error(f"File not supported, Error: {traceback.format_exception(e)}")
-                raise HTTPException(400, "FIle not supported/ FIle has no Data") from e
+                raise HTTPException(400, "FIle not supported/ FIle has no Data, Handwritten text only supported for PRO or higher.") from e
 
             try:
                 file_model = file_manager.add_file(
