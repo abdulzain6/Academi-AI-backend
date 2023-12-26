@@ -4,3 +4,4 @@ credentials-velero
 tests/
 .vscode/
 keys
+*.pyc
