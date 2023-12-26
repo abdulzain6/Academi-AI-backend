@@ -36,7 +36,7 @@ class PresentationInput(BaseModel):
     negative_prompt: str
     collection_name: Optional[str]
     files: Optional[list[str]]
-    user_id: Optional[str]
+    user_id: Optional[str] = ""
 
 
 class PresentationSequencePart(BaseModel):
