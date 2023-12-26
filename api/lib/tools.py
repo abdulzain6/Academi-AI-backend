@@ -250,7 +250,7 @@ def create_link_file(
     logging.info(f"Collection: {collection}")
     if not collection:
         logging.error(f"Collection does not exist. {user_id}")
-        raise ValueError("Collection does not exist")
+        raise ValueError("Subject does not exist")
 
     if not youtube_link and not web_link:
         raise ValueError(

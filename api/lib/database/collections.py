@@ -75,7 +75,7 @@ class CollectionDBManager:
             self.collection_collection.insert_one(collection_model.model_dump())
             return collection_model
         else:
-            raise ValueError("Collection already exists")
+            raise ValueError("Subject already exists")
 
     def get_collection_by_name_and_user(self, name: str, user_id: str) -> Optional[CollectionModel]:
         pipeline = [
