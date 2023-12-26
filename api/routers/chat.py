@@ -373,7 +373,7 @@ def chat_general_stream(
     class MakeFileArgs(OldBaseModel):
         subject_name: str = OldField(description="THe subject to add file to")
         filename: str = OldField(description="The name of the file to add")
-        url: str = OldField(description="The url to create file from")
+        url: str = OldField(description="The url to create file from. Must be a working url you can find urls using search.")
         
     class MakeSubjectArgs(OldBaseModel):
         name: str = OldField(description="Name of the subject to create")
@@ -441,7 +441,7 @@ def chat_general_stream(
         )
 
         if collection.number_of_files == 0:
-            return "Subject has no files, but it exists. Ask the user to upload a file. AI can also use its own knowledge to answer."
+            return "Subject has no files, but it exists. Ask the user to upload a file. AI can also use its own knowledge to answer. Or create files"
 
         if file_name:
             all_file_names = [
@@ -473,7 +473,11 @@ def chat_general_stream(
                 length=1000
             )
         logging.info(f"Read {data}")
-        return data
+        return f"""
+File Content:
+=======
+{data}
+======="""
 
     def make_presentation(
         topic: str,
@@ -646,7 +650,7 @@ def chat_general_stream(
                 subject_name=subject_name, filename=filename, url=url
             ),
             name="create_file",
-            description="Used to create a file for the student from a url",
+            description="Used to create a file for the student from a url, or youtube link. Documents will have to be added manually by the student though. The files can be read by AI and can be used to make notes",
             args_schema=MakeFileArgs,
         ),
         StructuredTool.from_function(

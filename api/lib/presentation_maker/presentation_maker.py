@@ -19,6 +19,7 @@ from ..knowledge_manager import KnowledgeManager
 from retrying import retry
 from langchain.chat_models.base import BaseChatModel
 from langchain.chat_models.openai import ChatOpenAI
+from openai import BadRequestError
 
 
 import re
@@ -203,18 +204,39 @@ Dont make slides with same heading and detail failure to do so will cause error.
             partial_variables={"format_instructions": parser.get_format_instructions()},
         )
 
-        chain = LLMChain(
-            prompt=prompt,
-            output_parser=parser,
-            llm=self.llm,
-        )
-        return chain.run(
-            topic=presentation_input.topic,
-            pages=presentation_input.number_of_pages,
-            instructions=presentation_input.instructions,
-            negative_prompt=presentation_input.negative_prompt,
-            slides=self.format_slides(template.slides),
-        )
+        try:
+            chain = LLMChain(
+                prompt=prompt,
+                output_parser=parser,
+                llm=self.llm,
+                llm_kwargs={
+                    "response_format": {
+                        "type": "json_object",
+                        "schema": PresentationSequence.model_json_schema(),
+                    }
+                }
+            )
+            return chain.run(
+                topic=presentation_input.topic,
+                pages=presentation_input.number_of_pages,
+                instructions=presentation_input.instructions,
+                negative_prompt=presentation_input.negative_prompt,
+                slides=self.format_slides(template.slides),
+            )
+        except BadRequestError:
+            logging.info("Using openai way")
+            chain = LLMChain(
+                prompt=prompt,
+                output_parser=parser,
+                llm=self.llm,
+            )
+            return chain.run(
+                topic=presentation_input.topic,
+                pages=presentation_input.number_of_pages,
+                instructions=presentation_input.instructions,
+                negative_prompt=presentation_input.negative_prompt,
+                slides=self.format_slides(template.slides),
+            )
 
     def validate_slides(
         self, template: TemplateModel, slides: PresentationSequence
@@ -378,6 +400,7 @@ Do not do the following:
 Do not choose slide types that are not shown to you.
 {negative_prompt}
 ==============
+Never leave a placeholder empty!
 You must follow the instructions above failure to do so will cause fatal error!
 """
                 ),
@@ -406,7 +429,7 @@ Lets think step by step, Looking at the placeholders and their descriptions to f
 {format_instructions}
 Follow the damn rules, you gave 150 words for a placeholder last time that caused error so keep it within slide limits.
 Lets think step by step to accomplish this.
-Do not leave a placeholder empty. Failure to do so, will cuase fatal error. 
+Do not leave a placeholder empty. Failure to do so, will cuase fatal error!!
 """
                 ),
             ],
@@ -421,11 +444,6 @@ Do not leave a placeholder empty. Failure to do so, will cuase fatal error.
                 "help_text"
             ],
             partial_variables={"format_instructions": parser.get_format_instructions()},
-        )
-        chain = LLMChain(
-            output_parser=parser,
-            prompt=prompt,
-            llm=self.llm
         )
         if presentation_input.files:
             metadata = {"file" : presentation_input.files}
@@ -448,22 +466,52 @@ Do not leave a placeholder empty. Failure to do so, will cuase fatal error.
         else:
             help_text = "Use your own knowledge to fill the placeholders"
 
-        placeholders: Placeholders = chain.run(
-            placeholders=self.format_placeholders(slide.placeholders, True),
-            slide_detail=sequence_part.slide_detail,
-            slides="\n".join([slide.slide_detail for slide in all_slides]),
-            presentation_topic=presentation_input.topic,
-            instructions=presentation_input.instructions,
-            negative_prompt=presentation_input.negative_prompt,
-            page_no=sequence_part.page_number,
-            help_text=help_text
-        )
+        try:
+            chain = LLMChain(
+                output_parser=parser,
+                prompt=prompt,
+                llm=self.llm,
+                llm_kwargs={
+                    "response_format": {
+                        "type": "json_object",
+                        "schema": Placeholders.model_json_schema(),
+                    }
+                }
+            )
+            placeholders: Placeholders = chain.run(
+                placeholders=self.format_placeholders(slide.placeholders, True),
+                slide_detail=sequence_part.slide_detail,
+                slides="\n".join([slide.slide_detail for slide in all_slides]),
+                presentation_topic=presentation_input.topic,
+                instructions=presentation_input.instructions,
+                negative_prompt=presentation_input.negative_prompt,
+                page_no=sequence_part.page_number,
+                help_text=help_text
+            )
+        except BadRequestError:
+            logging.info("Using openai way")
+            chain = LLMChain(
+                output_parser=parser,
+                prompt=prompt,
+                llm=self.llm,
+            )
+            placeholders: Placeholders = chain.run(
+                placeholders=self.format_placeholders(slide.placeholders, True),
+                slide_detail=sequence_part.slide_detail,
+                slides="\n".join([slide.slide_detail for slide in all_slides]),
+                presentation_topic=presentation_input.topic,
+                instructions=presentation_input.instructions,
+                negative_prompt=presentation_input.negative_prompt,
+                page_no=sequence_part.page_number,
+                help_text=help_text
+            )
+            
         for placeholder in placeholders.placeholders:
             placeholder.placeholder_data = placeholder.placeholder_data.replace(
                 "\n\n", "\n"
             )
             try:
-                placeholder.placeholder_data = str(self.auto_reduce_text_by_words(placeholder.placeholder_data, word_limit_para, word_limit_points, word_limit_hybrid))                
+                placeholder.placeholder_data = str(self.auto_reduce_text_by_words(placeholder.placeholder_data, word_limit_para=word_limit_para, word_limit_points=word_limit_points, word_limit_hybrid=word_limit_hybrid))                
             except Exception as e:
                 logging.error(f"Error in presentation {e}")
 

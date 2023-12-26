@@ -143,7 +143,7 @@ class CollectionDBManager:
                 for file in subject['files']:
                     output_string += f"- Filename: '{file['friendly_filename']}' Filetype: '({file.get('filetype', 'No type')})' Description: '{file.get('description', 'No desc')}')\n"
                 if not subject['files']:
-                    output_string += f"- This subject has no files, ask the user to upload a file in the app or help with your knowledge"
+                    output_string += f"- This subject has no files, ask the user to upload a file in the app or help with your knowledge. You can also create files from youtube or web links. Documents have to be added manually "
                 output_string += "\n"  # Add extra newline for separation between subjects
 
             return output_string
