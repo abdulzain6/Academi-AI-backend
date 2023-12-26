@@ -140,20 +140,7 @@ class CustomCallbackAgent(BaseCallbackHandler):
         self.callback(None)
 
 
-class QdrantModified(Qdrant):
-    @staticmethod
-    def create_collection_and_injest(
-        collection_name: str,
-        docs: list[Document],
-        embeddings: Embeddings,
-        **kwargs,
-    ) -> list[str]:
-        texts = [d.page_content for d in docs]
-        metadatas = [d.metadata for d in docs]
-        qdrant = Qdrant.construct_instance(
-            texts=texts, embedding=embeddings, collection_name=collection_name, **kwargs
-        )
-        return qdrant.add_texts(texts, metadatas)
+
 
 
 class KnowledgeManager:
@@ -183,12 +170,15 @@ class KnowledgeManager:
         )
         self.advanced_ocr_page_count = advanced_ocr_page_count
         self.qdrant: Qdrant = Qdrant.construct_instance(
+            url=self.qdrant_url,
+            api_key=self.qdrant_api_key,
             texts=["test"],
             embedding=self.embeddings,
             collection_name=qdrant_collection_name,
             hnsw_config={"on_disk" : True},
             optimizers_config=OptimizersConfigDiff(memmap_threshold=20000),
             timeout=50,
+            prefer_grpc=True
         )
 
     def split_docs(self, docs: Document) -> List[Document]:
