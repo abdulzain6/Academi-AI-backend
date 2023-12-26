@@ -35,6 +35,7 @@ class PresentationInput(BaseModel):
     negative_prompt: str
     collection_name: Optional[str]
     files: Optional[list[str]]
+    user_id: Optional[str]
 
 
 class PresentationSequencePart(BaseModel):
@@ -111,7 +112,8 @@ class PresentationMaker:
     def query_vectorstore(self, query: str, collection_name: str, k: int, metadata: Dict[str, str] = None, **kwargs) -> str:
         if not collection_name:
             return ""
-        return "\n".join([doc.page_content for doc in self.vectorstore.query_data(query, collection_name, k, metadata, **kwargs)])
+        metadata["collection"] = collection_name
+        return "\n".join([doc.page_content for doc in self.vectorstore.query_data(query, k, metadata, **kwargs)])
 
     def get_best_template(self, topic: str) -> TemplateModel:
         template_name = self.template_knowledge_manager.get_best_template(topic)
@@ -428,8 +430,9 @@ Do not leave a placeholder empty. Failure to do so, will cuase fatal error.
         if presentation_input.files:
             metadata = {"file" : presentation_input.files}
         else:
-            metadata = None
-
+            metadata = {}
+            
+        metadata["user"] = presentation_input.user_id
         if vectordata := self.query_vectorstore(
             sequence_part.slide_detail,
             presentation_input.collection_name,

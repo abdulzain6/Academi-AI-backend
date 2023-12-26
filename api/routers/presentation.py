@@ -22,8 +22,13 @@ class GetTemplateResponse(BaseModel):
     templates: list[dict[str, str]]
     images: list[dict[str, str]]
 
-
-class MakePresentationInput(PresentationInput):
+class MakePresentationInput(BaseModel):
+    topic: str
+    instructions: str
+    number_of_pages: int
+    negative_prompt: str
+    collection_name: Optional[str]
+    files: Optional[list[str]]
     use_data: bool = True
     auto_select_template: bool = True
     template_name: Optional[str] = ""
@@ -96,7 +101,7 @@ def make_presentation(
             if collection := collection_manager.get_collection_by_name_and_user(
                 presentation_input.collection_name, user_id
             ):
-                vectordb_collection = collection.vectordb_collection_name
+                coll_name = collection.name
             else:
                 logging.error(f"Collection does not exist, {user_id}")
                 raise HTTPException(400, "Collection does not exist.")
@@ -108,7 +113,7 @@ def make_presentation(
                 raise HTTPException(400, "Some files dont exist")
 
     else:
-        vectordb_collection = None
+        coll_name = None
 
     if not presentation_input.auto_select_template:
         template_name = presentation_input.template_name
@@ -122,8 +127,9 @@ def make_presentation(
                 instructions=presentation_input.instructions,
                 number_of_pages=presentation_input.number_of_pages,
                 negative_prompt=presentation_input.negative_prompt,
-                collection_name=vectordb_collection,
+                collection_name=coll_name,
                 files=presentation_input.files,
+                user_id=user_id
             ),
             template_name,
         )

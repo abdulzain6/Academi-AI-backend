@@ -3,9 +3,11 @@ import queue
 import random
 import threading
 from typing import Generator, List, Optional
+import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi import Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
+from api.lib.database.collections import CollectionModel
 from api.lib.presentation_maker.image_gen import PexelsImageSearch
 from ..lib.cv_maker.cv_maker import CVMaker
 from ..lib.cv_maker.template_loader import template_loader
@@ -49,9 +51,12 @@ from ..lib.tools import (
     make_uml_diagram,
     make_cv_from_string,
     make_vega_graph,
-    make_graphviz_graph
+    make_graphviz_graph,
+    create_link_file
 )
 from api.config import CACHE_DOCUMENT_URL_TEMPLATE
+from api.dependencies import can_add_more_data
+
 
 router = APIRouter()
 
@@ -151,24 +156,34 @@ def chat_collection_stream(
     def run_chat() -> None:
         try:
             chat_manager.chat(
-                collection_name=collection.vectordb_collection_name,
+                metadata={"user" : user_id},
+                collection_name=collection.name,
                 prompt=data.prompt,
                 chat_history=chat_history,
-                language=data.language,
                 llm=model_default,
                 callback_func=callback,
                 on_end_callback=on_end_callback,
+                help_data_random=chat_manager.read_file_contents(
+                    user_id=user_id,
+                    collection_name=collection.name,
+                    file_manager=file_manager,
+                )
             )
         except OpenAIError:
             try:
                 chat_manager.chat(
-                    collection_name=collection.vectordb_collection_name,
+                    metadata={"user" : user_id},
+                    collection_name=collection.name,
                     prompt=data.prompt,
                     chat_history=chat_history,
-                    language=data.language,
                     llm=model_fallback,
                     callback_func=callback,
                     on_end_callback=on_end_callback,
+                    help_data_random=chat_manager.read_file_contents(
+                        user_id=user_id,
+                        collection_name=collection.name,
+                        file_manager=file_manager,
+                    )
                 )
             except Exception as e:
                 logging.error(f"Error running chat in chat_collection_stream: {e}")
@@ -269,26 +284,38 @@ def chat_file_stream(
     def run_chat() -> None:
         try:
             chat_manager.chat(
-                collection_name=collection.vectordb_collection_name,
+                collection_name=collection.name,
+                metadata={"user" : user_id},
                 prompt=data.prompt,
                 chat_history=chat_history,
-                language=data.language,
                 llm=model_default,
                 callback_func=callback,
                 on_end_callback=on_end_callback,
                 filename=data.file_name,
+                help_data_random=chat_manager.read_file_contents(
+                    user_id=user_id,
+                    collection_name=collection.name,
+                    file_manager=file_manager,
+                    file_name=data.file_name
+                )
             )
         except OpenAIError:
             try:
                 chat_manager.chat(
-                    collection_name=collection.vectordb_collection_name,
+                    metadata={"user" : user_id},
+                    collection_name=collection.name,
                     prompt=data.prompt,
                     chat_history=chat_history,
-                    language=data.language,
                     llm=model_fallback,
                     callback_func=callback,
                     on_end_callback=on_end_callback,
                     filename=data.file_name,
+                    help_data_random=chat_manager.read_file_contents(
+                        user_id=user_id,
+                        collection_name=collection.name,
+                        file_manager=file_manager,
+                        file_name=data.file_name
+                    )
                 )
             except Exception as e:
                 logging.error(f"Error running chat in chat_file_stream: {e}")
@@ -342,6 +369,15 @@ def chat_general_stream(
     random_template = timed_random_choice(
         CVMaker.get_all_templates_static(template_loader())
     )
+
+    class MakeFileArgs(OldBaseModel):
+        subject_name: str = OldField(description="THe subject to add file to")
+        filename: str = OldField(description="The name of the file to add")
+        url: str = OldField(description="The url to create file from")
+        
+    class MakeSubjectArgs(OldBaseModel):
+        name: str = OldField(description="Name of the subject to create")
+        description: str = OldField(description="Description of the subject to create")
 
     class MakeCVArgs(OldBaseModel):
         cv_details_text: str = OldField(
@@ -422,12 +458,20 @@ def chat_general_stream(
         else:
             metadata = {}
 
-        docs = knowledge_manager.query_data(
-            query, collection.vectordb_collection_name, k=3, metadata=metadata
-        )
+        metadata["collection"] = collection.name
+        metadata["user"] = user_id
+        docs = knowledge_manager.query_data(query, k=3, metadata=metadata)
         data = select_random_chunks(
             "\n".join([doc.page_content for doc in docs]), 300, 600
         )
+        if not data:
+            logging.info("Using random file data")
+            data = chat_manager.read_file_contents(
+                user_id=user_id,
+                collection_name=collection.name,
+                file_manager=file_manager,
+                length=1000
+            )
         logging.info(f"Read {data}")
         return data
 
@@ -563,8 +607,56 @@ def chat_general_stream(
             logging.error(f"Error in graph generation {e}")
             return f"Error in graph generation {e}"
 
+    def create_subject(name: str, description: str):
+        try:
+            can_add_more_data(user_id, collection_check=True, file_check=False)
+        except Exception as e:
+            return "User cannot add more subjects, ask them to upgrade to PRO or elite plan."
+        
+        uid = str(uuid.uuid4())
+        try:
+            added_collection = collection_manager.add_collection(
+                CollectionModel(
+                    user_uid=user_id,
+                    name=name,
+                    description=description,
+                    collection_uid=uid,
+                    vectordb_collection_name=f"{user_id}_{uid}",
+                )
+            )
+            return "Subject created successfully, lets proceed with adding files to it. AI can add using youtube links or urls only. For documents user has to enter manually."
+        except Exception as e:
+            return f"Error creating subject {e}"
+        
+    def create_file(subject_name: str, filename: str, url: str):
+        try:
+            return create_link_file(
+                user_id=user_id,
+                subject_name=subject_name,
+                filename=filename,
+                youtube_link=None,
+                web_link=url
+            )
+        except Exception as e:
+            return f"Error: {e}"
 
     extra_tools = [
+        StructuredTool.from_function(
+            func=lambda subject_name, filename, url, *args, **kwargs: create_file(
+                subject_name=subject_name, filename=filename, url=url
+            ),
+            name="create_file",
+            description="Used to create a file for the student from a url",
+            args_schema=MakeFileArgs,
+        ),
+        StructuredTool.from_function(
+            func=lambda name, description = "", *args, **kwargs: create_subject(
+                name=name, description=description
+            ),
+            name="create_subject",
+            description="Used to create a subject for the student",
+            args_schema=MakeSubjectArgs,
+        ),
         StructuredTool.from_function(
             func=lambda topic, instructions="", number_of_pages=5, negative_prompt="", *args, **kwargs: make_presentation(
                 topic,

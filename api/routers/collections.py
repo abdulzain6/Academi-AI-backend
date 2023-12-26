@@ -94,7 +94,7 @@ def create_collection(
 
 
 @router.delete("/", response_model=StatusCollectionResponse)
-def delete_collections(
+def delete_collection(
     collection: CollectionDelete,
     user_id=Depends(get_user_id),
     play_integrity_verified=Depends(verify_play_integrity),
@@ -104,21 +104,18 @@ def delete_collections(
     if existing_collection := collection_manager.get_collection_by_name_and_user(
         collection.name, user_id
     ):
-        knowledge_manager.delete_collection(
-            existing_collection.vectordb_collection_name
-        )
-        logging.info(f"Collection deleted {user_id}")
-        return (
-            StatusCollectionResponse(collection=existing_collection)
-            if (
-                collection := collection_manager.delete_collection(
-                    user_id, collection.name
-                )
-            )
-            else StatusCollectionResponse(
+        vector_ids = collection_manager.get_all_vector_ids(user_id, collection_name=collection.name)
+        knowledge_manager.delete_ids(vector_ids)
+        logging.info(f"Ids deleted {user_id} {collection.name}")
+        if collections_deleted := collection_manager.delete_collection(
+            user_id, collection.name
+        ):
+            logging.info(f"Collection deleted {user_id} {collection.name}")
+            return StatusCollectionResponse(collection=existing_collection)
+        else:
+            return StatusCollectionResponse(
                 collection=existing_collection, status="error"
             )
-        )
     else:
         raise HTTPException(
             status.HTTP_409_CONFLICT, "Collection with this name does not exist"
@@ -193,27 +190,4 @@ def get_all_collections(
         logging.error(f"Error getting collections, {e}")
         raise HTTPException(
             status.HTTP_409_CONFLICT, f"Error getting collections, {e}"
-        ) from e
-
-@router.delete("/all", response_model=DeleteCollectionResponse)
-def delete_all_collections(
-    user_id=Depends(get_user_id),
-    play_integrity_verified=Depends(verify_play_integrity),
-):
-    logging.info(f"Deleting all collections for user: {user_id}")
-    try:
-        collections = collection_manager.get_all_by_user(user_id)
-        for collection in collections:
-            if not knowledge_manager.delete_collection(
-                collection.vectordb_collection_name
-            ):
-                logging.warning("Error deleting a single collection")
-                raise HTTPException(400, "ERROR DELETING COLLECTION")
-
-        deleted_count = collection_manager.delete_all(user_id=user_id)
-        return DeleteCollectionResponse(deleted_rows=deleted_count)
-    except Exception as e:
-        logging.error(f"Error deleting all collections, {e}")
-        raise HTTPException(
-            status.HTTP_409_CONFLICT, f"Error deleting all collections, {e}"
         ) from e

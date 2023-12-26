@@ -233,14 +233,8 @@ def delete_user(
     user_id=Depends(get_user_id), play_integrity_verified=Depends(verify_play_integrity)
 ):
     logging.info(f"Delete user request from {user_id}")
-    collections = collection_manager.get_all_by_user(user_id)
-    for collection in collections:
-        if not knowledge_manager.delete_collection(collection.vectordb_collection_name):
-            logging.error(
-                f"Error deleting collection while deleting user for {user_id}"
-            )
-            raise HTTPException(400, "ERROR DELETING COLLECTION")
-
+    vector_ids = user_manager.get_all_vector_ids_for_user(user_id)
+    knowledge_manager.delete_ids(vector_ids)
     user = user_manager.delete_user(user_id)
     conversation_manager.delete_all_conversations(user_id)
     subscription_manager.apply_or_default_subscription(user_id, update=True)

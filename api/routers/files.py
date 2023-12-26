@@ -92,8 +92,7 @@ def create_link_file(
     try:
         logging.info("Started loading")
         contents, ids, file_bytes = knowledge_manager.load_web_youtube_link(
-            collection.vectordb_collection_name,
-            metadata={"file": linkfile.filename},
+            metadata={"file": linkfile.filename, "collection" : collection.name, "user" : user_id},
             youtube_link=linkfile.youtube_link,
             web_url=linkfile.web_link,
         )
@@ -194,9 +193,8 @@ def create_file(
 
             try:
                 contents, ids, file_bytes = knowledge_manager.load_and_injest_file(
-                    collection.vectordb_collection_name,
                     temp_file.name,
-                    {"file": filename},
+                    {"file": filename, "collection" : collection.name, "user" : user_id},
                     advanced_pdf_extraction=advanced_extraction
                 )
             except Exception as e:
@@ -317,9 +315,7 @@ def delete_file(
         collection_name=collection_name, filename=file_name, user_id=user_id
     )
     logging.info(f"Deleting ids, {user_id}")
-    knowledge_manager.delete_ids(
-        collection_name=collection.vectordb_collection_name, ids=file.vector_ids
-    )
+    knowledge_manager.delete_ids(ids=file.vector_ids)
     success = file_manager.delete_file(
         collection_name=collection_name,
         filename=file_name,

@@ -18,7 +18,7 @@ from langchain.document_loaders import YoutubeLoader
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.schema import Document, LLMResult
 from langchain.chains import LLMChain
-from langchain.embeddings import OpenAIEmbeddings, FakeEmbeddings
+from langchain.embeddings.base import Embeddings
 from langchain.prompts import (
     ChatPromptTemplate,
     SystemMessagePromptTemplate,
@@ -28,6 +28,7 @@ from langchain.prompts import (
 
 from typing import Dict, List, Tuple, Union
 from qdrant_client import QdrantClient
+from qdrant_client.http.models import HnswConfig, OptimizersConfigDiff
 from langchain.pydantic_v1 import BaseModel, Field
 from langchain.agents import Tool
 from langchain.agents import AgentExecutor
@@ -52,8 +53,10 @@ from langchain.schema.agent import AgentFinish
 from langchain.document_loaders import WebBaseLoader
 from azure.ai.formrecognizer import DocumentAnalysisClient
 from langchain.document_loaders.pdf import DocumentIntelligenceLoader
+from .database.files import FileDBManager
 import PyPDF2
 import mimetypes
+
 
 
 def split_into_chunks(text, chunk_size):
@@ -142,7 +145,7 @@ class QdrantModified(Qdrant):
     def create_collection_and_injest(
         collection_name: str,
         docs: list[Document],
-        embeddings: OpenAIEmbeddings,
+        embeddings: Embeddings,
         **kwargs,
     ) -> list[str]:
         texts = [d.page_content for d in docs]
@@ -164,7 +167,8 @@ class KnowledgeManager:
         azure_ocr: AzureOCR,
         azure_form_rec_client: DocumentAnalysisClient,
         chunk_size: int = 1000,
-        advanced_ocr_page_count: int = 30
+        advanced_ocr_page_count: int = 30,
+        qdrant_collection_name: str = "academi"
     ) -> None:
         self.azure_ocr = azure_ocr
         self.embeddings = embeddings
@@ -178,6 +182,14 @@ class KnowledgeManager:
             url=self.qdrant_url, api_key=self.qdrant_api_key, prefer_grpc=True
         )
         self.advanced_ocr_page_count = advanced_ocr_page_count
+        self.qdrant: Qdrant = Qdrant.construct_instance(
+            texts=["test"],
+            embedding=self.embeddings,
+            collection_name=qdrant_collection_name,
+            hnsw_config={"on_disk" : True},
+            optimizers_config=OptimizersConfigDiff(memmap_threshold=20000),
+            timeout=50,
+        )
 
     def split_docs(self, docs: Document) -> List[Document]:
         return RecursiveCharacterTextSplitter(
@@ -303,22 +315,9 @@ class KnowledgeManager:
 
     def injest_data(
         self,
-        collection_name: str,
         documents: List[Document],
-        ids: List[str] = None,
     ) -> List[str]:
-        vectorstore = Qdrant(self.client, collection_name, self.embeddings)
-        if self.collection_exists(collection_name):
-            return vectorstore.add_documents(documents)
-        else:
-            return QdrantModified.create_collection_and_injest(
-                collection_name,
-                documents,
-                self.embeddings,
-                url=self.qdrant_url,
-                api_key=self.qdrant_api_key,
-                prefer_grpc=True,
-            )
+        return self.qdrant.add_documents(documents)
 
     def add_metadata_to_docs(self, metadata: Dict, docs: List[Document]):
         for document in docs:
@@ -326,11 +325,11 @@ class KnowledgeManager:
         return docs
 
     def load_and_injest_file(
-        self, collection_name: str, filepath: str, metadata: Dict, advanced_pdf_extraction: bool = False
+        self, filepath: str, metadata: Dict, advanced_pdf_extraction: bool = False
     ) -> Tuple[str, List[str], bytes]:
         contents, docs, file_bytes = self.load_data(filepath, advanced_pdf_extraction)
         docs = self.add_metadata_to_docs(metadata=metadata, docs=docs)
-        ids = self.injest_data(collection_name=collection_name, documents=docs)
+        ids = self.injest_data(documents=docs)
         return contents, ids, file_bytes
 
     def is_local_ip(self, ip: str) -> bool:
@@ -370,7 +369,6 @@ class KnowledgeManager:
 
     def load_web_youtube_link(
         self,
-        collection_name: str,
         metadata: Dict,
         youtube_link: str = None,
         web_url: str = None,
@@ -436,35 +434,20 @@ class KnowledgeManager:
             raise ValueError("Link has no data.")
 
         docs = self.add_metadata_to_docs(metadata=metadata, docs=docs)
-        ids = self.injest_data(collection_name=collection_name, documents=docs)
+        ids = self.injest_data(documents=docs)
         return contents, ids, bytes(contents, encoding="utf-8")
 
-    def delete_collection(self, collection_name: str) -> bool:
-        try:
-            self.client.delete_collection(collection_name)
-            return True
-        except Exception:
-            return False
-
-    def delete_ids(self, collection_name: str, ids: list[str]):
-        vectorstore = Qdrant(self.client, collection_name, self.embeddings)
+    def delete_ids(self, ids: list[str]):
         if ids:
-            return vectorstore.delete(ids)
+            return self.qdrant.delete(ids)
 
     def query_data(
-        self, query: str, collection_name: str, k: int, metadata: Dict[str, str] = None
+        self, query: str, k: int, metadata: Dict[str, str] = None
     ):
         try:
-            vectorstore = Qdrant(self.client, collection_name, self.embeddings)
-            return vectorstore.similarity_search(query, k, filter=metadata)
+            return self.qdrant.similarity_search(query, k, filter=metadata)
         except Exception:
-            try:
-                vectorstore = Qdrant(
-                    self.client, collection_name, FakeEmbeddings(size=1536)
-                )
-                return vectorstore.similarity_search(query, k, filter=metadata)
-            except Exception:
-                return []
+            return []
 
 
 class ChatManagerRetrieval:
@@ -517,9 +500,8 @@ dont forget the above rules
         qdrant_url: str,
         conversation_limit: int,
         docs_limit: int,
-        python_client: PythonClient,
         ai_name: str = "AcademiAI",
-        base_tools: list[Tool] = [],
+        qdrant_collection_name: str = "academi"
     ) -> None:
         self.embeddings = embeddings
         self.qdrant_api_key = qdrant_api_key
@@ -527,208 +509,51 @@ dont forget the above rules
         self.conversation_limit = conversation_limit
         self.docs_limit = docs_limit
         self.ai_name = ai_name
-        self.python_client = python_client
-        self.base_tools = base_tools
+        self.qdrant_collection_name = qdrant_collection_name
         self.client = QdrantClient(
-            url=self.qdrant_url, api_key=self.qdrant_api_key, prefer_grpc=True
-        )
-
-    def make_code_runner(self) -> list[Tool]:
-        try:
-            libraries = self.python_client.get_available_libraries()["libraries"]
-        except Exception:
-            libraries = []
-
-        description = f"""
-Used to execute multiline python code wont persist states so run everything once.
-Do not pass in Markdown just a normal python string (Important)
-Try to run all the code at once
-Use tools if you think you need help or to confirm answer. Make sure arguments are loadable by json.loads (Super important) use double quotes or it will cause error
-These are the libraries you have access to.
-Use print statement to print data.
-You will not run unsafe code or perform harm to the server youre on. Or import potentially harmful libraries (Very Important).
-Libraries: {libraries}
-Do not import libraries that are not allowed.
-        """
-
-        def extract_python_code(text: str) -> List[str]:
-            """
-            Extract Python code blocks from a given text.
-
-            Parameters:
-                text (str): The input text containing Python code blocks.
-
-            Returns:
-                List[str]: A list of Python code blocks.
-            """
-            # Regular expression to match Python code blocks enclosed in triple backticks
-            pattern = r"```python\n(.*?)```"
-            matches = re.findall(pattern, text, re.DOTALL)
-            joined_matches = "\n".join(matches)
-            return joined_matches or text.strip()
-
-        def python_function(code: str):
-            result = self.python_client.evaluate_code(extract_python_code(code))
-            try:
-                return result["result"]
-            except Exception as e:
-                return result
-
-        return [Tool("python", python_function, description)]
-
-    def make_agent(
-        self,
-        llm: BaseChatModel,
-        chat_history_messages: list[BaseMessage],
-        prompt_args: dict,
-        extra_tools: list[Tool] = [],
-    ) -> AgentExecutor:
-        agent_kwargs = {
-            "system_message": SystemMessagePromptTemplate.from_template(
-                template="""
-You are {ai_name}, an AI teacher designed to teach students. 
-You are to take the tone of a teacher.
-You must answer the human in {language} (important)
-Talk as if you're a teacher. Use the data provided to answer user questions. 
-
-Rules:
-    Use file data to answer questions 
-    You will not run unsafe code or perform harm to the server youre on. Or import potentially harmful libraries (Very Important).
-    Do not return python code to the user.(Super important)
-    Use tools if you think you need help or to confirm answer.
-    
-
-File content/ Help data/ Student data (This data is from files/subjects the human has provided and can be from webpages, youtube links, files, images and much more):
-==========
-{help_data}
-==========
-
-Use files data above ^^ to answer questions always (important)
-
-Lets use tools and keep the files data above in mind before answering the questions. Good luck mr teacher
-"""
-            ).format(**prompt_args),
-            "extra_prompt_messages": chat_history_messages,
-        }
-        return self.initialize_agent(
-            [*self.make_code_runner(), *extra_tools, *self.base_tools],
-            llm,
-            agent_kwargs=agent_kwargs,
-            max_iterations=4,
-        )
-
-    def make_unique_by_page_content(self, pages: List[Document]) -> List[Document]:
-        unique_pages = {}
-        for page in pages:
-            if page.page_content not in unique_pages:
-                unique_pages[page.page_content] = page
-        return list(unique_pages.values())
-
-    def initialize_agent(
-        self,
-        tools: Sequence[BaseTool],
-        llm: BaseLanguageModel,
-        callback_manager: Optional[BaseCallbackManager] = None,
-        agent_kwargs: Optional[dict] = None,
-        **kwargs: Any,
-    ):
-        agent_obj = ModifiedOpenAIAgent.from_llm_and_tools(
-            llm=llm, tools=tools, callback_manager=callback_manager, **agent_kwargs
-        )
-        return AgentExecutor.from_agent_and_tools(
-            agent=agent_obj,
-            tools=tools,
-            callback_manager=callback_manager,
-            handle_parsing_errors=True,
-            **kwargs,
+            url=self.qdrant_url, api_key=self.qdrant_api_key, prefer_grpc=True, timeout=50
         )
 
     def query_data(
         self, query: str, collection_name: str, k: int, metadata: Dict[str, str] = None
     ):
+        metadata["collection"] = collection_name
         try:
-            vectorstore = Qdrant(self.client, collection_name, self.embeddings)
+            vectorstore = Qdrant(self.client, self.qdrant_collection_name, self.embeddings)
             return vectorstore.similarity_search(query, k, filter=metadata)
         except Exception as e:
+            print(e)
             return []
 
-    def run_agent(
-        self,
-        prompt: str,
-        collection_name: str,
-        language: str,
-        llm: BaseChatModel,
-        callback: callable = None,
-        on_end_callback: callable = None,
-        chat_history: list[tuple[str, str]] = None,
-        metadata: dict[str, str] = None,
-        filename: str = None,
-        k: int = 5,
-    ):
-        if chat_history is None:
-            chat_history = []
-
-        if metadata is None:
-            metadata = {}
-
-        if filename:
-            metadata["file"] = filename
-
-        combined = (
-            self.format_messages(
-                chat_history=chat_history,
-                tokens_limit=self.conversation_limit,
-                human_only=True,
-                llm=llm,
-                ai_name=self.ai_name,
+    @staticmethod
+    def read_file_contents(user_id: str, collection_name: str, file_manager: FileDBManager, file_name: str = None, length: int = 2000) -> str:
+        if not file_name:
+            files = file_manager.get_all_files(
+                user_id=user_id, collection_name=collection_name
             )
-            + "\n"
-            + f"Human: {prompt}"
-        )
-        similar_docs = self.query_data(
-            combined, collection_name, metadata=metadata, k=k
-        )
-        similar_docs.extend(
-            self.query_data(prompt, collection_name, metadata=metadata, k=k)
-        )
-        similar_docs = self.make_unique_by_page_content(similar_docs)
-        similar_docs = self._reduce_tokens_below_limit(
-            similar_docs, llm=llm, docs_limit=self.docs_limit
-        )
-        help_data = "\n".join([doc.page_content for doc in similar_docs])
+        else:
+            file = file_manager.get_file_by_name(
+                user_id, collection_name, file_name
+            )
+            if not file:
+                raise ValueError("File does not exist.")
+            
+            files = [file]
 
-        agent = self.make_agent(
-            llm=llm,
-            chat_history_messages=self.format_messages_into_messages(
-                chat_history, self.conversation_limit, llm
-            ),
-            prompt_args={
-                "language": "In the same langage of user",
-                "ai_name": self.ai_name,
-                "help_data": help_data or "Ask the user to delete the file and make a new one there was an issue in the backend!",
-            },
-            extra_tools=[],
-        )
-        if not callback:
-            raise ValueError("Callback not passed for streaming to work")
-
-        return agent.run(
-            f"{prompt}, System : Use file content above to get help if needed",
-            callbacks=[CustomCallbackAgent(callback, on_end_callback)],
-        )
+        return "\n".join([file.file_content for file in files if file])[:length]
 
     def chat(
         self,
         collection_name: str,
         prompt: str,
         chat_history: list[tuple[str, str]],
-        language: str,
         llm: BaseChatModel,
         callback_func: callable = None,
         on_end_callback: callable = None,
         k: int = 5,
         metadata: dict[str, str] = None,
         filename: str = None,
+        help_data_random: str = "Ask user to reupload file!"
     ) -> str:
         if metadata is None:
             metadata = {}
@@ -765,6 +590,10 @@ Lets use tools and keep the files data above in mind before answering the questi
             similar_docs, llm=llm, docs_limit=self.docs_limit
         )
         similar_docs_string = "\n".join([doc.page_content for doc in similar_docs])
+        
+        if not similar_docs_string:
+            logging.info("Using random data")
+            similar_docs_string = help_data_random
 
         chain = LLMChain(llm=llm, prompt=self.prompt)
         return chain.run(
@@ -919,7 +748,12 @@ You must answer the human in {language} (important)
 Talk as if you're a teacher. Use the data provided to answer user questions if its available. 
 You're integrated within an app, which serves as a versatile study aid for students. Your role is to assist users by interacting with their uploaded study materials to facilitate personalized learning. The app features functions like quiz and flashcard creation, math problem-solving, and assistance with writing and presentations. Your AI capabilities are central to providing a tailored and efficient educational experience. coins are used as currency
 Coins can be earned by watching ads. But you should recommend users to subscribe to lite, pro or elite packages for premium usage
-Users can add subjects in the app, then choose a subject and add files to them. Quizzes and flashcards are made from those.
+Users can add subjects in the app, then choose a subject and add files to them. 
+Files can be made from documents, urls, youtube links.
+Quizzes, flashcards, notes are made from these files.
+You can also make subjects using tools.
+You can also make files for the user but only using youtube links and urls for documents user will have to manually add them.
+
 Rules:
     Use tools if you think you need help or to confirm answer.
     You can also use tools to give the student pdfs as study material also.
@@ -942,6 +776,68 @@ use tools to better explain things if needed for this you can search for images,
             llm,
             agent_kwargs=agent_kwargs,
             max_iterations=3,
+        )
+
+    def make_code_runner(self) -> list[Tool]:
+        try:
+            libraries = self.python_client.get_available_libraries()["libraries"]
+        except Exception:
+            libraries = []
+
+        description = f"""
+Used to execute multiline python code wont persist states so run everything once.
+Do not pass in Markdown just a normal python string (Important)
+Try to run all the code at once
+Use tools if you think you need help or to confirm answer. Make sure arguments are loadable by json.loads (Super important) use double quotes or it will cause error
+These are the libraries you have access to.
+Use print statement to print data.
+You will not run unsafe code or perform harm to the server youre on. Or import potentially harmful libraries (Very Important).
+Libraries: {libraries}
+Do not import libraries that are not allowed.
+        """
+
+        def extract_python_code(text: str) -> List[str]:
+            """
+            Extract Python code blocks from a given text.
+
+            Parameters:
+                text (str): The input text containing Python code blocks.
+
+            Returns:
+                List[str]: A list of Python code blocks.
+            """
+            # Regular expression to match Python code blocks enclosed in triple backticks
+            pattern = r"```python\n(.*?)```"
+            matches = re.findall(pattern, text, re.DOTALL)
+            joined_matches = "\n".join(matches)
+            return joined_matches or text.strip()
+
+        def python_function(code: str):
+            result = self.python_client.evaluate_code(extract_python_code(code))
+            try:
+                return result["result"]
+            except Exception as e:
+                return result
+
+        return [Tool("python", python_function, description)]
+    
+    def initialize_agent(
+        self,
+        tools: Sequence[BaseTool],
+        llm: BaseLanguageModel,
+        callback_manager: Optional[BaseCallbackManager] = None,
+        agent_kwargs: Optional[dict] = None,
+        **kwargs: Any,
+    ):
+        agent_obj = ModifiedOpenAIAgent.from_llm_and_tools(
+            llm=llm, tools=tools, callback_manager=callback_manager, **agent_kwargs
+        )
+        return AgentExecutor.from_agent_and_tools(
+            agent=agent_obj,
+            tools=tools,
+            callback_manager=callback_manager,
+            handle_parsing_errors=True,
+            **kwargs,
         )
         
     def tool_picker(self, llm: BaseChatModel, tools: List[Tool], query: str):

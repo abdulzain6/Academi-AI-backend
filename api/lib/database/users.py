@@ -33,17 +33,16 @@ class UserDBManager:
         self.collection_manager = collection_manager    
         self.cache_manager = cache_manager
             
-    def get_all_vector_ids_for_user(self, user_id: str) -> Dict[str, List[str]]:
-        vector_ids_per_collection = {}
+    def get_all_vector_ids_for_user(self, user_id: str) -> List[str]:
+        vector_ids = []
         user_collections = self.collection_manager.get_all_by_user(user_id)
         for collection in user_collections:
             collection_name = collection.name
-            vectordb_collection_name = collection.vectordb_collection_name
             collection_vector_ids = self.collection_manager.get_all_vector_ids(
                 user_id, collection_name
             )
-            vector_ids_per_collection[vectordb_collection_name] = collection_vector_ids
-        return vector_ids_per_collection
+            vector_ids.extend(collection_vector_ids)
+        return vector_ids
 
     def add_user(self, user_model: UserModel) -> UserModel:
         if self.user_exists(user_model.uid):
@@ -93,8 +92,8 @@ class UserDBManager:
         return result.modified_count
 
     def delete_user(self, uid: str) -> int:
-        if not self.user_exists(uid):
-            return 0
+        #if not self.user_exists(uid):
+           # return 0
         self.collection_manager.delete_all(uid)
         self.user_collection.delete_one({"uid": uid})
         self.cache_manager.delete(f"user:{uid}")

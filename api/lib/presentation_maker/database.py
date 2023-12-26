@@ -1,12 +1,13 @@
 import json
 import os
+from api.lib.anyscale_embeddings import AnyscaleEmbeddings
 from pptx.util import Inches
 from shutil import copy
 from pydantic import BaseModel
 from typing import Optional, List, Union
 from abc import ABC, abstractmethod
 from langchain.vectorstores import Qdrant
-from langchain.embeddings import OpenAIEmbeddings
+from langchain.embeddings.base import Embeddings
 from langchain.schema import Document
 from qdrant_client import QdrantClient
 from qdrant_client.http import models as rest
@@ -121,7 +122,10 @@ class TemplateDBManager:
 class TemplateKnowledgeManager(TemplateObserver):
     def __init__(self, embeddings = None) -> None:
         if not embeddings:
-            self.embeddings = OpenAIEmbeddings()
+            self.embeddings = AnyscaleEmbeddings(
+                base_url="https://api.endpoints.anyscale.com/v1",
+                model="thenlper/gte-large"
+            )
         else:
             self.embeddings = embeddings
         self.vectorstore = self.get_vectorstore()

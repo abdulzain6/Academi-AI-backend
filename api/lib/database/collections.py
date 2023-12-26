@@ -1,3 +1,4 @@
+import logging
 from typing import Dict, List, Optional
 from pymongo import MongoClient
 from pymongo.collection import Collection
@@ -66,7 +67,8 @@ class CollectionDBManager:
 
     def get_all_vector_ids(self, user_id: str, collection_name: str) -> List[str]:
         all_files = self.file_manager.get_all_files(user_id, collection_name)
-        return [file.vector_ids for file in all_files]
+        vector_ids = [vector_id for file in all_files for vector_id in file.vector_ids]
+        return vector_ids
 
     def add_collection(self, collection_model: CollectionModel) -> CollectionModel:
         if not self.collection_exists(collection_model.name, collection_model.user_uid):
@@ -134,7 +136,7 @@ class CollectionDBManager:
             data = list(self.collection_collection.aggregate(pipeline))
             output_string = ""
             if not data:
-                return "No subjects or files found"
+                return "No subjects or files found, You can create a subject for the user."
             for subject in data:
                 subject_name = subject['name']
                 output_string += f"Subject name: '{subject_name}'\nFiles:\n"
@@ -200,4 +202,5 @@ class CollectionDBManager:
             total_deleted_count += deleted_count
 
         result = self.collection_collection.delete_many({"user_uid": user_id})
+        logging.info(f"Deleted {result.deleted_count} files")
         return result.deleted_count

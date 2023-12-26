@@ -1,6 +1,6 @@
 from api.lib.uml_diagram_maker import PlantUML
 from .config import *
-from langchain.embeddings import OpenAIEmbeddings
+from .lib.anyscale_embeddings import AnyscaleEmbeddings
 from .lib.ocr import AzureOCR
 from .lib.database import (
     FileDBManager,
@@ -264,7 +264,10 @@ conversation_manager = MessageDBManager(
 # OCR
 text_ocr = AzureOCR(AZURE_OCR_ENDPOINT, AZURE_OCR_KEY)
 knowledge_manager = KnowledgeManager(
-    OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY),
+    AnyscaleEmbeddings(
+        base_url="https://api.endpoints.anyscale.com/v1",
+        model="thenlper/gte-large"
+    ),
     unstructured_api_key=UNSTRUCTURED_API_KEY,
     unstructured_url=UNSTRUCTURED_URL,
     qdrant_api_key=QDRANT_API_KEY,
@@ -276,15 +279,20 @@ knowledge_manager = KnowledgeManager(
     ),
 )
 chat_manager = ChatManagerRetrieval(
-    OpenAIEmbeddings(),
+    AnyscaleEmbeddings(
+        base_url="https://api.endpoints.anyscale.com/v1",
+        model="thenlper/gte-large"
+    ),
     conversation_limit=800,
     docs_limit=2100,
     qdrant_api_key=QDRANT_API_KEY,
     qdrant_url=QDRANT_URL,
-    python_client=client,
 )
 chat_manager_agent_non_retrieval = ChatManagerNonRetrieval(
-    OpenAIEmbeddings(),
+    AnyscaleEmbeddings(
+        base_url="https://api.endpoints.anyscale.com/v1",
+        model="thenlper/gte-large"
+    ),
     conversation_limit=700,
     python_client=client,
     base_tools=CHAT_TOOLS,
