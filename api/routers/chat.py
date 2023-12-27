@@ -506,6 +506,7 @@ File Content:
             pexel_image_gen_cls=PexelsImageSearch,
             image_gen_args={"image_cache_dir": "/tmp/.image_cache"},
             vectorstore=knowledge_manager,
+            use_schema=False
         )
         try:
             return deduct_points_for_feature(
@@ -642,7 +643,7 @@ File Content:
                 web_link=url
             )
         except Exception as e:
-            return f"Error: {e}"
+            return f"Error: {e}. Maybe use search to find related urls?"
 
     extra_tools = [
         StructuredTool.from_function(

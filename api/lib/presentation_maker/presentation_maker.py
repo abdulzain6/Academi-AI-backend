@@ -101,7 +101,8 @@ class PresentationMaker:
         llm: BaseChatModel | ChatOpenAI,
         pexel_image_gen_cls: PexelsImageSearch,
         vectorstore: KnowledgeManager,
-        image_gen_args: dict
+        image_gen_args: dict,
+        use_schema: bool = True,
     ) -> None:
         self.template_manager = template_manager
         self.template_knowledge_manager = template_knowledge_manager
@@ -109,6 +110,7 @@ class PresentationMaker:
         self.pexel_image_gen_cls = pexel_image_gen_cls
         self.image_gen_args = image_gen_args
         self.vectorstore = vectorstore
+        self.use_schema = use_schema
         
     def query_vectorstore(self, query: str, collection_name: str, k: int, metadata: Dict[str, str] = None, **kwargs) -> str:
         if not collection_name:
@@ -205,6 +207,9 @@ Dont make slides with same heading and detail failure to do so will cause error.
         )
 
         try:
+            if not self.use_schema:
+                raise BadRequestError("test", response=None)
+            
             chain = LLMChain(
                 prompt=prompt,
                 output_parser=parser,
@@ -467,6 +472,9 @@ Do not leave a placeholder empty. Failure to do so, will cuase fatal error!!
             help_text = "Use your own knowledge to fill the placeholders"
 
         try:
+            if not self.use_schema:
+                raise BadRequestError("test", response=None)
+            
             chain = LLMChain(
                 output_parser=parser,
                 prompt=prompt,

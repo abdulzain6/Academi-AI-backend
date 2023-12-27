@@ -39,6 +39,7 @@ from langchain.schema import (
     LLMResult,
 )
 from langchain.chains import create_extraction_chain_pydantic
+import requests
 from api.lib.maths_solver.modified_openai_agent import ModifiedOpenAIAgent
 from api.lib.maths_solver.python_exec_client import PythonClient
 from api.lib.ocr import AzureOCR
@@ -153,7 +154,7 @@ class KnowledgeManager:
         qdrant_url: str,
         azure_ocr: AzureOCR,
         azure_form_rec_client: DocumentAnalysisClient,
-        chunk_size: int = 500,
+        chunk_size: int = 1500,
         advanced_ocr_page_count: int = 30,
         qdrant_collection_name: str = "academi"
     ) -> None:
@@ -288,7 +289,6 @@ class KnowledgeManager:
             else:
                 logging.info("Using unstructured")
                 docs = self.load_using_unstructured(file_path)
-        print(f"Documents loaded {docs}")
         docs = self.split_docs(docs)
         contents = "\n\n".join([doc.page_content for doc in docs])
 
@@ -307,6 +307,9 @@ class KnowledgeManager:
         self,
         documents: List[Document],
     ) -> List[str]:
+        content = "".join([doc.page_content for doc in documents])
+        if len(content) <= 7:
+            raise ValueError("No data in file")
         return self.qdrant.add_documents(documents)
 
     def add_metadata_to_docs(self, metadata: Dict, docs: List[Document]):
@@ -348,6 +351,19 @@ class KnowledgeManager:
 
         return True
 
+    def is_site_working(self, url: str) -> bool:
+        """
+        Checks if a given URL is working by sending a request and checking the status code.
+
+        :param url: URL of the site to check.
+        :return: True if the site is working, False otherwise.
+        """
+        try:
+            response = requests.get(url, timeout=5, allow_redirects=True)
+            return response.status_code == 200
+        except requests.RequestException:
+            return False
+        
     def is_youtube_video(self, url: str) -> bool:
         try:
             YoutubeLoader.extract_video_id(url)
@@ -374,8 +390,11 @@ class KnowledgeManager:
         if web_url and not self.is_youtube_video(web_url):
             if not self.validate_url(web_url):
                 raise ValueError("Invalid URL")
+            
+            if not self.is_site_working(web_url):
+                raise ValueError("Invalid URL")
 
-            loader = WebBaseLoader(web_path=web_url)
+            loader = WebBaseLoader(web_path=web_url, requests_kwargs={"timeout" : 5, "allow_redirects" : True})
         else:
             if self.is_youtube_video(web_url):
                 youtube_link = web_url
@@ -418,8 +437,7 @@ class KnowledgeManager:
         docs = loader.load()
 
         docs = self.split_docs(docs)
-        contents = "\n\n".join([doc.page_content for doc in docs])
-
+        contents = "".join([doc.page_content for doc in docs])
         if not contents:
             raise ValueError("Link has no data.")
 
@@ -766,7 +784,7 @@ use tools to better explain things if needed for this you can search for images,
             [*self.make_code_runner(), *extra_tools, *self.base_tools],
             llm,
             agent_kwargs=agent_kwargs,
-            max_iterations=3,
+            max_iterations=5,
         )
 
     def make_code_runner(self) -> list[Tool]:

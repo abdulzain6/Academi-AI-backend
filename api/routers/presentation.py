@@ -92,6 +92,7 @@ def make_presentation(
         pexel_image_gen_cls=PexelsImageSearch,
         image_gen_args={"image_cache_dir": "/tmp/.image_cache"},
         vectorstore=knowledge_manager,
+        use_schema=True
     )
     
     logging.info(f"Got ppt generation request, {user_id}... Input: {presentation_input}")
@@ -111,6 +112,8 @@ def make_presentation(
             ):
                 logging.error(f"files does not exist, {user_id}")
                 raise HTTPException(400, "Some files dont exist")
+        else:
+            coll_name = None
 
     else:
         coll_name = None

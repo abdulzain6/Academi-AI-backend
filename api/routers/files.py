@@ -16,7 +16,7 @@ from ..dependencies import can_add_more_data
 
 router = APIRouter()
 
-MAX_FILE_SIZE = 25 * 1024 * 1024
+MAX_FILE_SIZE = 15 * 1024 * 1024
 
 
 class FileCreate(BaseModel):
