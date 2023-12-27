@@ -193,7 +193,8 @@ Do not choose slide types that are not shown to you.
 {format_instructions}
 
 Dont make slides with same heading and detail failure to do so will cause error. Last time you caused one!
-"""
+
+THe json object:"""
                 ),
             ],
             input_variables=[
@@ -435,7 +436,8 @@ Lets think step by step, Looking at the placeholders and their descriptions to f
 Follow the damn rules, you gave 150 words for a placeholder last time that caused error so keep it within slide limits.
 Lets think step by step to accomplish this.
 Do not leave a placeholder empty. Failure to do so, will cuase fatal error!!
-"""
+
+The json object:"""
                 ),
             ],
             input_variables=[
@@ -694,7 +696,7 @@ Do not leave a placeholder empty. Failure to do so, will cuase fatal error!!
                 if self.validate_slides(template, sequence):
                     break
             except Exception as e:
-                logging.error(f"Erorr {e}")
+                logging.info(f"Erorr {e}")
                 
         else:
             raise NoValidSequenceException("Couldn't find the best sequence")
