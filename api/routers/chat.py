@@ -373,7 +373,7 @@ def chat_general_stream(
     class MakeFileArgs(OldBaseModel):
         subject_name: str = OldField(description="THe subject to add file to")
         filename: str = OldField(description="The name of the file to add")
-        url: str = OldField(description="The url to create file from. Must be a working url you can find urls using search.")
+        url: str = OldField(description="The url to create file from. Must be a working url you can find urls using search. example.com or any wrong url will cause fatal error!")
         
     class MakeSubjectArgs(OldBaseModel):
         name: str = OldField(description="Name of the subject to create")
