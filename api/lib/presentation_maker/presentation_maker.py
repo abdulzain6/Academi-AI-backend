@@ -209,7 +209,7 @@ THe json object:"""
 
         try:
             if not self.use_schema:
-                raise ValueError
+                raise ValueError()
             
             chain = LLMChain(
                 prompt=prompt,
@@ -475,7 +475,7 @@ The json object:"""
 
         try:
             if not self.use_schema:
-                raise ValueError 
+                raise ValueError()
             
             chain = LLMChain(
                 output_parser=parser,
