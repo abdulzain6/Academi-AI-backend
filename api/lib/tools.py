@@ -131,7 +131,7 @@ class MarkdownToPDFConverter(BaseTool):
 
             # Format and return the URL with the document ID
             document_url = self.url_template.format(doc_id=doc_id)
-            return document_url
+            return f"{document_url} Give this link as it is to the user dont add sandbox prefix to it, user wont recieve file until you explicitly read out the link to him"
 
         except Exception as e:
             return f"An error occurred: {e}"
@@ -327,7 +327,7 @@ def make_cv_from_string(
             pdf_bytes = image_to_pdf_in_memory(tmp_file_path)
             cache_manager.set(key=doc_id, value=pdf_bytes, ttl=18000, suppress=False)
             document_url = url_template.format(doc_id=doc_id)
-            return f"{missing_str}. Give the following link to the user {document_url}. "
+            return f"{missing_str}. Give the following link as it is to the user dont add sandbox prefix to it {document_url}. "
         except Exception as e:
             return f"There was an error : {e}"
 
@@ -350,7 +350,7 @@ def make_ppt(
 
     os.remove(ppt_path)
     document_url = url_template.format(doc_id=doc_id)
-    return document_url
+    return f"{document_url} Give this link as it is to the user dont add sandbox prefix to it, user wont recieve file until you explicitly read out the link to him"
 
 def make_uml_diagram(
     uml_maker: AIPlantUMLGenerator,
@@ -362,7 +362,7 @@ def make_uml_diagram(
     img_bytes = uml_maker.run(prompt=prompt)
     cache_manager.set(key=doc_id, value=img_bytes, ttl=18000, suppress=False)
     document_url = url_template.format(doc_id=doc_id)
-    return document_url
+    return f"{document_url} Give this link as it is to the user dont add sandbox prefix to it, user wont recieve file until you explicitly read out the link to him"
 
 def make_vega_graph(
     vl_spec: str,
@@ -373,7 +373,7 @@ def make_vega_graph(
     img_bytes = vega_lite_to_images(vl_spec=vl_spec)
     cache_manager.set(key=doc_id, value=img_bytes, ttl=18000, suppress=False)
     document_url = url_template.format(doc_id=doc_id)
-    return f"{document_url} Give this link to the user, user wont recieve image until you explicitly read out the link to him"
+    return f"{document_url} Give this link as it is to the user dont add sandbox prefix to it, user wont recieve file until you explicitly read out the link to him"
 
 def make_graphviz_graph(
     dot_code: str,
@@ -385,7 +385,7 @@ def make_graphviz_graph(
     img_bytes = dot.pipe(format='png')
     cache_manager.set(key=doc_id, value=img_bytes, ttl=18000, suppress=False)
     document_url = url_template.format(doc_id=doc_id)
-    return f"{document_url} Give this link to the user, user wont recieve image until you explicitly read out the link to him"
+    return f"{document_url} Give this link as it is to the user dont add sandbox prefix to it, user wont recieve file until you explicitly read out the link to him"
 
 def vega_lite_to_images(vl_spec: str) -> bytes:
     """
