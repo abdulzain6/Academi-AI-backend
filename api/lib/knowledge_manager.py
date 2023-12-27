@@ -154,7 +154,7 @@ class KnowledgeManager:
         qdrant_url: str,
         azure_ocr: AzureOCR,
         azure_form_rec_client: DocumentAnalysisClient,
-        chunk_size: int = 1500,
+        chunk_size: int = 750,
         advanced_ocr_page_count: int = 30,
         qdrant_collection_name: str = "academi"
     ) -> None:
