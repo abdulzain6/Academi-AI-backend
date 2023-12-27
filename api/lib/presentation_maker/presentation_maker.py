@@ -209,7 +209,7 @@ THe json object:"""
 
         try:
             if not self.use_schema:
-                raise BadRequestError("test", response=None)
+                raise ValueError
             
             chain = LLMChain(
                 prompt=prompt,
@@ -229,7 +229,7 @@ THe json object:"""
                 negative_prompt=presentation_input.negative_prompt,
                 slides=self.format_slides(template.slides),
             )
-        except BadRequestError:
+        except (BadRequestError, ValueError):
             logging.info("Using openai way")
             chain = LLMChain(
                 prompt=prompt,
@@ -475,7 +475,7 @@ The json object:"""
 
         try:
             if not self.use_schema:
-                raise BadRequestError("test", response=None)
+                raise ValueError 
             
             chain = LLMChain(
                 output_parser=parser,
@@ -498,7 +498,7 @@ The json object:"""
                 page_no=sequence_part.page_number,
                 help_text=help_text
             )
-        except BadRequestError:
+        except (BadRequestError, ValueError):
             logging.info("Using openai way")
             chain = LLMChain(
                 output_parser=parser,
