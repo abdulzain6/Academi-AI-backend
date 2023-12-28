@@ -170,17 +170,20 @@ class KnowledgeManager:
             url=self.qdrant_url, api_key=self.qdrant_api_key, prefer_grpc=True
         )
         self.advanced_ocr_page_count = advanced_ocr_page_count
-        self.qdrant: Qdrant = Qdrant.construct_instance(
-            url=self.qdrant_url,
-            api_key=self.qdrant_api_key,
-            texts=["test"],
-            embedding=self.embeddings,
-            collection_name=qdrant_collection_name,
-            hnsw_config={"on_disk" : True},
-            optimizers_config=OptimizersConfigDiff(memmap_threshold=20000),
-            timeout=50,
-            prefer_grpc=True
-        )
+        try:
+            self.qdrant: Qdrant = Qdrant.construct_instance(
+                url=self.qdrant_url,
+                api_key=self.qdrant_api_key,
+                texts=["test"],
+                embedding=self.embeddings,
+                collection_name=qdrant_collection_name,
+                hnsw_config={"on_disk" : True},
+                optimizers_config=OptimizersConfigDiff(memmap_threshold=20000),
+                timeout=50,
+                prefer_grpc=True
+            )
+        except Exception:
+            self.qdrant = None
 
     def split_docs(self, docs: Document) -> List[Document]:
         return RecursiveCharacterTextSplitter(
