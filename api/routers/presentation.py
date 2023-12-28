@@ -75,7 +75,7 @@ def make_presentation(
     play_integrity_verified=Depends(verify_play_integrity),
 ):
     model_name, premium_model = use_feature_with_premium_model_check("PRESENTATION", user_id=user_id)
-    llm = get_model({"temperature": 0}, False, premium_model, cache=False, alt=True)
+    llm = get_model({"temperature": 0}, False, premium_model, cache=False, alt=False)
     if val := subscription_manager.get_feature_value(user_id, "ppt_pages"):   
         ppt_pages = val.main_data
     else:
@@ -92,7 +92,7 @@ def make_presentation(
         pexel_image_gen_cls=PexelsImageSearch,
         image_gen_args={"image_cache_dir": "/tmp/.image_cache"},
         vectorstore=knowledge_manager,
-        use_schema=True
+        use_schema=False
     )
     
     logging.info(f"Got ppt generation request, {user_id}... Input: {presentation_input}")
