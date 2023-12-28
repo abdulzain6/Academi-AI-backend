@@ -124,7 +124,9 @@ class TemplateKnowledgeManager(TemplateObserver):
         if not embeddings:
             self.embeddings = AnyscaleEmbeddings(
                 base_url="https://api.endpoints.anyscale.com/v1",
-                model="thenlper/gte-large"
+                model="thenlper/gte-large",
+               max_retries=2,
+               timeout=5
             )
         else:
             self.embeddings = embeddings
