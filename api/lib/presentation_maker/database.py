@@ -130,7 +130,10 @@ class TemplateKnowledgeManager(TemplateObserver):
             )
         else:
             self.embeddings = embeddings
-        self.vectorstore = self.get_vectorstore()
+        try:
+            self.vectorstore = self.get_vectorstore()
+        except Exception:
+            ...
 
     def get_vectorstore(self) -> Qdrant:
         client = QdrantClient(location=":memory:")
