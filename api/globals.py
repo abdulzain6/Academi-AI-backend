@@ -236,7 +236,8 @@ text_ocr = AzureOCR(AZURE_OCR_ENDPOINT, AZURE_OCR_KEY)
 knowledge_manager = KnowledgeManager(
     AnyscaleEmbeddings(
         base_url="https://api.endpoints.anyscale.com/v1",
-        model="thenlper/gte-large"
+        model="thenlper/gte-large",
+        timeout=10
     ),
     unstructured_api_key=UNSTRUCTURED_API_KEY,
     unstructured_url=UNSTRUCTURED_URL,
@@ -251,7 +252,8 @@ knowledge_manager = KnowledgeManager(
 chat_manager = ChatManagerRetrieval(
     AnyscaleEmbeddings(
         base_url="https://api.endpoints.anyscale.com/v1",
-        model="thenlper/gte-large"
+        model="thenlper/gte-large",
+        timeout=10
     ),
     conversation_limit=800,
     docs_limit=2100,
@@ -261,7 +263,8 @@ chat_manager = ChatManagerRetrieval(
 chat_manager_agent_non_retrieval = ChatManagerNonRetrieval(
     AnyscaleEmbeddings(
         base_url="https://api.endpoints.anyscale.com/v1",
-        model="thenlper/gte-large"
+        model="thenlper/gte-large",
+        timeout=10
     ),
     conversation_limit=700,
     python_client=client,
