@@ -1,4 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
+import random
 from .pptx.enum.shapes import MSO_SHAPE_TYPE
 from .pptx import Presentation
 from threading import Thread
@@ -685,7 +686,10 @@ The json object:"""
         logging.info("Fetching best template...")
         start_time = time.time()
         if not template_name:
-            template = self.get_best_template(presentation_input.topic)
+            try:
+                template = self.get_best_template(presentation_input.topic)
+            except Exception:
+                template = random.choice(self.template_manager.get_all_templates()).template_name
             slide_path = self.template_manager.get_template_file(template.template_name)
         else:
             slide_path = self.template_manager.get_template_file(template_name)
