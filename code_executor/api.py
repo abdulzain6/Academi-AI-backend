@@ -22,7 +22,8 @@ math_libraries = [
     "cmath",
     "statistics",
     "pandas",
-    "pubchempy"
+    "pubchempy",
+    "numpy_financial"
 ]
 
 

@@ -190,7 +190,7 @@ class CollectionDBManager:
     def delete_collection(self, user_id: str, collection_name: str) -> int:
         collection_uid = self.resolve_collection_uid(collection_name, user_id)
         deleted_count = self.file_manager.delete_many_files(user_id, collection_name)
-        result = self.collection_collection.delete_one({"name": collection_name})
+        result = self.collection_collection.delete_one({"collection_uid": collection_uid})
         return result.deleted_count
 
     def delete_all(self, user_id: str) -> int:
