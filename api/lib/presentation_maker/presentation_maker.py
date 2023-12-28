@@ -194,7 +194,7 @@ Do not choose slide types that are not shown to you.
 
 Dont make slides with same heading and detail failure to do so will cause error. Last time you caused one!
 
-THe json object:"""
+THe sequence in proper schema:"""
                 ),
             ],
             input_variables=[
@@ -444,7 +444,7 @@ Follow the damn rules, you gave 150 words for a placeholder last time that cause
 Lets think step by step to accomplish this.
 Do not leave a placeholder empty. Failure to do so, will cuase fatal error!!
 
-The json object:"""
+The placeholders following the schema:"""
                 ),
             ],
             input_variables=[
