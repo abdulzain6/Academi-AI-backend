@@ -203,8 +203,8 @@ THe json object:"""
                 "instructions",
                 "negative_prompt",
                 "slides",
+                "format_instructions"
             ],
-            partial_variables={"format_instructions": parser.get_format_instructions()},
         )
 
         try:
@@ -225,9 +225,10 @@ THe json object:"""
             return chain.run(
                 topic=presentation_input.topic,
                 pages=presentation_input.number_of_pages,
-                instructions=presentation_input.instructions,
+                instructions="",
                 negative_prompt=presentation_input.negative_prompt,
                 slides=self.format_slides(template.slides),
+                format_instructions=""
             )
         except (BadRequestError, ValueError):
             logging.info("Using openai way")
@@ -242,6 +243,7 @@ THe json object:"""
                 instructions=presentation_input.instructions,
                 negative_prompt=presentation_input.negative_prompt,
                 slides=self.format_slides(template.slides),
+                format_instructions=parser.get_format_instructions()
             )
 
     def validate_slides(
@@ -429,7 +431,12 @@ Here are the placeholders we want to fill:
 
 {help_text}
 
-Ordered or unordered list points must be short (Very importsnt)
+Ordered or unordered list points must be short and should start with "-" (Very important)
+For example:
+    - Cat
+    - Dog
+End of example
+
 You must follow the instructions above failure to do so will cause fatal error!
 Lets think step by step, Looking at the placeholders and their descriptions to fill them for the slide topic {slide_detail}. Follow all rules above! Ensure it fits in a slide
 {format_instructions}
@@ -448,9 +455,9 @@ The json object:"""
                 "instructions",
                 "negative_prompt",
                 "page_no",
-                "help_text"
+                "help_text",
+                'format_instructions'
             ],
-            partial_variables={"format_instructions": parser.get_format_instructions()},
         )
         if presentation_input.files:
             metadata = {"file" : presentation_input.files}
@@ -496,7 +503,8 @@ The json object:"""
                 instructions=presentation_input.instructions,
                 negative_prompt=presentation_input.negative_prompt,
                 page_no=sequence_part.page_number,
-                help_text=help_text
+                help_text=help_text,
+                format_instructions=""
             )
         except (BadRequestError, ValueError):
             logging.info("Using openai way")
@@ -513,7 +521,8 @@ The json object:"""
                 instructions=presentation_input.instructions,
                 negative_prompt=presentation_input.negative_prompt,
                 page_no=sequence_part.page_number,
-                help_text=help_text
+                help_text=help_text,
+                format_instructions=parser.get_format_instructions()
             )
             
         for placeholder in placeholders.placeholders:

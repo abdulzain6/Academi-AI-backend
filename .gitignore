@@ -5,3 +5,4 @@ tests/
 .vscode/
 keys
 *.pyc
+__pycache__/
