@@ -761,7 +761,7 @@ File Content:
     
     extra_tools = [
         StructuredTool.from_function(
-            func=lambda subject_name, file_name, query, instructions = "", template = random.choice(get_available_note_makers()), *args, **kwargs: create_notes(
+            func=lambda subject_name="", file_name="", query="World", instructions = "", template = random.choice(get_available_note_makers()), *args, **kwargs: create_notes(
                 subject_name=subject_name,
                 file_name=file_name,
                 instructions=instructions,
