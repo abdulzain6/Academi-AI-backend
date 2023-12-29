@@ -25,6 +25,10 @@ class SubscriptionStatus(Enum):
     SUBSCRIPTION_REVOKED = 12
     SUBSCRIPTION_EXPIRED = 13
     
+class VoidedProductTypes(Enum):
+    PRODUCT_TYPE_SUBSCRIPTION = 1
+    PRODUCT_TYPE_ONE_TIME = 2
+    
 class SubscriptionData(BaseModel):
     purchase_token: str
 
@@ -75,41 +79,54 @@ def verify_subscription(
     
 @router.post("/rtdn")
 def receive_notification(notification: dict, token_verified=Depends(verify_google_token)):
-    notification = notification.get("subscriptionNotification")
-    if not notification:
-        logging.warning(notification)
-        return
-    
-    notification["notificationType"] = SubscriptionStatus(notification["notificationType"])
-    notification = Notification.model_validate(notification)
-    
-    logging.info(f"Recieved notification {notification}")
-    
-    if notification.notificationType in [SubscriptionStatus.SUBSCRIPTION_EXPIRED, SubscriptionStatus.SUBSCRIPTION_REVOKED]:
-        if sub_doc := subscription_manager.get_subscription_by_token(notification.purchaseToken):
-            subscription_manager.apply_or_default_subscription(
-                user_id=sub_doc["user_id"],
-                purchase_token="",
-                subscription_type=SubscriptionType.FREE,
-                update=True
-            )
-            logging.info(f"{sub_doc['user_id']} Just unsubscribed {notification.purchaseToken}")
+    if "subscriptionNotification" in notification:
+        sub_notification = notification.get("subscriptionNotification")
+        if not sub_notification:
+            logging.warning(sub_notification)
+            return
+        
+        sub_notification["notificationType"] = SubscriptionStatus(sub_notification["notificationType"])
+        sub_notification = Notification.model_validate(sub_notification)
+        
+        logging.info(f"Recieved notification {sub_notification}")
+        
+        if sub_notification.notificationType in [SubscriptionStatus.SUBSCRIPTION_EXPIRED, SubscriptionStatus.SUBSCRIPTION_REVOKED]:
+            if sub_doc := subscription_manager.get_subscription_by_token(sub_notification.purchaseToken):
+                subscription_manager.apply_or_default_subscription(
+                    user_id=sub_doc["user_id"],
+                    purchase_token="",
+                    subscription_type=SubscriptionType.FREE,
+                    update=True
+                )
+                logging.info(f"{sub_doc['user_id']} Just unsubscribed {sub_notification.purchaseToken}")
 
-    elif notification.notificationType in [SubscriptionStatus.SUBSCRIPTION_PAUSED]:
-        if sub_doc := subscription_manager.get_subscription_by_token(notification.purchaseToken):
-            subscription_manager.enable_disable_subscription(sub_doc["user_id"], False)
-            logging.info(f"{sub_doc['user_id']} got disabled {notification.notificationType} {notification.purchaseToken}")
+        elif sub_notification.notificationType in [SubscriptionStatus.SUBSCRIPTION_PAUSED]:
+            if sub_doc := subscription_manager.get_subscription_by_token(sub_notification.purchaseToken):
+                subscription_manager.enable_disable_subscription(sub_doc["user_id"], False)
+                logging.info(f"{sub_doc['user_id']} got disabled {sub_notification.notificationType} {sub_notification.purchaseToken}")
 
-    elif notification.notificationType == [SubscriptionStatus.SUBSCRIPTION_RESTARTED, SubscriptionStatus.SUBSCRIPTION_RECOVERED]:
-        if sub_doc := subscription_manager.get_subscription_by_token(notification.purchaseToken):
-            subscription_manager.enable_disable_subscription(sub_doc["user_id"], True)
-            subscription_manager.cancel_uncancel_subscription(sub_doc["user_id"], False)
-            logging.info(f"{sub_doc['user_id']} got enabled {notification.notificationType} {notification.purchaseToken}")
-            
-    elif notification.notificationType == SubscriptionStatus.SUBSCRIPTION_CANCELED:
-        if sub_doc := subscription_manager.get_subscription_by_token(notification.purchaseToken):
-            subscription_manager.cancel_uncancel_subscription(sub_doc["user_id"], True)
-            logging.info(f"{sub_doc['user_id']} got cancelled {notification.notificationType} {notification.purchaseToken}")
-            
+        elif sub_notification.notificationType == [SubscriptionStatus.SUBSCRIPTION_RESTARTED, SubscriptionStatus.SUBSCRIPTION_RECOVERED]:
+            if sub_doc := subscription_manager.get_subscription_by_token(sub_notification.purchaseToken):
+                subscription_manager.enable_disable_subscription(sub_doc["user_id"], True)
+                subscription_manager.cancel_uncancel_subscription(sub_doc["user_id"], False)
+                logging.info(f"{sub_doc['user_id']} got enabled {sub_notification.notificationType} {sub_notification.purchaseToken}")
+                
+        elif sub_notification.notificationType == SubscriptionStatus.SUBSCRIPTION_CANCELED:
+            if sub_doc := subscription_manager.get_subscription_by_token(sub_notification.purchaseToken):
+                subscription_manager.cancel_uncancel_subscription(sub_doc["user_id"], True)
+                logging.info(f"{sub_doc['user_id']} got cancelled {sub_notification.notificationType} {sub_notification.purchaseToken}")
+                
 
-    return {"status": "success"}
+        return {"status": "success"}
+    elif "voidedPurchaseNotification" in notification:
+        voided_notification = notification.get("voidedPurchaseNotification")
+        product_type = VoidedProductTypes(voided_notification.get("productType"))
+        if product_type.PRODUCT_TYPE_SUBSCRIPTION:
+            if sub_doc := subscription_manager.get_subscription_by_token(voided_notification.get("purchaseToken")):
+                subscription_manager.apply_or_default_subscription(
+                    user_id=sub_doc["user_id"],
+                    purchase_token="",
+                    subscription_type=SubscriptionType.FREE,
+                    update=True
+                )
+                logging.info(f"{sub_doc['user_id']} Just unsubscribed (Voided Notification) {voided_notification.get('purchaseToken')}")            

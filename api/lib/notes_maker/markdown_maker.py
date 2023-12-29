@@ -30,6 +30,7 @@ You must also follow the instructions given to you
 Only answer from the notes given to you. No making things up
 You must pick every minute detail.
 You will return the notes in markdown
+You must make super detailed and lenghty notes
 """
                 ),
                 HumanMessagePromptTemplate.from_template(

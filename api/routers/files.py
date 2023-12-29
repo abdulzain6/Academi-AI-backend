@@ -1,6 +1,7 @@
 import logging
 import os
 import tempfile
+from urllib.parse import quote
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse
 from fastapi import Depends, HTTPException, status
@@ -346,12 +347,8 @@ def download_file(
         ) as temp_file:
             temp_file.write(file.file_bytes)
             logging.info(f"File sending soon! {user_id}")
-            return FileResponse(
-                temp_file.name,
-                headers={
-                    "Content-Disposition": f"attachment; filename={temp_file.name}"
-                },
-            )
+            return FileResponse(temp_file.name, headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(temp_file.name, safe='')}"} )
+
     else:
         logging.error(f"File does not {user_id}")
         raise HTTPException(detail="File does not exist", status_code=404)

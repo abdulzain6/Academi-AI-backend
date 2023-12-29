@@ -391,6 +391,7 @@ class KnowledgeManager:
             )
 
         if web_url and not self.is_youtube_video(web_url):
+            logging.info("Using webbase")
             if not self.validate_url(web_url):
                 raise ValueError("Invalid URL")
             
@@ -399,6 +400,7 @@ class KnowledgeManager:
 
             loader = WebBaseLoader(web_path=web_url, requests_kwargs={"timeout" : 5, "allow_redirects" : True})
         else:
+            logging.info("Using yt")
             if self.is_youtube_video(web_url):
                 youtube_link = web_url
             loader = YoutubeLoader.from_youtube_url(
@@ -444,6 +446,7 @@ class KnowledgeManager:
         if not contents:
             raise ValueError("Link has no data.")
 
+        logging.info(f"Loaded content: {contents}")
         docs = self.add_metadata_to_docs(metadata=metadata, docs=docs)
         ids = self.injest_data(documents=docs)
         return contents, ids, bytes(contents, encoding="utf-8")

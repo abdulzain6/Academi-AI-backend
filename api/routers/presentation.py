@@ -1,5 +1,6 @@
 import logging
 from typing import Optional
+from urllib.parse import quote
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from fastapi import Depends, HTTPException
@@ -141,10 +142,4 @@ def make_presentation(
         raise HTTPException(400, str(e)) from e
 
     logging.info(f"Presentation made successfully! {user_id}")
-        
-    return FileResponse(
-        file_path,
-        headers={
-            "Content-Disposition": f"attachment; filename={file_path.split('/')[-1]}"
-        },
-    )
+    return FileResponse(file_path, headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(file_path.split('/')[-1], safe='')}"})

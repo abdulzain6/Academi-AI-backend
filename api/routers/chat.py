@@ -52,10 +52,13 @@ from ..lib.tools import (
     make_cv_from_string,
     make_vega_graph,
     make_graphviz_graph,
-    create_link_file
+    create_link_file,
+    make_notes
 )
 from api.config import CACHE_DOCUMENT_URL_TEMPLATE
 from api.dependencies import can_add_more_data
+from ..lib.notes_maker import make_notes_maker, get_available_note_makers
+
 
 
 router = APIRouter()
@@ -83,6 +86,8 @@ def convert_message_pairs_to_tuples(
 ) -> list[tuple[str, str]]:
     return [(pair.human_message, pair.bot_response) for pair in message_pairs]
 
+class SubjectMissingException(Exception):
+    pass
 
 @router.post("/chat-collection-stream")
 @require_points_for_feature("CHAT")
@@ -369,6 +374,22 @@ def chat_general_stream(
     random_template = timed_random_choice(
         CVMaker.get_all_templates_static(template_loader())
     )
+    
+    class MakeNotesArgs(OldBaseModel):
+        subject_name: Optional[str] = OldField(
+            None,
+            description="The name of the subject the file to make notes from is in"
+        )
+        file_name: Optional[str] = OldField(
+            None,
+            description="The name of the file to make notes from. Leave empty if you want to make from whole subject",
+        )
+        instructions: str = OldField("")
+        template: str = OldField(
+            random.choice(get_available_note_makers()),
+            description=f"Template to make notes from, Available: {get_available_note_makers()}"
+        )
+        query: str = OldField("Anything", description="The topic of the notes")
 
     class MakeFileArgs(OldBaseModel):
         subject_name: str = OldField(description="THe subject to add file to")
@@ -645,7 +666,112 @@ File Content:
         except Exception as e:
             return f"Error: {e}. Maybe use search to find related urls?"
 
+    def create_notes(subject_name: str, file_name: str, instructions: str, template: str, query: str):
+        available = get_available_note_makers()
+        if template not in available:
+            return f"Chosen Template not available. Available templates: {available}"
+        
+        if subject_name:
+            try:
+                all_subjects = [
+                    collection.name
+                    for collection in collection_manager.get_all_by_user(user_id=user_id)
+                ]
+                subject_name = find_most_similar(all_subjects, subject_name, 5)
+
+                if not subject_name:
+                    raise SubjectMissingException()
+
+                collection = collection_manager.get_collection_by_name_and_user(
+                    subject_name, user_id
+                )
+
+                if collection.number_of_files == 0:
+                    raise SubjectMissingException()
+
+                if file_name:
+                    all_file_names = [
+                        file.filename
+                        for file in file_manager.get_all_files(
+                            user_id=user_id, collection_name=subject_name
+                        )
+                    ]
+                    file_name = find_most_similar(all_file_names, file_name, max_distance=5)
+                    if not file_name:
+                        raise SubjectMissingException()
+                    
+                    metadata = {"file" : file_name}
+                else:
+                    metadata = {}
+
+                metadata["collection"] = collection.name
+                metadata["user"] = user_id
+                try:
+                    docs = knowledge_manager.query_data(query, k=3, metadata=metadata)
+                    data = select_random_chunks(
+                        "\n".join([doc.page_content for doc in docs]), 600, 1850
+                    )
+                except Exception as e:
+                    logging.error(f"Error in vectordb {e}")
+                    if file_name:
+                        file_content = file_manager.get_file_by_name(user_id=user_id, collection_name=subject_name, filename=file_name).file_content
+                    else:
+                        files = file_manager.get_all_files(user_id=user_id, collection_name=subject_name)
+                        file_content = "".join([file.file_content for file in files])
+                        
+                    data = select_random_chunks(file_content, 600, 1850)
+            except SubjectMissingException:
+                data = f"Make notes for {query}"
+        else:
+            data = f"Make notes for {query}"
+        
+        try:
+            model_name, premium_model = use_feature_with_premium_model_check(
+                "NOTES", user_id=user_id
+            )
+        except Exception:
+            return "Limit reached user cannot make more notes"
+
+        llm = get_model({"temperature": 0.3}, False, premium_model)
+        try:
+            return deduct_points_for_feature(
+                user_id,
+                make_notes,
+                func_kwargs={
+                    "notes_maker" : make_notes_maker(
+                        maker_type=template,
+                        llm=llm
+                    ),
+                    "cache_manager": redis_cache_manager,
+                    "url_template": CACHE_DOCUMENT_URL_TEMPLATE,
+                    "data_string" : data,
+                    "instructions" : instructions
+                },
+                feature_key="NOTES",
+                usage_key="NOTES",
+            )
+        except Exception as e:
+            logging.error(f"Error in making notes {e}")
+            return f"Error in making notes {e}"
+        
+
+        
+        
+    
+    
     extra_tools = [
+        StructuredTool.from_function(
+            func=lambda subject_name, file_name, query, instructions = "", template = random.choice(get_available_note_makers()), *args, **kwargs: create_notes(
+                subject_name=subject_name,
+                file_name=file_name,
+                instructions=instructions,
+                template=template,
+                query=query
+            ),
+            name="make_notes",
+            description="Used to make notes from files or query",
+            args_schema=MakeNotesArgs,
+        ),
         StructuredTool.from_function(
             func=lambda subject_name, filename, url, *args, **kwargs: create_file(
                 subject_name=subject_name, filename=filename, url=url

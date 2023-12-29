@@ -28,7 +28,8 @@ from bs4 import BeautifulSoup
 from langchain.utilities.searx_search import SearxSearchWrapper
 from api.lib.utils import convert_youtube_url_to_standard, format_url
 from api.routers.utils import image_to_pdf_in_memory
-from ..lib.cv_maker.cv_maker import CVMaker
+from api.lib.cv_maker.cv_maker import CVMaker
+from api.lib.notes_maker import NotesMaker
 from graphviz import Source
 
 
@@ -398,3 +399,20 @@ def vega_lite_to_images(vl_spec: str) -> bytes:
     #svg_data = vlc.vegalite_to_svg(vl_spec=vl_spec).encode('utf-8')
     png_data = vlc.vegalite_to_png(vl_spec=vl_spec, scale=2)
     return png_data
+
+def make_notes(
+    notes_maker: NotesMaker,
+    cache_manager,
+    url_template: str,
+    data_string: str,
+    instructions: str
+):
+    notes_io = notes_maker.make_notes_from_string(
+        string=data_string,
+        instructions=instructions
+    )
+    doc_id = str(uuid.uuid4()) + ".docx"
+    notes_bytes = notes_io.read()
+    cache_manager.set(key=doc_id, value=notes_bytes, ttl=18000, suppress=False)
+    document_url = url_template.format(doc_id=doc_id)
+    return f"{document_url} Give this link as it is to the user dont add sandbox prefix to it, user wont recieve file until you explicitly read out the link to him"
