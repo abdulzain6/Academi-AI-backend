@@ -13,7 +13,7 @@ from qdrant_client import QdrantClient
 from qdrant_client.http import models as rest
 from pptx import Presentation
 from typing import List, Union, Optional
-
+from langchain.embeddings.openai import OpenAIEmbeddings
 
 DEFAULT_TEMPLATE_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "template_dir")
 DEFAULT_TEMPLATES_JSON = os.path.join(os.path.dirname(os.path.realpath(__file__)), "templates.json")
@@ -124,11 +124,17 @@ class TemplateKnowledgeManager(TemplateObserver):
         if not embeddings:
             self.embeddings = AnyscaleEmbeddings(
                 base_url="https://api.endpoints.anyscale.com/v1",
-                model="thenlper/gte-large"
+                model="thenlper/gte-large",
+               max_retries=2,
+               timeout=5
             )
         else:
             self.embeddings = embeddings
-        self.vectorstore = self.get_vectorstore()
+        try:
+            self.vectorstore = self.get_vectorstore()
+        except Exception:
+            self.embeddings = OpenAIEmbeddings()
+            self.vectorstore = self.get_vectorstore()
 
     def get_vectorstore(self) -> Qdrant:
         client = QdrantClient(location=":memory:")

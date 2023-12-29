@@ -237,7 +237,8 @@ knowledge_manager = KnowledgeManager(
     AnyscaleEmbeddings(
         base_url="https://api.endpoints.anyscale.com/v1",
         model="thenlper/gte-large",
-        timeout=10
+        timeout=10,
+        max_retries=2
     ),
     unstructured_api_key=UNSTRUCTURED_API_KEY,
     unstructured_url=UNSTRUCTURED_URL,
@@ -253,7 +254,8 @@ chat_manager = ChatManagerRetrieval(
     AnyscaleEmbeddings(
         base_url="https://api.endpoints.anyscale.com/v1",
         model="thenlper/gte-large",
-        timeout=10
+        timeout=10,
+        max_retries=2
     ),
     conversation_limit=800,
     docs_limit=2100,
@@ -264,7 +266,8 @@ chat_manager_agent_non_retrieval = ChatManagerNonRetrieval(
     AnyscaleEmbeddings(
         base_url="https://api.endpoints.anyscale.com/v1",
         model="thenlper/gte-large",
-        timeout=10
+        timeout=10,
+        max_retries=2
     ),
     conversation_limit=700,
     python_client=client,
