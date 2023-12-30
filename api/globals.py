@@ -37,7 +37,6 @@ from .lib.redis_cache import RedisCache
 from langchain.chat_models import ChatOpenAI, ChatAnyscale
 from langchain.chat_models.azure_openai import AzureChatOpenAI
 from .lib.purchases_play_store import SubscriptionChecker
-from .global_tools import CHAT_TOOLS
 from .ai_model import AIModel
 from contextlib import suppress
 from azure.ai.formrecognizer import DocumentAnalysisClient
@@ -272,7 +271,7 @@ chat_manager_agent_non_retrieval = ChatManagerNonRetrieval(
     ),
     conversation_limit=700,
     python_client=client,
-    base_tools=CHAT_TOOLS,
+    base_tools=[],
 )
 subscription_manager = SubscriptionManager(
     connection_string=MONGODB_URL,
@@ -337,6 +336,7 @@ template_manager, temp_knowledge_manager = initialize_managers(
 image_ocr = ImageOCR(
     app_id=MATHPIX_APPID,
     app_key=MATHPIX_API_KEY,
+    alt_ocr=text_ocr
 )
 
 plantuml_server = PlantUML(url=PLANTUML_URL)

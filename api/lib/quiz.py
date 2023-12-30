@@ -467,7 +467,7 @@ The result for the quiz, You must follow the schema(Important):
                 llm=self.llm,
             )
             if short_answers:
-                short_answer_result: QuestionResults = chain.run(
+                short_answer_result: list[QuestionResult] = chain.run(
                     data=self.format_user_responses(short_answers),
                     format_instructions=format_instruction
                 ).results

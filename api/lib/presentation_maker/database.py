@@ -6,8 +6,7 @@ from shutil import copy
 from pydantic import BaseModel
 from typing import Optional, List, Union
 from abc import ABC, abstractmethod
-from langchain.vectorstores import Qdrant
-from langchain.embeddings.base import Embeddings
+from langchain.vectorstores.qdrant import Qdrant
 from langchain.schema import Document
 from qdrant_client import QdrantClient
 from qdrant_client.http import models as rest

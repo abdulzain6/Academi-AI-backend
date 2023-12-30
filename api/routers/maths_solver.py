@@ -12,7 +12,7 @@ from ..lib.database.messages import MessagePair
 from ..lib.utils import split_into_chunks
 from ..globals import image_ocr, conversation_manager
 from ..globals import (
-    client, CHAT_TOOLS
+    client
 )
 from pydantic import BaseModel
 from ..auth import get_user_id, verify_play_integrity

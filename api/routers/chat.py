@@ -1,18 +1,33 @@
-import logging
-import queue
-import random
-import threading
 from typing import Generator, List, Optional
-import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi import Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
+
 from api.lib.database.collections import CollectionModel
 from api.lib.presentation_maker.image_gen import PexelsImageSearch
 from ..lib.cv_maker.cv_maker import CVMaker
 from ..lib.cv_maker.template_loader import template_loader
 from api.lib.presentation_maker.presentation_maker import PresentationMaker
 from api.lib.uml_diagram_maker import AIPlantUMLGenerator
+from api.config import CACHE_DOCUMENT_URL_TEMPLATE
+from api.dependencies import can_add_more_data
+from ..lib.notes_maker import make_notes_maker, get_available_note_makers
+from api.config import REDIS_URL, CACHE_DOCUMENT_URL_TEMPLATE, SEARCHX_HOST
+from api.lib.database.cache_manager import RedisCacheManager
+from api.lib.tools import ScholarlySearchRun, MarkdownToPDFConverter, RequestsGetTool, SearchTool, SearchImage
+from ..lib.database.messages import MessagePair
+from ..lib.utils import split_into_chunks, extract_schema_fields, timed_random_choice
+from ..lib.tools import (
+    MakePresentationInput,
+    make_ppt,
+    make_uml_diagram,
+    make_cv_from_string,
+    make_vega_graph,
+    make_graphviz_graph,
+    create_link_file,
+    make_notes
+)
+from ..lib.inmemory_vectorstore import InMemoryVectorStore
 from ..auth import get_user_id, verify_play_integrity
 from ..globals import (
     collection_manager,
@@ -31,37 +46,33 @@ from ..globals import (
     get_model,
     get_model_and_fallback,
 )
-from ..lib.database.messages import MessagePair
-from ..lib.utils import split_into_chunks, extract_schema_fields, timed_random_choice
 from ..dependencies import (
     can_use_premium_model,
     require_points_for_feature,
     deduct_points_for_feature,
     use_feature_with_premium_model_check,
 )
+from .utils import select_random_chunks, find_most_similar
 from pydantic import BaseModel
 from openai import OpenAIError
 from langchain.tools import StructuredTool
-from .utils import select_random_chunks, find_most_similar
 from langchain.pydantic_v1 import BaseModel as OldBaseModel
 from langchain.pydantic_v1 import Field as OldField
-from ..lib.tools import (
-    MakePresentationInput,
-    make_ppt,
-    make_uml_diagram,
-    make_cv_from_string,
-    make_vega_graph,
-    make_graphviz_graph,
-    create_link_file,
-    make_notes
-)
-from api.config import CACHE_DOCUMENT_URL_TEMPLATE
-from api.dependencies import can_add_more_data
-from ..lib.notes_maker import make_notes_maker, get_available_note_makers
+from langchain.utilities.searx_search import SearxSearchWrapper
+from langchain.tools.youtube.search import YouTubeSearchTool
+from langchain.utilities.requests import TextRequestsWrapper
+from langchain.schema import Document
 
-
+import redis
+import logging
+import queue
+import random
+import threading
+import uuid
 
 router = APIRouter()
+tools_vectorstore = InMemoryVectorStore()
+
 
 
 class ChatGeneralInput(BaseModel):
@@ -69,16 +80,17 @@ class ChatGeneralInput(BaseModel):
     prompt: str
     language: str = "English"
 
-
 class ChatCollectionInput(BaseModel):
     collection_name: str
     chat_history: Optional[list[tuple[str, str]]] = None
     prompt: str
     language: str = "English"
 
-
 class ChatFileInput(ChatCollectionInput):
     file_name: str
+
+class SubjectMissingException(Exception):
+    pass
 
 
 def convert_message_pairs_to_tuples(
@@ -86,9 +98,13 @@ def convert_message_pairs_to_tuples(
 ) -> list[tuple[str, str]]:
     return [(pair.human_message, pair.bot_response) for pair in message_pairs]
 
-class SubjectMissingException(Exception):
-    pass
-
+def pick_relavent_tools(tools: list[StructuredTool], query: str, k: int = 2) -> list[StructuredTool]:
+    docs = [Document(page_content=tool.description, metadata={"name" : tool.name}) for tool in tools]
+    tools_vectorstore.add_documents(docs)
+    relavent_tools = tools_vectorstore.query_vectorstore(query=query, k=k)
+    relavent_tool_names = [tool.metadata["name"] for tool in relavent_tools]
+    return [tool for tool in tools if tool.name in relavent_tool_names]
+    
 @router.post("/chat-collection-stream")
 @require_points_for_feature("CHAT")
 def chat_collection_stream(
@@ -750,6 +766,9 @@ File Content:
                 feature_key="NOTES",
                 usage_key="NOTES",
             )
+        except ValueError as e:
+            logging.error(f"Error in making notes {e}")
+            return f"Error in making notes {e}. Maybe give the user notes in pdf its free?"       
         except Exception as e:
             logging.error(f"Error in making notes {e}")
             return f"Error in making notes {e}"
@@ -759,9 +778,9 @@ File Content:
         
     
     
-    extra_tools = [
+    must_have_tools = [
         StructuredTool.from_function(
-            func=lambda subject_name="", file_name="", query="World", instructions = "", template = random.choice(get_available_note_makers()), *args, **kwargs: create_notes(
+            func=lambda subject_name="", file_name="", query="", instructions = "", template = random.choice(get_available_note_makers()), *args, **kwargs: create_notes(
                 subject_name=subject_name,
                 file_name=file_name,
                 instructions=instructions,
@@ -789,17 +808,6 @@ File Content:
             args_schema=MakeSubjectArgs,
         ),
         StructuredTool.from_function(
-            func=lambda topic, instructions="", number_of_pages=5, negative_prompt="", *args, **kwargs: make_presentation(
-                topic,
-                instructions,
-                number_of_pages,
-                negative_prompt,
-            ),
-            name="make_ppt",
-            description="Used to make ppt using AI",
-            args_schema=MakePptArgs,
-        ),
-        StructuredTool.from_function(
             func=lambda subject_name, file_name=None, query="all", *args, **kwargs: read_vector_db(
                 query=query, subject_name=subject_name, file_name=file_name
             ),
@@ -808,19 +816,41 @@ File Content:
             args_schema=ReadDataArgs,
         ),
         StructuredTool.from_function(
-            func=lambda detailed_instructions="Random", *args, **kwargs: make_uml_digram(
-                detailed_instructions=detailed_instructions
-            ),
-            name="make_uml_diagram",
-            description="Used to make uml diagrams using AI",
-            args_schema=MakeUMLArgs,
-        ),
-        StructuredTool.from_function(
             func=lambda *args, **kwargs: collection_manager.get_all_files_for_user_as_string(
                 user_id
             ),
             name="list_user_subjects_files",
             description="Used to list the subjects the students has added and files in them.",
+        ),
+        StructuredTool.from_function(
+            func=lambda dot_code, *args, **kwargs: create_graphviz_graph(
+                dot_code=dot_code
+            ),
+            name="make_graphviz_graph",
+            description="Used to make graphs using graphviz. Takes in valid dot language code for graphviz",
+            #args_schema=MakeGraphArgs,
+        ),
+        SearchTool(
+            seachx_wrapper=SearxSearchWrapper(searx_host=SEARCHX_HOST, unsecure=True, k=3)
+        ),
+        MarkdownToPDFConverter(
+            cache_manager=RedisCacheManager(redis.from_url(REDIS_URL)),
+            url_template=CACHE_DOCUMENT_URL_TEMPLATE,
+        ),
+        SearchImage(instance_url=SEARCHX_HOST)
+    ]
+    
+    optional_tools = [
+        RequestsGetTool(requests_wrapper=TextRequestsWrapper()),
+        YouTubeSearchTool(),
+        ScholarlySearchRun(), 
+        StructuredTool.from_function(
+            func=lambda vega_lite_spec, *args, **kwargs: make_graph(
+                vega_lite_spec=vega_lite_spec
+            ),
+            name="make_vega_lite_graph",
+            description="Used to make graphs using vega lite. Takes in a vega lite spec in json format.",
+            #args_schema=MakeGraphArgs,
         ),
         StructuredTool.from_function(
             func=lambda *args, **kwargs: make_cv(
@@ -832,22 +862,29 @@ File Content:
             args_schema=MakeCVArgs,
         ),
         StructuredTool.from_function(
-            func=lambda vega_lite_spec, *args, **kwargs: make_graph(
-                vega_lite_spec=vega_lite_spec
+            func=lambda detailed_instructions="Random", *args, **kwargs: make_uml_digram(
+                detailed_instructions=detailed_instructions
             ),
-            name="make_vega_lite_graph",
-            description="Used to make graphs using vega lite. Takes in a vega lite spec in json format.",
-            #args_schema=MakeGraphArgs,
+            name="make_uml_diagram",
+            description="Used to make uml diagrams using AI",
+            args_schema=MakeUMLArgs,
         ),
         StructuredTool.from_function(
-            func=lambda dot_code, *args, **kwargs: create_graphviz_graph(
-                dot_code=dot_code
+            func=lambda topic, instructions="", number_of_pages=5, negative_prompt="", *args, **kwargs: make_presentation(
+                topic,
+                instructions,
+                number_of_pages,
+                negative_prompt,
             ),
-            name="make_graphviz_graph",
-            description="Used to make graphs using graphviz. Takes in valid dot language code for graphviz",
-            #args_schema=MakeGraphArgs,
+            name="make_ppt",
+            description="Used to make ppt using AI",
+            args_schema=MakePptArgs,
         ),
     ]
+    
+    queried_tools = pick_relavent_tools(optional_tools, query=data.prompt, k=2)
+    logging.info(f"Picked tools: {queried_tools}")
+    extra_tools = [*must_have_tools, *queried_tools]
 
     def data_generator() -> Generator[str, None, None]:
         # yield "[START]"

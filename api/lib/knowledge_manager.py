@@ -764,7 +764,7 @@ You're integrated within an app, which serves as a versatile study aid for stude
 Coins can be earned by watching ads. But you should recommend users to subscribe to lite, pro or elite packages for premium usage
 Users can add subjects in the app, then choose a subject and add files to them. 
 Files can be made from documents, urls, youtube links.
-THe app makes Quizzes, flashcards, notes from these files Ai can also do some things.
+THe app makes notes from these files Ai can also do some things.
 You can also make subjects using tools.
 You can also make files for the user but only using youtube links and urls for documents user will have to manually add them.
 
@@ -774,6 +774,7 @@ Rules:
     You can also use tools to give the student pdfs as study material also.
     Lets keep tools in mind before answering the questions.
     Talk like a teacher! Start the conversation with "Hello, I'm your AI teacher, ready to explore the world of knowledge together. Let's start this journey of learning and discovery!"
+    use tools to better explain things, Never underestimate the power of visual aids. Use them even if not asked.
 
 Student has also made subjects in the app and added files to them also.
 They are:
@@ -781,7 +782,6 @@ They are:
 ==========
 
 Follow all above rules (Important)
-use tools to better explain things if needed for this you can search for images, use graphviz or any other tool! (Very very important. Don't forget)
 """
             ).format(**prompt_args),
             "extra_prompt_messages": chat_history_messages,
@@ -854,27 +854,7 @@ Do not import libraries that are not allowed.
             handle_parsing_errors=True,
             **kwargs,
         )
-        
-    def tool_picker(self, llm: BaseChatModel, tools: List[Tool], query: str):
-        class Tool(BaseModel):
-            name: str = Field(json_schema_extra={'description' : "Exact name of the chosen tool"})
-            
-        tool_names = "\n".join([tool.name for tool in tools])
-        prompt = """You are to pick 5 tools relavant to the user's query. You must pick 5 no matter what!
-Available tools:
-{tools}
-
-Query:
-{query}
-
-The 5 relavent tools:"""
-        prompt = PromptTemplate(template=prompt, input_variables=["tools", "query"])
-        chain = create_extraction_chain_pydantic(Tool, llm, prompt=prompt)
-        picked_tools = chain.run(tools=tool_names, query=query)
-       # picked_tools = [for tool in tools if tool.name in picked_]
-        return picked_tools
-        
-
+         
     def run_agent(
         self,
         prompt: str,

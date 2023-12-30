@@ -46,3 +46,4 @@ azure-ai-formrecognizer
 markdown2
 vl-convert-python
 graphviz
+replicate

@@ -7,7 +7,7 @@ import time
 
 class VisionOCR(ABC):
     @abstractmethod
-    def perform_ocr(self, image_path: str) -> List[str]:
+    def perform_ocr(self, path: str) -> List[str]:
         pass
 
 
