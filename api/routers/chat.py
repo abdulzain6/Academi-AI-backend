@@ -768,8 +768,8 @@ File Content:
                 template=template,
                 query=query
             ),
-            name="make_notes",
-            description="Used to make notes from files or query",
+            name="make_notes_from_file",
+            description="Used to make notes from student files, don't use for anything else",
             args_schema=MakeNotesArgs,
         ),
         StructuredTool.from_function(
