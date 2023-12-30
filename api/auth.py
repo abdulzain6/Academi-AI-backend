@@ -5,7 +5,7 @@ from firebase_admin import app_check
 from google.oauth2 import id_token
 from google.auth.transport import requests
 from google.oauth2 import service_account
-from .globals import credentials_path, redis_cache_manager
+from .globals import credentials_path, redis_cache_manager, email_checker
 from .firebase import default_app
 from .config import API_KEY_BACKDOOR, CRONJOB_KEY
 
@@ -15,11 +15,22 @@ import jwt
 
 security = HTTPBearer()
 
+class FraudException(Exception):
+    pass
+
 def get_user_id(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
     token = credentials.credentials
-    cache_key = f"token:{token}"
+    cache_key = f"token_new:{token}"
     try:
         return get_set_user_id(cache_key, token)
+    except FraudException as e:
+        logging.error(f"Fraud detected {token} {e}")
+        redis_cache_manager.delete(cache_key)
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Your account has been banned because of fraud, please contact customer support!",
+            headers={"WWW-Authenticate": "Bearer"},
+        )     
     except Exception as e:
         redis_cache_manager.delete(cache_key)
         raise HTTPException(
@@ -36,13 +47,16 @@ def get_set_user_id(cache_key, token):
 
     user = auth.verify_id_token(token, app=default_app)
     user_id = user["user_id"]
+    if not email_checker.is_valid_email(auth.get_user(user_id).email):
+        raise FraudException(f"Fraud detected {user_id}")
+    
     logging.info("Verified token, storing in cache...")
     redis_cache_manager.set(cache_key, user_id)
     return user_id
 
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     token = credentials.credentials
-    cache_key = f"user_details:{token}"
+    cache_key = f"user_details_new:{token}"
 
     if cached_user := redis_cache_manager.get(cache_key):
         return cached_user
@@ -56,9 +70,19 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
             "display_name": user_details.display_name,
             "photo_url": user_details.photo_url,
         }
-
+        if not email_checker.is_valid_email(user_details.email):
+            raise FraudException("Invalid Email, Fraud Detected!")
+        
         redis_cache_manager.set(cache_key, user_data)
         return user_data
+    except FraudException:
+        logging.error(f"Fraud detected {user_data}")
+        redis_cache_manager.delete(cache_key)
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Your account has been banned because of fraud, please contact customer support!",
+            headers={"WWW-Authenticate": "Bearer"},
+        )        
     except Exception as e:
         logging.error(f"Error in id token. {e}")
         redis_cache_manager.delete(cache_key)

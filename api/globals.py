@@ -42,6 +42,7 @@ from .ai_model import AIModel
 from contextlib import suppress
 from azure.ai.formrecognizer import DocumentAnalysisClient
 from azure.core.credentials import AzureKeyCredential
+from .lib.email_integrity_checker import EmailIntegrityChecker
 import langchain
 import redis
 import logging
@@ -350,3 +351,6 @@ credentials_path = os.path.join(
 )
 subscription_checker = SubscriptionChecker(credentials_path)
 
+
+#email Intergrity checker
+email_checker = EmailIntegrityChecker()

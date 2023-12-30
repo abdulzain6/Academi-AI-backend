@@ -39,16 +39,15 @@ def register_user(email, password):
 
 
 
-email = "test@example.com"
+email = "test@gmail.com"
 password = "testpassword"
 
 register_user(email, password)
-register_user("zain@example.com", password)
+register_user("zain@gmail.com", password)
 
 if id_token := login_with_email_and_password(email, password, "AIzaSyBdcuZHJyUFsGpKEG3-2TPl76Ax_Ehh-6c"):
     print("ID Token:", id_token)
 
-if id_token := login_with_email_and_password("zain@example.com", password, "AIzaSyBdcuZHJyUFsGpKEG3-2TPl76Ax_Ehh-6c"):
+if id_token := login_with_email_and_password("zain@gmail.com", password, "AIzaSyBdcuZHJyUFsGpKEG3-2TPl76Ax_Ehh-6c"):
     print("\n\n\n\nID Token:", id_token)
 
-print("\n" + "683DA5D3-D11D-43DD-9FC7-0E4FEFEAD131")
