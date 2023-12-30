@@ -38,3 +38,34 @@ class EmailIntegrityChecker:
     def is_valid_email(self, email: str) -> bool:
         domain = email.split('@')[-1]
         return domain not in self.disposable_domains and self.is_valid_domain(domain)
+
+
+
+
+
+
+
+if __name__ == "__main__":
+    import firebase_admin
+    from firebase_admin import credentials, auth
+    from email_integrity_checker import EmailIntegrityChecker  # Assuming the class is in this file
+
+    # Initialize Firebase Admin SDK
+    cred = credentials.Certificate('/home/zain/Akalmand.ai/api/creds/academi-ai-firebase-adminsdk-mg8gg-4dde2949d3.json')
+    firebase_admin.initialize_app(cred)
+
+    # Initialize the EmailIntegrityChecker
+    checker = EmailIntegrityChecker()
+
+    def check_all_users():
+        page = auth.list_users()
+        while page:
+            for user in page.users:
+                email = user.email
+                if email and not checker.is_valid_email(email):
+                    print(f"Invalid email detected: {email}")
+            # Get next batch of users
+            page = page.get_next_page()
+
+    # Run the script
+    check_all_users()
