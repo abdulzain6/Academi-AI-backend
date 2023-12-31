@@ -14,7 +14,7 @@ from api.dependencies import can_add_more_data
 from ..lib.notes_maker import make_notes_maker, get_available_note_makers
 from api.config import REDIS_URL, CACHE_DOCUMENT_URL_TEMPLATE, SEARCHX_HOST
 from api.lib.database.cache_manager import RedisCacheManager
-from api.lib.tools import ScholarlySearchRun, MarkdownToPDFConverter, RequestsGetTool, SearchTool, SearchImage
+from api.lib.tools import ScholarlySearchRun, MarkdownToDocConverter, RequestsGetTool, SearchTool, SearchImage
 from ..lib.database.messages import MessagePair
 from ..lib.utils import split_into_chunks, extract_schema_fields, timed_random_choice
 from ..lib.tools import (
@@ -25,8 +25,10 @@ from ..lib.tools import (
     make_vega_graph,
     make_graphviz_graph,
     create_link_file,
-    make_notes
+    make_notes,
+    write_content
 )
+from ..lib.writer import Writer
 from ..lib.inmemory_vectorstore import InMemoryVectorStore
 from ..auth import get_user_id, verify_play_integrity
 from ..globals import (
@@ -39,12 +41,10 @@ from ..globals import (
     subscription_manager,
     redis_cache_manager,
     plantuml_server,
-)
-from ..globals import (
     template_manager,
     temp_knowledge_manager,
     get_model,
-    get_model_and_fallback,
+    get_model_and_fallback
 )
 from ..dependencies import (
     can_use_premium_model,
@@ -390,6 +390,18 @@ def chat_general_stream(
     random_template = timed_random_choice(
         CVMaker.get_all_templates_static(template_loader())
     )
+    class WriterArgs(OldBaseModel):
+        topic: str = OldField(
+            None,
+            description="The Topic to write on"
+        )
+        to_generate: str =  OldField(
+            None,
+            description="The content to write. Can be essays, articles or anything"
+        )
+        negative_prompt: str
+        minimum_word_count: int
+        instructions: str
     
     class MakeNotesArgs(OldBaseModel):
         subject_name: Optional[str] = OldField(
@@ -680,7 +692,7 @@ File Content:
                 web_link=url
             )
         except Exception as e:
-            return f"Error: {e}. Maybe use search to find related urls?"
+            return f"Error: {e}. Maybe ask the user for another url or give him urls using search to choose from or just use your knowledge?"
 
     def create_notes(subject_name: str, file_name: str, instructions: str, template: str, query: str):
         available = get_available_note_makers()
@@ -773,12 +785,47 @@ File Content:
             logging.error(f"Error in making notes {e}")
             return f"Error in making notes {e}"
         
-
+    def write_content_tool_func(topic: str, to_generate: str, negative_prompt: str, minimum_word_count: int, instructions: str):
+        model_name, premium_model = can_use_premium_model(user_id=user_id)
+        model = get_model({"temperature": 0}, False, premium_model, alt=True)
+        writer = Writer(model)
+        try:
+            return deduct_points_for_feature(
+                user_id,
+                write_content,
+                func_kwargs={
+                    "writer" : writer,
+                    "topic": topic,
+                    "instructions": instructions,
+                    "minimum_word_count": minimum_word_count,
+                    "negative_prompt": negative_prompt,
+                    "to_generate": to_generate,
+                    "cache_manager": redis_cache_manager,
+                    "url_template": CACHE_DOCUMENT_URL_TEMPLATE
+                },
+                feature_key="WRITER",
+                usage_key="WRITER",
+            )  
+        except Exception as e:
+            logging.error(f"Error in writing content {e}")
+            return f"Error in writing content {e}"
         
         
     
     
     must_have_tools = [
+        StructuredTool.from_function(
+            func=lambda topic="", to_generate="content", negative_prompt="", minimum_word_count=500, instructions="", *args, **kwargs: write_content_tool_func(
+                topic=topic,
+                instructions=instructions,
+                minimum_word_count=minimum_word_count,
+                negative_prompt=negative_prompt,
+                to_generate=to_generate,
+            ),
+            name="writer",
+            description="Used to write content like poems, essays, articles, reports",
+            args_schema=WriterArgs,
+        ),
         StructuredTool.from_function(
             func=lambda subject_name="", file_name="", query="", instructions = "", template = random.choice(get_available_note_makers()), *args, **kwargs: create_notes(
                 subject_name=subject_name,
@@ -833,7 +880,7 @@ File Content:
         SearchTool(
             seachx_wrapper=SearxSearchWrapper(searx_host=SEARCHX_HOST, unsecure=True, k=3)
         ),
-        MarkdownToPDFConverter(
+        MarkdownToDocConverter(
             cache_manager=RedisCacheManager(redis.from_url(REDIS_URL)),
             url_template=CACHE_DOCUMENT_URL_TEMPLATE,
         ),

@@ -1,14 +1,10 @@
 import os
-from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Response, status
-from pydantic import BaseModel
-from ..auth import get_current_user, get_user_id, verify_play_integrity
+from fastapi import APIRouter, HTTPException, Response
 from ..globals import (
     redis_cache_manager,
 )
 import logging
 from io import BytesIO
-from fastapi.responses import StreamingResponse
 
 
 router = APIRouter()

@@ -1,3 +1,5 @@
+import io
+import os
 import tempfile
 from markdown import markdown
 from langchain.chat_models.base import BaseChatModel
@@ -13,6 +15,8 @@ from langchain.prompts import (
 import pdfkit
 import pypandoc
 import logging
+from docx import Document
+from docx.shared import RGBColor
 from retrying import retry
 
 
@@ -70,32 +74,58 @@ The {to_generate} in markdown:"""
             to_generate=content_input.to_generate,
         )
 
-    def generate_content_html(self, content_input: ContentInput) -> tuple[str, str]:
-        content = self.get_markdown(word_count=content_input.minimum_word_count, content_input=content_input)
-        return markdown(content), content
+
+    def docx_bytes_to_pdf_bytes(self, docx_bytes: bytes) -> bytes:
+        # Create a temporary file for the DOCX content
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.docx') as temp_docx:
+            docx_path = temp_docx.name
+            temp_docx.write(docx_bytes)
+
+        try:
+            # Convert the DOCX to PDF using pypandoc
+            pdf_path = temp_docx.name.replace('.docx', '.pdf')
+            pypandoc.convert_file(docx_path, 'pdf', outputfile=pdf_path)
+            
+            # Read the generated PDF file and return its bytes
+            with open(pdf_path, 'rb') as pdf_file:
+                pdf_bytes = pdf_file.read()
+            return pdf_bytes
+        except Exception as e:
+            logging.error(f"Error {e}")
+            raise e
+        finally:
+            os.remove(docx_path)
+            if os.path.exists(pdf_path):
+                os.remove(pdf_path)
     
-    def html_to_pdf_bytes(self, html: str) -> bytes:
-        return pdfkit.from_string(html, False)
-    
-    def html_to_docx_bytes(self, html: str) -> bytes:
-        with tempfile.NamedTemporaryFile(suffix=".docx") as tmpfile:
-            pypandoc.convert_text(html, 'docx', format='html', outputfile=tmpfile.name)
-            tmpfile.seek(0)
-            docx_bytes = tmpfile.read()
-        return docx_bytes
-    
+    def html_to_docx_bytes(self, content: str) -> bytes:
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.docx') as temp_file:
+            pypandoc.convert_text(content, 'docx', format='md', outputfile=temp_file.name)
+            temp_file_path = temp_file.name
+
+        doc = Document(temp_file_path)
+        for paragraph in doc.paragraphs:
+            for run in paragraph.runs:
+                run.font.color.rgb = RGBColor(0, 0, 0)  # RGB values for black
+
+        file_obj = io.BytesIO()
+        doc.save(file_obj)
+        file_obj.seek(0)  # Reset the file pointer to the beginning of the file
+        os.unlink(temp_file_path)  # Delete the temporary file
+        return file_obj.read()
+
     @retry(stop_max_attempt_number=3)
     def get_content(self, content_input: ContentInput):
         content_input.minimum_word_count = max(content_input.minimum_word_count, 10)
         logging.info(f"Generating content for {content_input}.")
-        html, text = self.generate_content_html(content_input)
+        content = self.get_markdown(word_count=content_input.minimum_word_count, content_input=content_input)
         logging.info(f"Making pdf for {content_input}.")
-        pdf_bytes = self.html_to_pdf_bytes(html)
+        docx_bytes = self.html_to_docx_bytes(content)
+        pdf_bytes = self.docx_bytes_to_pdf_bytes(docx_bytes)
         logging.info(f"Making docx for {content_input}.")
-        docx_bytes = self.html_to_docx_bytes(html)
         return {
             "pdf" : pdf_bytes,
             "docx" : docx_bytes,
-            "text" : text
+            "text" : content
         }
 

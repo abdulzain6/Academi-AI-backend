@@ -1,8 +1,11 @@
+import io
 import logging
 import os
 import tempfile
 import uuid
-import pypandoc, pdfkit
+import pypandoc
+from docx import Document
+from docx.shared import RGBColor
 import requests
 import vl_convert as vlc
 from typing import List, Dict, Union, Optional, IO
@@ -16,6 +19,7 @@ from api.lib.presentation_maker.presentation_maker import (
     PresentationMaker,
     PresentationInput,
 )
+from api.lib.writer import Writer, ContentInput
 from api.lib.uml_diagram_maker import AIPlantUMLGenerator
 from langchain.pydantic_v1 import BaseModel
 from langchain.callbacks.manager import (
@@ -75,14 +79,14 @@ class RequestsGetTool(BaseRequestsTool, BaseTool):
 class MakePresentationInput(PresentationInput):
     template_name: Optional[str] = ""
 
-class MarkdownToPDFConverter(BaseTool):
+class MarkdownToDocConverter(BaseTool):
     """Tool that converts Markdown text to a PDF file in memory."""
 
-    name: str = "make_pdf_notes_or_make_table"
+    name: str = "make_doc_notes_or_make_table"
     description: str = (
-        "A tool to give the user a pdf with the content of your choice"
+        "A tool to give the user a docx with the content of your choice"
         "Also Can be used to give the user a timetable a routine or notes"
-        "Input should be the content of the pdf in Markdown formatted string."
+        "Input should be the content of the docx in Markdown (Important!)."
     )
     cache_manager: object
     url_template: str
@@ -97,41 +101,28 @@ class MarkdownToPDFConverter(BaseTool):
         """Convert Markdown text to a PDF file."""
         try:
             # Generate a unique ID for the document
-            doc_id = f"{str(uuid.uuid4())}.pdf"
-            html_filename = f"/tmp/{doc_id}.html"
-            pdf_filename = f"/tmp/{doc_id}.pdf"
+            doc_id = f"{str(uuid.uuid4())}.docx"
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.docx') as temp_file:
+                pypandoc.convert_text(content, 'docx', format='md', outputfile=temp_file.name)
+                temp_file_path = temp_file.name
 
-            # Convert Markdown to HTML
-            pypandoc.convert_text(
-                content,
-                "html5",
-                format="md",
-                outputfile=html_filename,
-                extra_args=["-s", "--webtex"],
-            )
+            # Open the generated DOCX file with python-docx
+            doc = Document(temp_file_path)
 
-            # Convert HTML to PDF using wkhtmltopdf
-            options = {
-                "encoding": "UTF-8",
-                "custom-header": [("Accept-Encoding", "gzip")],
-                "no-outline": None,
-            }
-            pdfkit.from_file(html_filename, pdf_filename, options=options)
+            # Iterate through paragraphs and set text color to black
+            for paragraph in doc.paragraphs:
+                for run in paragraph.runs:
+                    run.font.color.rgb = RGBColor(0, 0, 0)  # RGB values for black
 
-            with open(pdf_filename, "rb") as file:
-                pdf_bytes = file.read()
+            # Save the modified DOCX content to a BytesIO object
+            file_obj = io.BytesIO()
+            doc.save(file_obj)
+            file_obj.seek(0)  # Reset the file pointer to the beginning of the file
 
-            # Store the PDF in Redis
-            self.cache_manager.set(
-                key=doc_id, value=pdf_bytes, ttl=18000, suppress=False
-            )
+            os.unlink(temp_file_path)  # Delete the temporary file
 
-            # Remove the temporary HTML and PDF files
-            os.remove(html_filename)
-            os.remove(pdf_filename)
-
-            # Format and return the URL with the document ID
             document_url = self.url_template.format(doc_id=doc_id)
+            self.cache_manager.set(key=doc_id, value=file_obj.read(), ttl=18000, suppress=False)
             return f"{document_url} Give this link as it is to the user dont add sandbox prefix to it, user wont recieve file until you explicitly read out the link to him"
 
         except Exception as e:
@@ -414,5 +405,24 @@ def make_notes(
     doc_id = str(uuid.uuid4()) + ".docx"
     notes_bytes = notes_io.read()
     cache_manager.set(key=doc_id, value=notes_bytes, ttl=18000, suppress=False)
+    document_url = url_template.format(doc_id=doc_id)
+    return f"{document_url} Give this link as it is to the user dont add sandbox prefix to it, user wont recieve file until you explicitly read out the link to him"
+
+def write_content(
+    writer: Writer,
+    topic: str,
+    instructions: str,
+    minimum_word_count: int,
+    negative_prompt: str,
+    to_generate: str,
+    cache_manager,
+    url_template: str,
+):
+    bytes_dict = writer.get_content(
+        ContentInput(topic=topic, instructions=instructions, minimum_word_count=minimum_word_count, negative_prompt=negative_prompt, to_generate=to_generate)
+    )
+    doc_id = str(uuid.uuid4()) + ".docx"
+    bytes_docs = bytes_dict["docx"]
+    cache_manager.set(key=doc_id, value=bytes_docs, ttl=18000, suppress=False)
     document_url = url_template.format(doc_id=doc_id)
     return f"{document_url} Give this link as it is to the user dont add sandbox prefix to it, user wont recieve file until you explicitly read out the link to him"
