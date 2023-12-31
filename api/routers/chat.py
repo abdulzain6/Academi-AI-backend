@@ -780,7 +780,7 @@ File Content:
             )
         except ValueError as e:
             logging.error(f"Error in making notes {e}")
-            return f"Error in making notes {e}. Maybe give the user notes in pdf its free?"       
+            return f"Error in making notes {e}. Maybe give the user notes in docs its free?"       
         except Exception as e:
             logging.error(f"Error in making notes {e}")
             return f"Error in making notes {e}"
@@ -874,7 +874,7 @@ File Content:
                 dot_code=dot_code
             ),
             name="make_graphviz_graph",
-            description="Used to make graphs using graphviz. Takes in valid dot language code for graphviz",
+            description="Used to make graphs using graphviz. Takes in valid dot language code for graphviz it must be in string no extra args",
             #args_schema=MakeGraphArgs,
         ),
         SearchTool(
