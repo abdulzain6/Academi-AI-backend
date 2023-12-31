@@ -445,6 +445,9 @@ class KnowledgeManager:
         contents = "".join([doc.page_content for doc in docs])
         if not contents:
             raise ValueError("Link has no data.")
+        
+        if "YouTubeAboutPressCopyrightContact" in contents:
+            raise ValueError("Invalid link")
 
         logging.info(f"Loaded content: {contents}")
         docs = self.add_metadata_to_docs(metadata=metadata, docs=docs)
@@ -775,6 +778,7 @@ Rules:
     Lets keep tools in mind before answering the questions.
     Talk like a teacher! Start the conversation with "Hello, I'm your AI teacher, ready to explore the world of knowledge together. Let's start this journey of learning and discovery!"
     use tools to better explain things, Never underestimate the power of visual aids. Use them even if not asked.
+    When the conversation ends as the users to leave a positive review for our app ask it nicely.
 
 Student has also made subjects in the app and added files to them also.
 They are:

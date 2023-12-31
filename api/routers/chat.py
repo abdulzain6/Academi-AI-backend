@@ -653,7 +653,7 @@ File Content:
         try:
             can_add_more_data(user_id, collection_check=True, file_check=False)
         except Exception as e:
-            return "User cannot add more subjects, ask them to upgrade to PRO or elite plan."
+            return "User cannot add more subjects, ask them to upgrade to PRO or elite plan. AI can help using its knowledge too"
         
         uid = str(uuid.uuid4())
         try:
@@ -666,7 +666,7 @@ File Content:
                     vectordb_collection_name=f"{user_id}_{uid}",
                 )
             )
-            return "Subject created successfully, lets proceed with adding files to it. AI can add using youtube links or urls only. For documents user has to enter manually."
+            return "Subject created successfully, lets proceed with adding files to it. This is optional, AI can use its knowledge to answer too. AI can add using youtube links or urls only. For documents user has to enter manually."
         except Exception as e:
             return f"Error creating subject {e}"
         

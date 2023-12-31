@@ -217,7 +217,7 @@ class SearchImage(BaseTool):
         response = requests.get(f"{self.instance_url}/search", params=params)
         if response.status_code == 200:
             results = response.json()['results']
-            return [result['img_src'] for result in results][:self.limit]  # Limit the results here
+            return f"Links: {[result['img_src'] for result in results][:self.limit]} User wont recieve images unless you read links out explicitly for them"  # Limit the results here
         else:
             return "No image found"
 
