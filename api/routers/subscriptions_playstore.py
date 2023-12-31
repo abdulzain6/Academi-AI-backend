@@ -3,13 +3,17 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from api.lib.database.purchases import SubscriptionType
 from ..auth import get_user_id, verify_play_integrity, verify_google_token
-from ..globals import subscription_checker, subscription_manager
-from ..config import APP_PACKAGE_NAME, PRODUCT_ID_MAP
+from ..globals import subscription_checker, subscription_manager, user_points_manager
+from ..config import APP_PACKAGE_NAME, PRODUCT_ID_MAP, PRODUCT_ID_COIN_MAP
 from pydantic import BaseModel
 import logging
 
 router = APIRouter()
 
+class OneTimeNotficationTypes(Enum):
+    ONE_TIME_PRODUCT_PURCHASED = 1
+    ONE_TIME_PRODUCT_CANCELED = 2
+    
 class SubscriptionStatus(Enum):
     SUBSCRIPTION_RECOVERED = 1
     SUBSCRIPTION_RENEWED = 2
@@ -42,6 +46,26 @@ class Notification(BaseModel):
     subscriptionId: str
 
 
+@router.post("/verify-onetime")
+def verify_onetime(
+    onetime_data: SubscriptionData,
+    user_id=Depends(get_user_id),
+    play_integrity_verified=Depends(verify_play_integrity),
+):
+    if onetime_data.purchase_token in subscription_manager.retrieve_onetime_tokens(user_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Token already used"
+        )
+    try:
+        data = subscription_checker.check_one_time_purchase(APP_PACKAGE_NAME, onetime_data.purchase_token)
+        subscription_manager.add_onetime_token(user_id, onetime_data.purchase_token)
+    except Exception as e:
+        logging.error(f"Error in verify subscription {e}")
+    
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST, detail="Token verification failed."
+    )
+    
 
 @router.post("/verify")
 def verify_subscription(
@@ -79,6 +103,7 @@ def verify_subscription(
     
 @router.post("/rtdn")
 def receive_notification(notification: dict, token_verified=Depends(verify_google_token)):
+    logging.info(f"Recieved notification {notification}")
     if "subscriptionNotification" in notification:
         sub_notification = notification.get("subscriptionNotification")
         if not sub_notification:
@@ -130,3 +155,14 @@ def receive_notification(notification: dict, token_verified=Depends(verify_googl
                     update=True
                 )
                 logging.info(f"{sub_doc['user_id']} Just unsubscribed (Voided Notification) {voided_notification.get('purchaseToken')}")            
+        return {"status": "success"}
+
+    elif "oneTimeProductNotification" in notification:
+        one_time_product_notfication = notification.get("oneTimeProductNotification")
+        notif_type = OneTimeNotficationTypes(one_time_product_notfication.get("notificationType"))
+        if notif_type.ONE_TIME_PRODUCT_PURCHASED:
+            user_id = subscription_manager.find_user_by_token(token=one_time_product_notfication.get("purchaseToken"))
+            if not user_id:
+                raise HTTPException(400, detail="User not found")
+            user_points_manager.increment_user_points(user_id, points=PRODUCT_ID_COIN_MAP[one_time_product_notfication.get("sku")])
+        return {"status": "success"}

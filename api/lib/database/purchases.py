@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 from pydantic import BaseModel
 from pymongo import MongoClient
 from enum import Enum
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 from .points import UserPointsManager
 from typing import Union
 from bson.json_util import dumps, loads
@@ -76,9 +76,11 @@ class SubscriptionManager:
         self.client = MongoClient(connection_string)
         self.db = self.client[database_name]
         self.subscriptions = self.db["subscriptions"]
-        self.old_tokens = self.db["old_tokens"]
+        self.old_tokens_subscription = self.db["old_tokens"]
+        self.old_tokens_ontime = self.db["one_time"]
         self.subscriptions.create_index("user_id", unique=True)
-        self.old_tokens.create_index("user_id", unique=True)
+        self.old_tokens_subscription.create_index("user_id", unique=True)
+        self.old_tokens_ontime.create_index("user_id", unique=True)
         self.user_points_manager = user_points_manager
         self.plan_features = plan_features
         self.cache_manager = cache_manager
@@ -104,16 +106,31 @@ class SubscriptionManager:
     def get_subscription_by_token(self, purchase_token: str) -> dict:
         return self.subscriptions.find_one({"purchase_token": purchase_token})
     
-    def add_token(self, user_id: str, token: str):
-        self.old_tokens.update_one(
+    def add_subscription_token(self, user_id: str, token: str):
+        self.old_tokens_subscription.update_one(
             {"user_id": user_id},
             {"$push": {"tokens": token}},
             upsert=True
         )
 
-    def retrieve_tokens(self, user_id: str) -> List[str]:
-        document = self.old_tokens.find_one({"user_id": user_id})
+    def retrieve_subscription_tokens(self, user_id: str) -> List[str]:
+        document = self.old_tokens_subscription.find_one({"user_id": user_id})
         return document["tokens"] if document else []
+    
+    def add_onetime_token(self, user_id: str, token: str):
+        self.old_tokens_ontime.update_one(
+            {"user_id": user_id},
+            {"$push": {"tokens": token}},
+            upsert=True
+        )
+
+    def retrieve_onetime_tokens(self, user_id: str) -> List[str]:
+        document = self.old_tokens_ontime.find_one({"user_id": user_id})
+        return document["tokens"] if document else []
+    
+    def find_user_by_token(self, token: str) -> Optional[str]:
+        document = self.old_tokens_ontime.find_one({"tokens": token})
+        return document["user_id"] if document else None
         
     def get_subscription_type(self, user_id: str) -> SubscriptionType:
         sub_doc = self.fetch_or_cache_subscription(user_id)
@@ -151,10 +168,10 @@ class SubscriptionManager:
                 if existing_doc.get("purchase_token") and not existing_doc.get("is_cancelled", False):
                     raise ValueError("Token already used")
                 
-                if purchase_token in self.retrieve_tokens(user_id):
+                if purchase_token in self.retrieve_subscription_tokens(user_id):
                     raise ValueError("Token already used")
                 
-            self.add_token(user_id, purchase_token)
+            self.add_subscription_token(user_id, purchase_token)
             logging.info(f"Applying/Updating subscription for {user_id} token {purchase_token}")
             self.subscriptions.update_one({"user_id": user_id}, {"$set": doc}, upsert=True)
             self.cache_manager.delete(f"user_subscription:{user_id}")

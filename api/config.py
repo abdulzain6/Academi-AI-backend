@@ -67,6 +67,16 @@ PRODUCT_ID_MAP = {
     'elite_6_monthly' : SubscriptionType.ELITE,
     'elite_yearly' : SubscriptionType.ELITE,
 }
+PRODUCT_ID_COIN_MAP = {
+    '30_coins_product': 30,
+    '50_coins_product' : 50,
+    '75_coins_product': 75,
+    '100_coins_product': 100,
+    '200_coins_product': 200,
+    '500_coins_product' : 500,
+    '1000_coins_product': 1000,
+    '2000_coins_product' : 2000
+}
 DOCS_PASSWORD = os.getenv("DOCS_PASSWORD", "zaighamnet")
 DOCS_USERNAME = os.getenv("DOCS_USERNAME", "chutikr")
 PROM_USERNAME = os.getenv("PROM_USERNAME", "PROM_MONITO_MY_APP_U_M0RON_BE_N!CE")
