@@ -107,11 +107,8 @@ Used to execute multiline python code wont persist states so run everything once
 Do not pass in Markdown just a normal python string (Important)
 Try to run all the code at once
 Use tools if you think you need help or to confirm answer. Make sure arguments are loadable by json.loads (Super important) use double quotes or it will cause error
-These are the libraries you have access to.
 Use print statement to print data.
 You will not run unsafe code or perform harm to the server youre on. Or import potentially harmful libraries (Very Important).
-Libraries: {libraries}
-Do not import libraries that are not allowed.
         """
 
         def extract_python_code(text: str) -> List[str]:
@@ -161,7 +158,6 @@ You must return (Important):
     
 Rules:
     You will not run unsafe code or perform harm to the server youre on. Or import potentially harmful libraries (Very Important).
-    Do not import libraries that are not allowed.
     Do not return python code to the user.(Super important)
     Explain in detail in english (Important).
     The student is solving the question on paper, help him solve on paper he has no tools.

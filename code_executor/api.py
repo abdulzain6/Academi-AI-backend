@@ -2,10 +2,11 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from code_executor import FinalStatefulSafeCodeEvaluator  # Assuming you have this module
 import asyncio
-
+import monkey_patch
 app = FastAPI()
 
 math_libraries = [
+    "matplotlib",
     "math",  # Basic mathematical functions and constants
     "numpy",  # Numerical computing and arrays
     "scipy",  # Scientific computing and optimization

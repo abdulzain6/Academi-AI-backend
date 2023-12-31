@@ -17,3 +17,6 @@ pandas
 RestrictedPython
 PubChemPy
 numpy-financial
+matplotlib
+redis
+pymongo
