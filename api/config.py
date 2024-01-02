@@ -31,7 +31,7 @@ MATHPIX_API_KEY = os.getenv("MATHPIX_API_KEY")
 REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", 1000))
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
 CACHE_TTL = int(os.getenv("CACHE_TTL", 5 * 24 * 60 * 60))
-DEFAULT_POINTS = int(os.getenv("DEFAULT_POINTS", 10))
+DEFAULT_POINTS = int(os.getenv("DEFAULT_POINTS", 20))
 FEATURE_PRICING = get_dict_from_env_var(
     "FEATURE_PRICING", 
     {
