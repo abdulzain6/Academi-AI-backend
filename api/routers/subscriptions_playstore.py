@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from api.lib.database.purchases import SubscriptionType
 from ..auth import get_user_id, verify_play_integrity, verify_google_token
 from ..globals import subscription_checker, subscription_manager, user_points_manager
-from ..config import APP_PACKAGE_NAME, PRODUCT_ID_MAP, PRODUCT_ID_COIN_MAP
+from ..config import APP_PACKAGE_NAME, PRODUCT_ID_MAP, PRODUCT_ID_COIN_MAP, SUB_COIN_MAP
 from pydantic import BaseModel
 import logging
 
@@ -163,7 +163,7 @@ def receive_notification(notification: dict, token_verified=Depends(verify_googl
                 product_ids = [item['productId'] for item in data.get('lineItems', [])]
                 for product_id in product_ids:
                     logging.info(f"Decrementing {PRODUCT_ID_MAP[product_id]} coins")
-                    user_points_manager.decrement_user_points(uid, PRODUCT_ID_MAP[product_id])
+                    user_points_manager.decrement_user_points(uid, SUB_COIN_MAP[product_id])
             logging.info(f"{uid} Just unsubscribed (Voided Notification) {voided_notification.get('purchaseToken')}")            
         elif product_type.PRODUCT_TYPE_ONE_TIME:
             uid = subscription_manager.find_user_by_token(voided_notification.get("purchaseToken"))

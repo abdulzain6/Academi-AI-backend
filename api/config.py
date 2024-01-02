@@ -67,6 +67,17 @@ PRODUCT_ID_MAP = {
     'elite_6_monthly' : SubscriptionType.ELITE,
     'elite_yearly' : SubscriptionType.ELITE,
 }
+SUB_COIN_MAP = {
+    'lite_monthly' : 150,
+    'lite_6_monthly' : 150 ,
+    'lite_yearly' : 150,
+    'pro_monthly' : 500,
+    'pro_6_monthly' : 500,
+    'pro_yearly': 500,
+    'elite_monthly' : 2000,
+    'elite_6_monthly' : 2000,
+    'elite_yearly' : 2000
+}
 PRODUCT_ID_COIN_MAP = {
     '30_coins_product': 30,
     '50_coins_product' : 50,
