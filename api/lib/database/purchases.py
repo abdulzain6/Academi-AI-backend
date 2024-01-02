@@ -117,6 +117,11 @@ class SubscriptionManager:
         document = self.old_tokens_subscription.find_one({"user_id": user_id})
         return document["tokens"] if document else []
     
+
+    def retrieve_user_id_by_token(self, token: str) -> Optional[str]:
+        document = self.old_tokens_subscription.find_one({"tokens": token})
+        return document["user_id"] if document else None
+    
     def add_onetime_token(self, user_id: str, token: str, product_purchased: str):
         self.old_tokens_ontime.update_one(
             {"user_id": user_id},

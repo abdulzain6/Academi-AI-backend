@@ -158,12 +158,13 @@ def receive_notification(notification: dict, token_verified=Depends(verify_googl
                     subscription_type=SubscriptionType.FREE,
                     update=True
                 )
+            if uid := subscription_manager.retrieve_user_id_by_token(voided_notification.get("purchaseToken")):
                 data = subscription_checker.check_subscription(APP_PACKAGE_NAME, voided_notification.get("purchaseToken"))
                 product_ids = [item['productId'] for item in data.get('lineItems', [])]
                 for product_id in product_ids:
                     logging.info(f"Decrementing {PRODUCT_ID_MAP[product_id]} coins")
-                    user_points_manager.decrement_user_points(sub_doc["user_id"], PRODUCT_ID_MAP[product_id])
-                logging.info(f"{sub_doc['user_id']} Just unsubscribed (Voided Notification) {voided_notification.get('purchaseToken')}")            
+                    user_points_manager.decrement_user_points(uid, PRODUCT_ID_MAP[product_id])
+            logging.info(f"{uid} Just unsubscribed (Voided Notification) {voided_notification.get('purchaseToken')}")            
         elif product_type.PRODUCT_TYPE_ONE_TIME:
             uid = subscription_manager.find_user_by_token(voided_notification.get("purchaseToken"))
             product = subscription_manager.get_product_by_user_id_and_token(user_id, voided_notification.get("purchaseToken"))
