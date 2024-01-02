@@ -35,6 +35,10 @@ class VoidedProductTypes(Enum):
     
 class SubscriptionData(BaseModel):
     purchase_token: str
+    
+class OneTimeData(BaseModel):
+    purchase_token: str
+    product_id: str
 
 class SubscriptionUpdate(BaseModel):
     sub_type: SubscriptionType
@@ -48,7 +52,7 @@ class Notification(BaseModel):
 
 @router.post("/verify-onetime")
 def verify_onetime(
-    onetime_data: SubscriptionData,
+    onetime_data: OneTimeData,
     user_id=Depends(get_user_id),
     play_integrity_verified=Depends(verify_play_integrity),
 ):
@@ -57,7 +61,8 @@ def verify_onetime(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Token already used"
         )
     try:
-        subscription_manager.add_onetime_token(user_id=user_id, token=onetime_data.purchase_token)
+        subscription_checker.check_one_time_purchase(APP_PACKAGE_NAME, onetime_data.purchase_token, product_id=onetime_data.product_id)
+        subscription_manager.add_onetime_token(user_id=user_id, token=onetime_data.purchase_token, product_purchased=onetime_data.product_id)
     except Exception as e:
         logging.error(f"Error in verify subscription {e}")
     
@@ -159,14 +164,21 @@ def receive_notification(notification: dict, token_verified=Depends(verify_googl
                     logging.info(f"Decrementing {PRODUCT_ID_MAP[product_id]} coins")
                     user_points_manager.decrement_user_points(sub_doc["user_id"], PRODUCT_ID_MAP[product_id])
                 logging.info(f"{sub_doc['user_id']} Just unsubscribed (Voided Notification) {voided_notification.get('purchaseToken')}")            
+        elif product_type.PRODUCT_TYPE_ONE_TIME:
+            uid = subscription_manager.find_user_by_token(voided_notification.get("purchaseToken"))
+            product = subscription_manager.get_product_by_user_id_and_token(user_id, voided_notification.get("purchaseToken"))
+            if not product:
+                logging.error("Product not found")
+                raise HTTPException(400, detail="Product not found")
+            user_points_manager.decrement_user_points(uid, PRODUCT_ID_COIN_MAP[product])
         return {"status": "success"}
-
     elif "oneTimeProductNotification" in notification:
         one_time_product_notfication = notification.get("oneTimeProductNotification")
         notif_type = OneTimeNotficationTypes(one_time_product_notfication.get("notificationType"))
         if notif_type.ONE_TIME_PRODUCT_PURCHASED:
             user_id = subscription_manager.find_user_by_token(token=one_time_product_notfication.get("purchaseToken"))
             if not user_id:
+                logging.error("User not found")
                 raise HTTPException(400, detail="User not found")
             user_points_manager.increment_user_points(user_id, points=PRODUCT_ID_COIN_MAP[one_time_product_notfication.get("sku")])
         return {"status": "success"}

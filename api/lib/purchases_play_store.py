@@ -19,12 +19,12 @@ class SubscriptionChecker:
         except Exception as e:
             raise ValueError(f"Failed to check subscription: {e}") from e
 
-    def check_one_time_purchase(self, package_name: str, token: str) -> dict:
+    def check_one_time_purchase(self, package_name: str, token: str, product_id: str) -> dict:
         service = build('androidpublisher', 'v3', credentials=self.credentials)
         try:
             return service.purchases().products().get(
                 packageName=package_name,
-                productId=token,
+                productId=product_id,
                 token=token
             ).execute()
         except Exception as e:

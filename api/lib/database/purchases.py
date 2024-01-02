@@ -117,21 +117,31 @@ class SubscriptionManager:
         document = self.old_tokens_subscription.find_one({"user_id": user_id})
         return document["tokens"] if document else []
     
-    def add_onetime_token(self, user_id: str, token: str):
+    def add_onetime_token(self, user_id: str, token: str, product_purchased: str):
         self.old_tokens_ontime.update_one(
             {"user_id": user_id},
-            {"$push": {"tokens": token}},
+            {"$push": {"purchases": {"token": token, "product": product_purchased}}},
             upsert=True
         )
-
     def retrieve_onetime_tokens(self, user_id: str) -> List[str]:
         document = self.old_tokens_ontime.find_one({"user_id": user_id})
-        return document["tokens"] if document else []
-    
+        if document and "purchases" in document:
+            return [purchase["token"] for purchase in document["purchases"]]
+        return []
+
     def find_user_by_token(self, token: str) -> Optional[str]:
-        document = self.old_tokens_ontime.find_one({"tokens": token})
+        document = self.old_tokens_ontime.find_one({"purchases.token": token})
         return document["user_id"] if document else None
-        
+    
+    def get_product_by_user_id_and_token(self, user_id: str, token: str) -> Optional[str]:
+        document = self.old_tokens_ontime.find_one(
+            {"user_id": user_id, "purchases.token": token},
+            {"purchases.$": 1}
+        )
+        if document and "purchases" in document and len(document["purchases"]) > 0:
+            return document["purchases"][0]["product"]
+        return None
+
     def get_subscription_type(self, user_id: str) -> SubscriptionType:
         sub_doc = self.fetch_or_cache_subscription(user_id)
         return getattr(SubscriptionType, sub_doc["subscription_type"])
