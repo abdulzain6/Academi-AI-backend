@@ -24,9 +24,15 @@ class SubscriptionChecker:
         try:
             return service.purchases().products().get(
                 packageName=package_name,
-                productId=token
+                productId=token,
+                token=token
             ).execute()
         except Exception as e:
             raise ValueError(f"Failed to check one-time purchase: {e}") from e
 
 
+if __name__ == "__main__":
+    c = SubscriptionChecker("/home/zain/Akalmand.ai/api/creds/academi-ai-6173d917c2a1.json")
+    data = c.check_subscription("com.ainnovate.academiaii", "omdgjnaekifnijnfclobnhej.AO-J1OytfIjL9Unf7QOGGpWQX-OzoTP1PtrYZ8xJec5FLoPSp562JOm0Px-tdBrYWn3bWFJ8BrnPwMcTSwdCLPt8nBE6DY6AwF41vZzgccO5FcsW3T4X7qw")
+    product_ids = [item['productId'] for item in data.get('lineItems', [])]
+    print(product_ids)

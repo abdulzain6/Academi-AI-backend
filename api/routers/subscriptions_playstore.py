@@ -57,8 +57,7 @@ def verify_onetime(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Token already used"
         )
     try:
-        data = subscription_checker.check_one_time_purchase(APP_PACKAGE_NAME, onetime_data.purchase_token)
-        subscription_manager.add_onetime_token(user_id, onetime_data.purchase_token)
+        subscription_manager.add_onetime_token(user_id=user_id, token=onetime_data.purchase_token)
     except Exception as e:
         logging.error(f"Error in verify subscription {e}")
     
@@ -154,6 +153,11 @@ def receive_notification(notification: dict, token_verified=Depends(verify_googl
                     subscription_type=SubscriptionType.FREE,
                     update=True
                 )
+                data = subscription_checker.check_subscription(APP_PACKAGE_NAME, voided_notification.get("purchaseToken"))
+                product_ids = [item['productId'] for item in data.get('lineItems', [])]
+                for product_id in product_ids:
+                    logging.info(f"Decrementing {PRODUCT_ID_MAP[product_id]} coins")
+                    user_points_manager.decrement_user_points(sub_doc["user_id"], PRODUCT_ID_MAP[product_id])
                 logging.info(f"{sub_doc['user_id']} Just unsubscribed (Voided Notification) {voided_notification.get('purchaseToken')}")            
         return {"status": "success"}
 
