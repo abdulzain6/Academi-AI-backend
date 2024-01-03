@@ -63,6 +63,7 @@ def verify_onetime(
     try:
         subscription_checker.check_one_time_purchase(APP_PACKAGE_NAME, onetime_data.purchase_token, product_id=onetime_data.product_id)
         subscription_manager.add_onetime_token(user_id=user_id, token=onetime_data.purchase_token, product_purchased=onetime_data.product_id)
+        return {"status" : "success"}   
     except Exception as e:
         logging.error(f"Error in verify subscription {e}")
     
