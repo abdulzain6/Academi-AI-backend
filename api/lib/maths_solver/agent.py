@@ -107,7 +107,6 @@ Used to execute multiline python code wont persist states so run everything once
 Do not pass in Markdown just a normal python string (Important)
 Try to run all the code at once
 Use tools if you think you need help or to confirm answer. Make sure arguments are loadable by json.loads (Super important) use double quotes or it will cause error
-Use print statement to print data.
 You will not run unsafe code or perform harm to the server youre on. Or import potentially harmful libraries (Very Important).
         """
 
