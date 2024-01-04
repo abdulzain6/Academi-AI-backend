@@ -395,13 +395,13 @@ def chat_general_stream(
             None,
             description="The Topic to write on"
         )
-        to_generate: str =  OldField(
-            None,
+        to_generate: Optional[str] =  OldField(
+            "Essay",
             description="The content to write. Can be essays, articles or anything"
         )
-        negative_prompt: str
-        minimum_word_count: int
-        instructions: str
+        negative_prompt: Optional[str] = ""
+        minimum_word_count: Optional[int] = 100
+        instructions: Optional[str] = "Be detailed"
     
     class MakeNotesArgs(OldBaseModel):
         subject_name: Optional[str] = OldField(
