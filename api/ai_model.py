@@ -5,3 +5,4 @@ class AIModel(BaseModel):
     regular_args: dict
     premium_model: object
     premium_args: dict
+
