@@ -126,7 +126,7 @@ The json with no missing fields and schema followed:"""
                 instance=template_input, schema=json.loads(template.json_schema)
             )
         except jsonschema.ValidationError as e:
-            raise ValueError("Error in input format") from e
+            raise ValueError(f"Error in input format {e}") from e
 
         template_dir = Path(template.template_path).parent
         file_name = Path(template.template_path).name
