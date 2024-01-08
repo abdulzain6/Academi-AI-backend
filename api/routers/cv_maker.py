@@ -1,8 +1,11 @@
 import base64
+from io import BytesIO
+import io
 import os
 import tempfile
 import logging
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional
 
@@ -10,6 +13,7 @@ from api.dependencies import require_points_for_feature
 from ..auth import get_user_id, verify_play_integrity
 from ..globals import get_model
 from ..lib.cv_maker.cv_maker import CVMaker
+from ..lib.cv_maker import image_dict
 from ..lib.cv_maker.template_loader import template_loader
 from .utils import image_to_pdf_in_memory
 
@@ -27,6 +31,20 @@ def delete_temp_file(path: str):
         os.remove(path)
     except Exception as e:
         print(f"Error deleting file: {e}")
+
+@router.get("/get_image/{image_name}")
+def get_image(image_name: str):
+    if image_name in image_dict:
+        image = image_dict[image_name]
+        image_io = BytesIO()
+        image.save(image_io, format="PNG")  # Change the format if needed
+
+        return StreamingResponse(
+            io.BytesIO(image_io.getvalue()),
+            media_type="image/png"  # Change the media type based on your image format
+        )
+    else:
+        return {"message": f"Image not found Available {list(image_dict.keys())}"}
 
 @router.get("/get_cv_templates")
 def get_cv_templates(

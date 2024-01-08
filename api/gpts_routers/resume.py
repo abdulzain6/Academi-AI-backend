@@ -3,14 +3,15 @@ import os
 import tempfile
 import uuid
 import img2pdf
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from api.lib.cv_maker.cv_maker import CVMaker
 from api.lib.cv_maker.template_loader import template_loader
+from api.lib.cv_maker import image_dict
 from langchain.chat_models import ChatOpenAI
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from api.config import GPT_API_KEY
-from api.globals import redis_cache_manager, CACHE_DOCUMENT_URL_TEMPLATE
+from api.globals import redis_cache_manager, CACHE_DOCUMENT_URL_TEMPLATE, GET_CV_IMAGES_ENDPOINT
 from enum import Enum
 
 router = APIRouter()
@@ -65,6 +66,11 @@ class MakeCV(BaseModel):
 
 
 
+@router.get("/get_template_images", description="""
+Used to get the images for available resume templates
+""")
+def get_template_images(_ = Depends(verify_token)):
+    return [GET_CV_IMAGES_ENDPOINT.format(name=image) for image in list(image_dict.keys())]
 
 @router.get("/get_cv_templates", description="""
 Used to get Available Resume Templates and schema of the json that can be used to fill them using make_cv.
@@ -99,14 +105,15 @@ def make_cv(cv_input: MakeCV, _ = Depends(verify_token)):
             except Exception as e:
                 raise HTTPException(400, detail=str(e))
             
-        rand_id = str(uuid.uuid4())
         if cv_input.output_format == OutputFormat.IMAGE:
+            rand_id = str(uuid.uuid4()) + ".png"
             with open(tmp_file_path, "rb") as img_file:
                 image_bytes = img_file.read()
             redis_cache_manager.set(key=rand_id, value=image_bytes, ttl=18000, suppress=False)
             document_url = CACHE_DOCUMENT_URL_TEMPLATE.format(doc_id=rand_id)
             return f"CV Available at: {document_url}. Give the following link as it is to the user dont add sandbox prefix to it {document_url}. "
         else:
+            rand_id = str(uuid.uuid4()) + ".pdf"
             pdf_bytes = image_to_pdf_in_memory(tmp_file_path)
             redis_cache_manager.set(key=rand_id, value=pdf_bytes, ttl=18000, suppress=False)
             document_url = CACHE_DOCUMENT_URL_TEMPLATE.format(doc_id=rand_id)
