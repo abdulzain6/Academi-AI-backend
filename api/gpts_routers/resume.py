@@ -1,20 +1,15 @@
-import base64
-import logging
 import os
-import random
-import shutil
 import tempfile
 import uuid
 import img2pdf
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from api.lib.cv_maker.cv_maker import CVMaker
 from api.lib.cv_maker.template_loader import template_loader
 from langchain.chat_models import ChatOpenAI
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from api.config import GPT_API_KEY
-from api.globals import knowledge_manager, redis_cache_manager, CACHE_DOCUMENT_URL_TEMPLATE
+from api.globals import redis_cache_manager, CACHE_DOCUMENT_URL_TEMPLATE
 from enum import Enum
 
 router = APIRouter()
@@ -110,32 +105,3 @@ def make_cv(cv_input: MakeCV, _ = Depends(verify_token)):
             redis_cache_manager.set(key=rand_id, value=pdf_bytes, ttl=18000, suppress=False)
             document_url = CACHE_DOCUMENT_URL_TEMPLATE.format(doc_id=rand_id)
             return f"CV Available at: {document_url}. Give the following link as it is to the user dont add sandbox prefix to it {document_url}. "
-
-@router.post("/extract-text/", description="Used to extract text from any file. You can use this to take an existing cv and tailor it to a new job description")
-def extract_text_from_pdf(file: UploadFile = File(...), _ = Depends(verify_token)):
-    try:
-        file_extension = os.path.splitext(file.filename)[1]
-    except Exception:
-        raise HTTPException(400, "File doesnt have an extension. It must have one")
-    
-    temp_file_path = f"temp_{random.randrange(1, 1000000)}{file_extension}"    
-    try:
-        with open(temp_file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-            buffer.seek(0)  # Reset the file pointer to the beginning
-        try:
-            docs = knowledge_manager.load_using_unstructured(
-                temp_file_path
-            )
-            extracted_text = "\n".join([doc.page_content for doc in docs])
-        except Exception as e:
-            import traceback
-            logging.error(f"File not supported, Error: {traceback.format_exception(e)}")
-            raise HTTPException(400, "FIle not supported/ FIle has no Data, Handwritten text not supported if provided.") from e
-
-        return JSONResponse(content={"text": extracted_text or "No text found."})
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
-    finally:
-        if os.path.exists(temp_file_path):
-            os.remove(temp_file_path)
