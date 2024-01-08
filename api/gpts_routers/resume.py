@@ -1,3 +1,4 @@
+import json
 import os
 import tempfile
 import uuid
@@ -57,7 +58,7 @@ class OutputFormat(Enum):
     IMAGE = "IMAGE"
 
 class MakeCV(BaseModel):
-    user_data: dict = Field(json_schema_extra={"description" : "The dict which follows the correct schema for the template provided by get_cv_templates. Ask user for missing values"})
+    resume_data: str = Field(json_schema_extra={"description" : "The json object which follows the correct schema for the template provided by get_cv_templates. Ask user for missing values"})
     template_name: str = Field(json_schema_extra={"description" : f"The name of the template to use. Must be from {list(get_cv_templates().keys())}"})
     output_format: OutputFormat = Field(OutputFormat.PDF, json_schema_extra={"description" : "The format to output the resume in, can be 'PDF' OR 'IMAGE'"})
 
@@ -66,18 +67,23 @@ class MakeCV(BaseModel):
 
 
 @router.get("/get_cv_templates", description="""
-Used to get Available Resume Templates and schema of the dict that can be used to fill them using make_cv.
+Used to get Available Resume Templates and schema of the json that can be used to fill them using make_cv.
 """)
 def get_templates(_ = Depends(verify_token)):
     return get_cv_templates()
 
-@router.post("/make_cv", description="Used to create a cv. It takes in a template name and the dict containing user data according to the template that follows proper schema. Ask user for missing values")
+@router.post("/make_cv", description="Used to create a cv. It takes in a template name and the json dict containing user data according to the template that follows proper schema. Ask user for missing values")
 def make_cv(cv_input: MakeCV, _ = Depends(verify_token)):
     cv_maker = CVMaker(
         templates=template_loader(),
         chrome_path="/usr/bin/google-chrome",
         chat_model=ChatOpenAI(temperature=0, model="gpt-3.5-turbo-1106").bind(response_format = {"type": "json_object"})
     )
+
+    try:
+        resume_data = json.loads(cv_input.resume_data)
+    except Exception:
+        raise HTTPException(400, detail="Invalid json provided unable to load it")
 
     if not cv_maker.get_template_by_name(cv_input.template_name):
         raise HTTPException(400, detail="CV Template does not exist")
@@ -87,9 +93,9 @@ def make_cv(cv_input: MakeCV, _ = Depends(verify_token)):
         output_file_name = os.path.basename(tmp_file_path)
         output_file_directory = os.path.dirname(tmp_file_path)
     
-        if cv_input.user_data:
+        if resume_data:
             try:
-                cv_maker.make_cv(cv_input.template_name, cv_input.user_data, output_file_path=output_file_directory, output_file_name=output_file_name)
+                cv_maker.make_cv(cv_input.template_name, resume_data, output_file_path=output_file_directory, output_file_name=output_file_name)
             except Exception as e:
                 raise HTTPException(400, detail=str(e))
             
