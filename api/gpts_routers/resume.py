@@ -9,14 +9,11 @@ from api.lib.cv_maker.cv_maker import CVMaker
 from api.lib.cv_maker.template_loader import template_loader
 from api.lib.cv_maker import image_dict
 from langchain.chat_models import ChatOpenAI
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from api.config import GPT_API_KEY
+from .auth import verify_token
 from api.globals import redis_cache_manager, CACHE_DOCUMENT_URL_TEMPLATE, GET_CV_IMAGES_ENDPOINT
 from enum import Enum
 
 router = APIRouter()
-
-security = HTTPBearer()
 
 
 
@@ -34,16 +31,6 @@ def image_to_pdf_in_memory(image_path: str) -> bytes:
         pdf_bytes = img2pdf.convert(img_file)
 
     return pdf_bytes
-
-def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
-    if credentials.credentials == GPT_API_KEY:
-        return 
-    else:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid authentication credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
 
 def get_cv_templates():
     cv_maker = CVMaker(

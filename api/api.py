@@ -20,6 +20,7 @@ from .routers.tools import router as tool_router
 from .routers.uml import router as uml_router
 from .routers.info import router as info_router
 from api.gpts_routers.resume import router as gpt_resume_router
+from api.gpts_routers.uml import router as gpts_uml_router
 
 from fastapi import FastAPI, Request, HTTPException, status, Depends
 from fastapi.responses import JSONResponse
@@ -85,11 +86,9 @@ def get_current_username(credentials: HTTPBasicCredentials = Depends(security)):
 async def get_swagger_documentation(username: str = Depends(get_current_username)):
     return get_swagger_ui_html(openapi_url="/openapi.json", title="docs")
 
-
 @app.get("/redoc", include_in_schema=False)
 async def get_redoc_documentation(username: str = Depends(get_current_username)):
     return get_redoc_html(openapi_url="/openapi.json", title="docs")
-
 
 @app.get("/openapi.json", include_in_schema=False)
 async def openapi(username: str = Depends(get_current_username)):
@@ -126,12 +125,18 @@ We reserve the right to modify this privacy policy at any time, so please review
 @app.get("/gpts/get-openapi-schema/")
 def get_openapi_schema():
     app_for_schema_generation = FastAPI()
-    app_for_schema_generation.include_router(gpt_resume_router, prefix="/gpts/resume", tags=["gpts"])
+    app_for_schema_generation.include_router(gpt_resume_router, prefix="/gpts/resume", tags=["gpts", "resume"])
     openapi_schema = app_for_schema_generation.openapi()
     openapi_schema["servers"] = [{"url": APP_DOMAIN}]
     return openapi_schema
 
-
+@app.get("/gpts/uml/get-openapi-schema/")
+def get_openapi_schema():
+    app_for_schema_generation = FastAPI()
+    app_for_schema_generation.include_router(gpts_uml_router, prefix="/gpts/uml", tags=["gpts", "uml"])
+    openapi_schema = app_for_schema_generation.openapi()
+    openapi_schema["servers"] = [{"url": APP_DOMAIN}]
+    return openapi_schema
 
 app.include_router(users_router, prefix="/api/v1/users", tags=["user"])
 app.include_router(files_router, prefix="/api/v1/files", tags=["files"])
@@ -153,7 +158,8 @@ app.include_router(uml_router, prefix="/api/v1/uml", tags=["uml"])
 app.include_router(info_router, prefix="/api/v1/info", tags=["info"])
 
 
-app.include_router(gpt_resume_router, prefix="/gpts/resume", tags=["gpts"])
+app.include_router(gpt_resume_router, prefix="/gpts/resume", tags=["gpts", "resume"])
+app.include_router(gpts_uml_router, prefix="/gpts/uml", tags=["gpts", "uml"])
 
 
 @app.middleware('http')
