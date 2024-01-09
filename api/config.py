@@ -104,3 +104,4 @@ SEARCHX_HOST = os.getenv("SEARCHX_HOST", "http://localhost:8090")
 GPT_API_KEY = os.getenv("GPT_API_KEY", "ZAIGHAMNETTTTTTTT!!1234!!CHUTIKRRRR!!!")
 APP_DOMAIN = os.getenv("APP_DOMAIN", "https://api.academiai.org")
 GET_CV_IMAGES_ENDPOINT = APP_DOMAIN + "/api/v1/cv_maker/get_image/{name}"
+MERMAID_SERVER_URL = os.getenv("MERMAID_SERVER_URL")

@@ -42,6 +42,7 @@ from contextlib import suppress
 from azure.ai.formrecognizer import DocumentAnalysisClient
 from azure.core.credentials import AzureKeyCredential
 from .lib.email_integrity_checker import EmailIntegrityChecker
+from .lib.mermaid_maker import MermaidClient
 import langchain
 import redis
 import logging
@@ -340,6 +341,7 @@ image_ocr = ImageOCR(
 )
 
 plantuml_server = PlantUML(url=PLANTUML_URL)
+mermaid_client = MermaidClient(server_url=MERMAID_SERVER_URL)
 
 # Monetization
 user_points_manager = UserPointsManager(MONGODB_URL, DATABASE_NAME, DEFAULT_POINTS)
