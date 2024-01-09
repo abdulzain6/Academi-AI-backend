@@ -55,17 +55,19 @@ class MakeCV(BaseModel):
 
 @router.get("/get_template_images", description="""
 Used to get the images for available resume templates
-""")
+""", openapi_extra={"x-openai-isConsequential": False})
 def get_template_images(_ = Depends(verify_token)):
     return [GET_CV_IMAGES_ENDPOINT.format(name=image) for image in list(image_dict.keys())]
 
 @router.get("/get_cv_templates", description="""
 Used to get Available Resume Templates and schema of the json that can be used to fill them using make_cv.
-""")
+""",openapi_extra={"x-openai-isConsequential": False})
 def get_templates(_ = Depends(verify_token)):
     return get_cv_templates()
 
-@router.post("/make_cv", description="Used to create a cv. It takes in a template name and the json dict containing user data according to the template that follows proper schema. Ask user for missing values")
+@router.post("/make_cv", 
+description="Used to create a cv. It takes in a template name and the json dict containing user data according to the template that follows proper schema. Ask user for missing values",
+openapi_extra={"x-openai-isConsequential": False})
 def make_cv(cv_input: MakeCV, _ = Depends(verify_token)):
     cv_maker = CVMaker(
         templates=template_loader(),

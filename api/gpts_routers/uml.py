@@ -19,7 +19,7 @@ class MakeGraphvizDiagramRequest(BaseModel):
 
 
 
-@router.post("/make_gz_diagram", description="Makes Diagram using graphviz code")
+@router.post("/make_gz_diagram", description="Makes Diagram using graphviz code", openapi_extra={"x-openai-isConsequential": False})
 def make_gz_diagram(
     make_gz_request: MakeGraphvizDiagramRequest,
     _=Depends(verify_token),
@@ -29,7 +29,7 @@ def make_gz_diagram(
     except Exception as e:
         raise HTTPException(400, detail=str(e))
     
-@router.post("/make_vgl_diagram", description="Makes Diagram using vegalite code")
+@router.post("/make_vgl_diagram", description="Makes Diagram using vegalite code", openapi_extra={"x-openai-isConsequential": False})
 def make_vgl_diagram(
     make_vgl_request: MakeVegaLiteGraphRequest,
     _=Depends(verify_token),
@@ -39,7 +39,7 @@ def make_vgl_diagram(
     except Exception as e:
         raise HTTPException(400, detail=str(e))
 
-@router.post("/make_uml", description="Makes uml using plantuml code")
+@router.post("/make_uml", description="Makes uml using plantuml code", openapi_extra={"x-openai-isConsequential": False})
 def make_uml(
     make_uml_request: MakeUMLRequest,
     _=Depends(verify_token),
