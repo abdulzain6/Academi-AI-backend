@@ -19,6 +19,8 @@ MEDIA_TYPE_MAPPING = {
     ".bmp": "image/bmp",
     ".tiff": "image/tiff"
 }
+MEDIA_TYPE_MAPPING = {".mp4": "video/mp4"}
+
 
 @router.get("/document/{doc_id}")
 def get_document(doc_id: str):
@@ -55,4 +57,16 @@ def get_image(doc_id: str):
         io.BytesIO(im_io.getvalue()),
         headers={"Content-Disposition": "inline"},
         media_type=media_type
+    )
+    
+
+@router.get("/retrieve_video/{video_id}")
+def retrieve_video(video_id: str):
+    video_data = redis_cache_manager.get(video_id)
+    if video_data is None:
+        raise HTTPException(status_code=404, detail="Video not found/ Link expired")
+
+    return StreamingResponse(
+        iter([video_data]),  # Stream the video data
+        media_type=MEDIA_TYPE_MAPPING[".mp4"]
     )

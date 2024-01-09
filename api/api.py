@@ -21,7 +21,7 @@ from .routers.uml import router as uml_router
 from .routers.info import router as info_router
 from api.gpts_routers.resume import router as gpt_resume_router
 from api.gpts_routers.uml import router as gpts_uml_router
-from api.gpts_routers.youtube import router as youtube_transcript_router
+from api.gpts_routers.youtube import router as youtube_router
 
 from fastapi import FastAPI, Request, HTTPException, status, Depends
 from fastapi.responses import JSONResponse
@@ -142,7 +142,7 @@ def get_openapi_schema():
 @app.get("/gpts/youtube/get-openapi-schema/")
 def get_openapi_schema():
     app_for_schema_generation = FastAPI()
-    app_for_schema_generation.include_router(youtube_transcript_router, prefix="/gpts/youtube", tags=["gpts", "youtube"])
+    app_for_schema_generation.include_router(youtube_router, prefix="/gpts/youtube", tags=["gpts", "youtube"])
     openapi_schema = app_for_schema_generation.openapi()
     openapi_schema["servers"] = [{"url": APP_DOMAIN}]
     return openapi_schema
@@ -169,7 +169,7 @@ app.include_router(info_router, prefix="/api/v1/info", tags=["info"])
 
 app.include_router(gpt_resume_router, prefix="/gpts/resume", tags=["gpts", "resume"])
 app.include_router(gpts_uml_router, prefix="/gpts/uml", tags=["gpts", "uml"])
-app.include_router(youtube_transcript_router, prefix="/gpts/youtube", tags=["gpts", "youtube"])
+app.include_router(youtube_router, prefix="/gpts/youtube", tags=["gpts", "youtube"])
 
 
 @app.middleware('http')
