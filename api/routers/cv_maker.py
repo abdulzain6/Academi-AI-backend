@@ -41,6 +41,7 @@ def get_image(image_name: str):
 
         return StreamingResponse(
             io.BytesIO(image_io.getvalue()),
+            headers={"Content-Disposition": "inline"},
             media_type="image/png"  # Change the media type based on your image format
         )
     else:

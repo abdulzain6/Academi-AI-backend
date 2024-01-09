@@ -53,5 +53,6 @@ def get_image(doc_id: str):
 
     return StreamingResponse(
         io.BytesIO(im_io.getvalue()),
+        headers={"Content-Disposition": "inline"},
         media_type=media_type
     )
