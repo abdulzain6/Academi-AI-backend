@@ -21,6 +21,7 @@ RUN apt-get update && \
     fonts-indic \
     fonts-noto \
     graphviz \
+    ffmpeg \
     && apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
