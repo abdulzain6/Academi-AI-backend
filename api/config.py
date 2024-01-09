@@ -97,6 +97,7 @@ API_KEY_BACKDOOR = os.getenv("API_KEY_BACKDOOR", "ZAIGHAMNETTTTTTTT!!!CHUTIKRRRR
 AZURE_OCR_ENDPOINT = os.getenv("AZURE_OCR_ENDPOINT")
 AZURE_OCR_KEY = os.getenv("AZURE_OCR_KEY")
 CACHE_DOCUMENT_URL_TEMPLATE = os.getenv("CACHE_DOCUMENT_URL_TEMPLATE", "https://api.academiai.org/api/v1/tools/document/{doc_id}")
+CACHE_IMAGE_URL_TEMPLATE = os.getenv("CACHE_IMAGE_URL_TEMPLATE", "https://api.academiai.org/api/v1/tools/image/{doc_id}")
 DOC_INTELLIGENCE_ENDPOINT = os.getenv("DOC_INTELLIGENCE_ENDPOINT")
 AZURE_DOC_INTELLIGENCE_KEY = os.getenv("AZURE_DOC_INTELLIGENCE_KEY")
 SEARCHX_HOST = os.getenv("SEARCHX_HOST", "http://localhost:8090")

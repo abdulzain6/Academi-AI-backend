@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from ..globals import plantuml_server
 from .auth import verify_token
 from pydantic import BaseModel, Field
-from api.globals import redis_cache_manager, CACHE_DOCUMENT_URL_TEMPLATE
+from api.globals import redis_cache_manager, CACHE_IMAGE_URL_TEMPLATE
 from api.lib.tools import make_vega_graph, make_graphviz_graph
 import uuid
 
@@ -25,7 +25,7 @@ def make_gz_diagram(
     _=Depends(verify_token),
 ):     
     try:
-        return make_graphviz_graph(make_gz_request.graphviz_code, cache_manager=redis_cache_manager, url_template=CACHE_DOCUMENT_URL_TEMPLATE)
+        return make_graphviz_graph(make_gz_request.graphviz_code, cache_manager=redis_cache_manager, url_template=CACHE_IMAGE_URL_TEMPLATE)
     except Exception as e:
         raise HTTPException(400, detail=str(e))
     
@@ -35,7 +35,7 @@ def make_vgl_diagram(
     _=Depends(verify_token),
 ):     
     try:
-        return make_vega_graph(make_vgl_request.vegalite_code, cache_manager=redis_cache_manager, url_template=CACHE_DOCUMENT_URL_TEMPLATE)
+        return make_vega_graph(make_vgl_request.vegalite_code, cache_manager=redis_cache_manager, url_template=CACHE_IMAGE_URL_TEMPLATE)
     except Exception as e:
         raise HTTPException(400, detail=str(e))
 
@@ -45,10 +45,10 @@ def make_uml(
     _=Depends(verify_token),
 ):     
     try:
-        rand_id = str(uuid.uuid4())
+        rand_id = str(uuid.uuid4()) + ".png"
         img_bytes = plantuml_server.processes(make_uml_request.plantuml_code)
         redis_cache_manager.set(key=rand_id, value=img_bytes, ttl=18000, suppress=False)
-        document_url = CACHE_DOCUMENT_URL_TEMPLATE.format(doc_id=rand_id)
+        document_url = CACHE_IMAGE_URL_TEMPLATE.format(doc_id=rand_id)
         return f"Diagram available at: {document_url}. Give the following link as it is to the user dont add sandbox prefix to it {document_url}. "
     except Exception as e:
         raise HTTPException(400, detail=str(e))
