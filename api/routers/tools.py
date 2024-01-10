@@ -11,7 +11,7 @@ from io import BytesIO
 
 router = APIRouter()
 
-MEDIA_TYPE_MAPPING = {
+MEDIA_TYPE_MAPPING_IMG = {
     ".png": "image/png",
     ".jpg": "image/jpeg",
     ".jpeg": "image/jpeg",
@@ -46,7 +46,8 @@ def get_image(doc_id: str):
         raise HTTPException(status_code=404, detail="Image not found/ Link expired")
 
     root, extension = os.path.splitext(doc_id)
-    if extension.lower() not in MEDIA_TYPE_MAPPING:
+    print(extension)
+    if extension.lower() not in MEDIA_TYPE_MAPPING_IMG:
         raise HTTPException(status_code=415, detail="Unsupported media type")
 
     media_type = MEDIA_TYPE_MAPPING[extension.lower()]
