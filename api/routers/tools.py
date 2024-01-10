@@ -50,7 +50,7 @@ def get_image(doc_id: str):
     if extension.lower() not in MEDIA_TYPE_MAPPING_IMG:
         raise HTTPException(status_code=415, detail="Unsupported media type")
 
-    media_type = MEDIA_TYPE_MAPPING[extension.lower()]
+    media_type = MEDIA_TYPE_MAPPING_IMG[extension.lower()]
     im_io = BytesIO(im_bytes)
     logging.info(f"Getting redis doc for {doc_id}")
 
