@@ -213,7 +213,7 @@ class SubscriptionManager:
         self.cache_manager.delete(f"user_subscription:{user_id}")
 
 
-    def reset_monthly_limits(self, user_id: str, reset_no_check: bool = False) -> None:
+    def reset_monthly_limits(self, user_id: str, reset_no_check: bool = False, multiplier: int = 1) -> None:
         sub_doc = self.fetch_or_cache_subscription(user_id)
         if not sub_doc.get("enabled", True):
             return
@@ -232,7 +232,7 @@ class SubscriptionManager:
                     {"user_id": user_id},
                     {
                         "$set": {
-                            "monthly_limit_features.$[elem].limit": default_feature.limit
+                            "monthly_limit_features.$[elem].limit": default_feature.limit * multiplier
                         }
                     },
                     array_filters=[{"elem.name": {"$eq": default_feature.name}}],
@@ -437,10 +437,6 @@ class SubscriptionManager:
 
 
     def reset_all_limits(self, user_id: str, reset_no_check: bool = False) -> None:
-        try:
-            self.reset_monthly_limits(user_id, reset_no_check)
-        except Exception as e:
-            logging.error(f"Error reseting monthly limits for {user_id} {e}")
         try:
             self.reset_incremental_limits(user_id, reset_no_check)
         except Exception as e:

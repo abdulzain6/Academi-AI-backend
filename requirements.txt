@@ -49,3 +49,4 @@ vl-convert-python
 graphviz
 replicate
 yt-dlp
+html2text

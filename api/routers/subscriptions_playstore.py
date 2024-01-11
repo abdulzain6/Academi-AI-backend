@@ -158,6 +158,7 @@ def receive_notification(notification: dict, token_verified=Depends(verify_googl
                 else:
                     muliplier = 1
                 subscription_manager.allocate_monthly_coins(sub_doc["user_id"], multiplier=muliplier)
+                subscription_manager.reset_monthly_limits(sub_doc["user_id"], True, muliplier)
 
 
         return {"status": "success"}
