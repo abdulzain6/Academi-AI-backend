@@ -88,7 +88,7 @@ def transform_to_affiliate_link(product_url: str, affiliate_tag: str) -> str:
     return new_url
 
 class CycleTlsServerClient:
-    def __init__(self, server_url: str, default_args: dict = None):
+    def __init__(self, server_url: str, default_args: dict = None, proxy: str = None):
         self.server_url = server_url
         if not default_args:
             self.default_args = {
@@ -120,6 +120,7 @@ class CycleTlsServerClient:
                     "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36",
                     "viewport-width": "537",
                 },
+                "proxy": proxy
             }
         else:
             self.default_args = default_args

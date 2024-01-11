@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from .auth import verify_token
 from pydantic import BaseModel, Field
 from api.gpts_lib.amazon_search import AmazonScraper, CycleTlsServerClient, SortOptions, DetailedProduct, transform_to_affiliate_link
-from api.globals import CYCLE_TLS_SERVER_URL, AFFILIATE_TAG
+from api.globals import CYCLE_TLS_SERVER_URL, AFFILIATE_TAG, HTTP_PROXY_URL
 
 
 router = APIRouter()
@@ -34,7 +34,7 @@ def search_amazon(
     _=Depends(verify_token),
 ):     
     try:
-        scraper = AmazonScraper(search_request.base_amazon_url, CycleTlsServerClient(server_url=CYCLE_TLS_SERVER_URL), link_convertor=add_tag)
+        scraper = AmazonScraper(search_request.base_amazon_url, CycleTlsServerClient(server_url=CYCLE_TLS_SERVER_URL, proxy=HTTP_PROXY_URL), link_convertor=add_tag)
         return scraper.search(
             keyword=search_request.query,
             num_results=min(10, search_request.num_results),
@@ -54,7 +54,7 @@ def get_product_details(
     _=Depends(verify_token),
 ):
     try:
-        scraper = AmazonScraper(request.base_amazon_url, CycleTlsServerClient(server_url=CYCLE_TLS_SERVER_URL))
+        scraper = AmazonScraper(request.base_amazon_url, CycleTlsServerClient(server_url=CYCLE_TLS_SERVER_URL, proxy=HTTP_PROXY_URL))
         return scraper.get_product_details(request.product_link)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -69,7 +69,7 @@ def browse_amazon(
     _=Depends(verify_token),
 ) -> str:
     try:
-        scraper = AmazonScraper(browse_request.base_amazon_url, CycleTlsServerClient(server_url=CYCLE_TLS_SERVER_URL))
+        scraper = AmazonScraper(browse_request.base_amazon_url, CycleTlsServerClient(server_url=CYCLE_TLS_SERVER_URL, proxy=HTTP_PROXY_URL))
         return scraper.browse_amazon(browse_request.link)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
