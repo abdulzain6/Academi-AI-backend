@@ -145,7 +145,20 @@ def receive_notification(notification: dict, token_verified=Depends(verify_googl
             if sub_doc := subscription_manager.get_subscription_by_token(sub_notification.purchaseToken):
                 subscription_manager.cancel_uncancel_subscription(sub_doc["user_id"], True)
                 logging.info(f"{sub_doc['user_id']} got cancelled {sub_notification.notificationType} {sub_notification.purchaseToken}")
-                
+        elif sub_notification.notificationType == SubscriptionStatus.SUBSCRIPTION_RENEWED:
+            if sub_doc := subscription_manager.get_subscription_by_token(sub_notification.purchaseToken):
+                data = subscription_checker.check_subscription(APP_PACKAGE_NAME, sub_notification.purchaseToken)
+                prod_id = data.get('lineItems')[0].get('productId')
+                if "6_monthly" in prod_id:
+                    muliplier = 6
+                elif "monthly" in prod_id:
+                    muliplier = 1
+                elif "yearly" in prod_id:
+                    muliplier = 12
+                else:
+                    muliplier = 1
+                subscription_manager.allocate_monthly_coins(sub_doc["user_id"], multiplier=muliplier)
+
 
         return {"status": "success"}
     elif "voidedPurchaseNotification" in notification:

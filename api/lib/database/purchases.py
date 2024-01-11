@@ -203,24 +203,14 @@ class SubscriptionManager:
         self.subscriptions.update_one({"user_id": user_id}, {"$set": {"is_cancelled": cancel}}, upsert=True)
       
 
-    def allocate_monthly_coins(self, user_id: str, allocate_no_check: bool = False) -> None:
+    def allocate_monthly_coins(self, user_id: str, allocate_no_check: bool = False, multiplier: int = 1) -> None:
         sub_doc = self.fetch_or_cache_subscription(user_id)
         if not sub_doc.get("enabled", True):
             return
-        now = datetime.now(timezone.utc)
-        last_allocation_date = sub_doc.get("last_coin_allocation_date", datetime.min.replace(tzinfo=timezone.utc))
-
-        if last_allocation_date.tzinfo is None or last_allocation_date.tzinfo.utcoffset(last_allocation_date) is None:
-            last_allocation_date = last_allocation_date.replace(tzinfo=timezone.utc)
-
-        if (now - last_allocation_date) >= timedelta(days=35) or allocate_no_check:
-            monthly_coins = sub_doc["monthly_coins"]
-            logging.info(f"Granting monthly {monthly_coins} coins to {user_id}")
-            self.user_points_manager.increment_user_points(user_id, monthly_coins)
-            self.subscriptions.update_one(
-                {"user_id": user_id}, {"$set": {"last_coin_allocation_date": now}}
-            )
-            self.cache_manager.delete(f"user_subscription:{user_id}")
+        monthly_coins = sub_doc["monthly_coins"]
+        logging.info(f"Granting coins {monthly_coins} coins to {user_id}")
+        self.user_points_manager.increment_user_points(user_id, monthly_coins * multiplier)
+        self.cache_manager.delete(f"user_subscription:{user_id}")
 
 
     def reset_monthly_limits(self, user_id: str, reset_no_check: bool = False) -> None:
@@ -453,9 +443,5 @@ class SubscriptionManager:
             logging.error(f"Error reseting monthly limits for {user_id} {e}")
         try:
             self.reset_incremental_limits(user_id, reset_no_check)
-        except Exception as e:
-            logging.error(f"Error reseting monthly limits for {user_id} {e}")
-        try:
-            self.allocate_monthly_coins(user_id, reset_no_check)
         except Exception as e:
             logging.error(f"Error reseting monthly limits for {user_id} {e}")
