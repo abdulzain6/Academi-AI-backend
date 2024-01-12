@@ -24,7 +24,7 @@ math_libraries = [
     "statistics",
     "pandas",
     "pubchempy",
-    "numpy_financial"
+    "numpy_financial","wikipedia", "googletrans"
 ]
 
 
@@ -46,6 +46,9 @@ async def evaluate(code: str, timeout: int) -> EvaluateResponse:
             timeout=timeout
         )
         print(result)
+        if not success:
+            return EvaluateResponse(success=True, result=str(result) + " Use another tool or your knowledge")
+
         return EvaluateResponse(success=True, result=str(result))
     except asyncio.TimeoutError:
         return EvaluateResponse(success=False, result="Evaluation timed out")

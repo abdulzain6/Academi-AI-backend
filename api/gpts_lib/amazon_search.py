@@ -56,34 +56,37 @@ def find_free_port():
         s.bind(("", 0))
         return s.getsockname()[1]
 
+import re
+
 def transform_to_affiliate_link(product_url: str, affiliate_tag: str) -> str:
     """
-    Transforms a standard Amazon product link into an affiliate link using urllib.
+    Transforms an Amazon product or deal link into an affiliate link.
 
-    :param product_url: str - The original product URL from Amazon.
+    :param product_url: str - The original product or deal URL from Amazon.
     :param affiliate_tag: str - Your unique Amazon affiliate tag.
     :return: str - The transformed affiliate URL.
     """
     if not product_url or not affiliate_tag:
         raise ValueError("Product URL and affiliate tag are required")
 
-    parsed_url = urlparse(product_url)
-    query_params = parse_qs(parsed_url.query)
+    # Check if the URL contains an ASIN
+    asin_match = re.search(r'/dp/([A-Z0-9]{10})', product_url)
 
-    # Adding affiliate parameters
-    affiliate_parameters = {
-        "_encoding": "UTF8",
-        "tag": affiliate_tag,
-        "linkCode": "ur2",
-        "linkId": "04b5eb022d1594476ab584252c6470df",
-        "camp": "1789",
-        "creative": "9325"
-    }
-    query_params.update(affiliate_parameters)
+    if asin_match:
+        # If an ASIN is found, create a short link using the ASIN
+        asin = asin_match.group(1)
+        new_url = f"https://www.amazon.com/dp/{asin}/?tag={affiliate_tag}"
+    else:
+        # If no ASIN is found, append the affiliate tag to the existing URL
+        parsed_url = urlparse(product_url)
+        query_params = parse_qs(parsed_url.query)
 
-    # Constructing the new URL with affiliate parameters
-    new_query_string = urlencode(query_params, doseq=True)
-    new_url = urlunparse(parsed_url._replace(query=new_query_string))
+        # Add or update the affiliate tag
+        query_params['tag'] = [affiliate_tag]
+
+        # Construct the new URL with the updated affiliate tag
+        new_query_string = urlencode(query_params, doseq=True)
+        new_url = urlunparse(parsed_url._replace(query=new_query_string))
 
     return new_url
 

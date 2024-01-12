@@ -20,3 +20,5 @@ numpy-financial
 matplotlib
 redis
 pymongo
+wikipedia
+googletrans
