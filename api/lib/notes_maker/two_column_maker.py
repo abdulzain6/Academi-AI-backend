@@ -70,6 +70,10 @@ class QuestionsDetailsSummaryNotesMaker(NotesMaker):
         self.template_path = template_path
         self.docxtpl = DocxTemplate(template_path)
         self.llm = llm
+        
+    @staticmethod
+    def get_schema():
+        return InputData.model_json_schema()
 
     def make_notes_from_string(self, string: str, instructions: str) -> io.BytesIO:
         parser = PydanticOutputParser(pydantic_object=InputData)
@@ -146,6 +150,11 @@ The notes in proper format (Failure causes big error):"""
         arg0.save(result)
         result.seek(0)
         return result
+
+    def make_notes_from_dict(self, data_dict: str) -> io.BytesIO:
+        input_data = InputData.model_validate(data_dict)
+        return self.make_notes(input_data.notes, context=input_data.notes_metadata)
+
 
 
 if __name__ == "__main__":

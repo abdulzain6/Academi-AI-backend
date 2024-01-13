@@ -14,3 +14,11 @@ class NotesMaker(ABC):
     @abstractmethod
     def make_notes_from_string(self, string: str, instructions: str) -> io.BytesIO:
         pass
+    
+    @abstractmethod
+    def get_schema() -> dict:
+        pass
+    
+    @abstractmethod
+    def make_notes_from_dict(self, data_dict: str) -> io.BytesIO:
+        pass

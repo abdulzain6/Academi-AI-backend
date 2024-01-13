@@ -25,6 +25,7 @@ from api.gpts_routers.resume import router as gpt_resume_router
 from api.gpts_routers.uml import router as gpts_uml_router
 from api.gpts_routers.youtube import router as youtube_router
 from api.gpts_routers.amazongpt import router as amazon_router
+from api.gpts_routers.notes import router as notes_router_gpt
 
 from fastapi import FastAPI, Request, HTTPException, status, Depends
 from fastapi.responses import JSONResponse
@@ -134,6 +135,14 @@ def get_openapi_schema():
     openapi_schema["servers"] = [{"url": APP_DOMAIN}]
     return openapi_schema
 
+@app.get("/gpts/notes/get-openapi-schema/")
+def get_openapi_schema():
+    app_for_schema_generation = FastAPI()
+    app_for_schema_generation.include_router(notes_router_gpt, prefix="/gpts/notes", tags=["gpts", "notes"])
+    openapi_schema = app_for_schema_generation.openapi()
+    openapi_schema["servers"] = [{"url": APP_DOMAIN}]
+    return openapi_schema
+
 @app.get("/gpts/uml/get-openapi-schema/")
 def get_openapi_schema():
     app_for_schema_generation = FastAPI()
@@ -182,6 +191,7 @@ app.include_router(gpt_resume_router, prefix="/gpts/resume", tags=["gpts", "resu
 app.include_router(gpts_uml_router, prefix="/gpts/uml", tags=["gpts", "uml"])
 app.include_router(youtube_router, prefix="/gpts/youtube", tags=["gpts", "youtube"])
 app.include_router(amazon_router, prefix="/gpts/amazon", tags=["gpts", "amazon"])
+app.include_router(notes_router_gpt, prefix="/gpts/notes", tags=["gpts", "notes"])
 
 
 @app.middleware('http')

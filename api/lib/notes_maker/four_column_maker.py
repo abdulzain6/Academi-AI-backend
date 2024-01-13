@@ -84,6 +84,14 @@ class QuestionsKeywordsNotesMaker(NotesMaker):
         self.llm = llm
         self.template_path = template_path
         self.docxtpl = DocxTemplate(template_path)
+        
+    @staticmethod
+    def get_schema():
+        return InputData.model_json_schema()
+    
+    def make_notes_from_dict(self, data_dict: str) -> io.BytesIO:
+        input_data = InputData.model_validate(data_dict)
+        return self.make_notes(input_data.notes, context=input_data.notes_metadata)
 
     def make_notes(self, data: DataModel, context: ContextModel):
         docx = Document(self.template_path)

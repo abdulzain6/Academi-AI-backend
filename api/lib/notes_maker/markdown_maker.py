@@ -2,7 +2,7 @@ import tempfile
 import pypandoc
 import os
 import io
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from docx import Document
 from docx.shared import RGBColor
 from langchain.chat_models.base import BaseChatModel
@@ -15,11 +15,19 @@ from langchain.chains import LLMChain
 from .base import NotesMaker
 
 class MarkdownData(BaseModel):
-    content: str
+    content: str = Field(json_schema_extra={"description" : "The notes content in markdown format"})
 
 class MarkdownNotesMaker(NotesMaker):
     def __init__(self, llm: BaseChatModel, **kwargs):
         self.llm = llm
+
+    @staticmethod
+    def get_schema():
+        return MarkdownData.model_json_schema()
+    
+    def make_notes_from_dict(self, data_dict: str) -> io.BytesIO:
+        input_data = MarkdownData.model_validate(data_dict)
+        return self.make_notes(input_data.content, context=None)
         
     def make_notes_from_string(self, string: str, instructions: str) -> io.BytesIO:
         prompt = ChatPromptTemplate(
