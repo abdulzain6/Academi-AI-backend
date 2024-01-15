@@ -347,7 +347,8 @@ The generated flashcards in proper schema. You must follow the schema and return
 
         try:
             if not send_schema:
-                raise BadRequestError
+                raise ValueError()
+
             chain = LLMChain(
                 prompt=prompt_template,
                 output_parser=parser,
@@ -365,7 +366,7 @@ The generated flashcards in proper schema. You must follow the schema and return
                 or f"Make flashcards about {collection_name}, {collection_description}, if it doesnt make sense make general flashcards on the world",
                 min(number_of_flashcards, maximium_flashcards),
             )
-        except BadRequestError as e:
+        except (BadRequestError, ValueError) as e:
             chain = LLMChain(
                 prompt=prompt_template,
                 output_parser=parser,
