@@ -929,7 +929,7 @@ File Content:
         ),
     ]
     
-    queried_tools = pick_relavent_tools(optional_tools, query=data.prompt, k=2)
+    queried_tools = pick_relavent_tools(optional_tools, query=data.prompt[:1000], k=2)
     logging.info(f"Picked tools: {queried_tools}")
     extra_tools = [*must_have_tools, *queried_tools]
 
