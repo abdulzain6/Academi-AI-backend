@@ -36,6 +36,7 @@ from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
 from fastapi.security import HTTPBasicCredentials, HTTPBasic
 from starlette.status import HTTP_504_GATEWAY_TIMEOUT
+from fastapi.middleware.cors import CORSMiddleware
 
 
 
@@ -60,7 +61,13 @@ app = FastAPI(
     openapi_url=None,
 )
 
-
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+)
     
 security = HTTPBasic()
 
