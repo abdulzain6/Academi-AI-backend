@@ -45,8 +45,8 @@ def verify_file_existance(
 router = APIRouter()
 
 
-@router.get("/templates", response_model=GetTemplateResponse)
-def get_available_templates(_ = Depends(verify_token)) -> GetTemplateResponse:
+@router.get("/templates")
+def get_available_templates(_ = Depends(verify_token)):
 
     templates = template_manager.get_all_templates()
 
