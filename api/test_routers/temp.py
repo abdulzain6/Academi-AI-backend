@@ -50,15 +50,11 @@ def get_available_templates(_ = Depends(verify_token)) -> GetTemplateResponse:
 
     templates = template_manager.get_all_templates()
 
-    formatted_templates = [
+    return [
         {template.template_name.title(): template.template_description}
         for template in templates
     ]
-    images = [
-        {template.template_name.title(): template.image_base64}
-        for template in templates
-    ]
-    return GetTemplateResponse(templates=formatted_templates, images=images)
+    
 
 
 @router.post("/")
