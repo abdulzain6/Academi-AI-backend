@@ -69,14 +69,17 @@ description="Used to Make notes. It takes in a template name and the json dict c
 openapi_extra={"x-openai-isConsequential": False})
 def make_notes(notes_input: MakeNotesRequest, _ = Depends(verify_token)):
     try:
-        notes_data = json.loads(notes_input.notes_data)
-    except Exception:
-        raise HTTPException(400, detail="Invalid json provided unable to load it")
-    
-    notes_maker = make_notes_maker(maker_type=notes_input.template_name, llm=None)
-    notes_io = notes_maker.make_notes_from_dict(notes_data)
-    doc_id = str(uuid.uuid4()) + ".docx"
-    notes_bytes = notes_io.read()
-    redis_cache_manager.set(key=doc_id, value=notes_bytes, ttl=18000, suppress=False)
-    document_url = CACHE_DOCUMENT_URL_TEMPLATE.format(doc_id=doc_id)
-    return f"{document_url} Give this link as it is to the user dont add sandbox prefix to it, user wont recieve file until you explicitly read out the link to him"
+        try:
+            notes_data = json.loads(notes_input.notes_data)
+        except Exception:
+            raise HTTPException(400, detail="Invalid json provided unable to load it")
+        
+        notes_maker = make_notes_maker(maker_type=notes_input.template_name, llm=None)
+        notes_io = notes_maker.make_notes_from_dict(notes_data)
+        doc_id = str(uuid.uuid4()) + ".docx"
+        notes_bytes = notes_io.read()
+        redis_cache_manager.set(key=doc_id, value=notes_bytes, ttl=18000, suppress=False)
+        document_url = CACHE_DOCUMENT_URL_TEMPLATE.format(doc_id=doc_id)
+        return f"{document_url} Give this link as it is to the user dont add sandbox prefix to it, user wont recieve file until you explicitly read out the link to him"
+    except Exception as e:
+        raise HTTPException(400, detail="Error in making notes, make sure the json schema is correct and has all fields.")

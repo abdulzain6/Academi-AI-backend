@@ -1,5 +1,6 @@
 from typing import List, Optional, cast, Dict
-from langchain_community.embeddings.openai import OpenAIEmbeddings, embed_with_retry, _is_openai_v1
+from langchain_community.embeddings.openai import OpenAIEmbeddings, embed_with_retry
+from langchain_community.utils.openai import is_openai_v1
 from langchain_core.utils import get_from_dict_or_env, get_pydantic_field_names
 from langchain_core.pydantic_v1 import BaseModel, Extra, Field, root_validator
 import os, warnings
@@ -54,7 +55,7 @@ class AnyscaleEmbeddings(OpenAIEmbeddings):
                 "Please install it with `pip install openai`."
             )
         else:
-            if _is_openai_v1():
+            if is_openai_v1():
                 if values["openai_api_type"] in ("azure", "azure_ad", "azuread"):
                     warnings.warn(
                         "If you have openai>=1.0.0 installed and are using Azure, "

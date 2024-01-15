@@ -157,7 +157,8 @@ class SubscriptionManager:
         purchase_token: str = "",
         subscription_type: SubscriptionType = SubscriptionType.FREE,
         subscription_provider: SubscriptionProvider = SubscriptionProvider.PLAYSTORE,
-        update: bool = False
+        update: bool = False,
+        mulitplier: int = 1
     ) -> None:
         features = self.plan_features[subscription_type]
         now = datetime.now(timezone.utc)
@@ -190,7 +191,7 @@ class SubscriptionManager:
             logging.info(f"Applying/Updating subscription for {user_id} token {purchase_token}")
             self.subscriptions.update_one({"user_id": user_id}, {"$set": doc}, upsert=True)
             self.cache_manager.delete(f"user_subscription:{user_id}")
-            self.allocate_monthly_coins(user_id, allocate_no_check=True)
+            self.allocate_monthly_coins(user_id, allocate_no_check=True, multiplier=mulitplier)
             
     
 

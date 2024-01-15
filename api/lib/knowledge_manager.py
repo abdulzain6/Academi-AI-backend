@@ -882,15 +882,15 @@ You will not run unsafe code or perform harm to the server youre on. Or import p
             prompt_args={"language": language, "ai_name": self.ai_name, "files": files},
             extra_tools=extra_tools,
         )
-        if not callback:
-            raise ValueError("Callback not passed for streaming to work")
         
         #picked_tools = self.tool_picker(llm, tools=[*self.make_code_runner(), *extra_tools, *self.base_tools], query=prompt)
-
-        return agent.run(
-            prompt,
-            callbacks=[CustomCallbackAgent(callback, on_end_callback)],
-        )
+        if callback and on_end_callback:
+            return agent.run(
+                prompt,
+                callbacks=[CustomCallbackAgent(callback, on_end_callback)],
+            )
+        else:
+            return agent.run(prompt)
 
     def chat(
         self,
