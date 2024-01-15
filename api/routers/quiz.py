@@ -61,7 +61,7 @@ def make_quiz(
         data = f"Make quiz about '{quiz_input.collection_name}' if the term doesnt make sense make general quiz on the world"
     
     model_name, premium_model = use_feature_with_premium_model_check(user_id=user_id, feature_name="QUIZ")     
-    model = get_model({"temperature": 0}, False, premium_model, alt=True)    
+    model = get_model({"temperature": 0}, False, premium_model, alt=False)    
     quiz_generator = QuizGenerator(
         file_manager,
         None,
@@ -73,7 +73,8 @@ def make_quiz(
             select_random_chunks(data, 300, 600),
             quiz_input.number_of_questions,
             collection_name=quiz_input.collection_name,
-            collection_description=collection.description
+            collection_description=collection.description,
+            send_schema=False
         )
     except Exception as e:
         logging.error(f"Error generating quiz, Error: {e}")
@@ -145,7 +146,7 @@ def make_flashcards(
         data = f"Make flashcards about '{fc_input.collection_name}' if the term doesnt make sense make general flashcards on the world"
     
     model_name, premium_model = can_use_premium_model(user_id=user_id)     
-    model = get_model({"temperature": 0}, False, premium_model, alt=True)
+    model = get_model({"temperature": 0}, False, premium_model, alt=False)
     
     quiz_generator = QuizGenerator(
         file_manager,
@@ -157,7 +158,8 @@ def make_flashcards(
             select_random_chunks(data, 300, 600),
             fc_input.number_of_flashcards,
             collection_name=fc_input.collection_name,
-            collection_description=collection.description
+            collection_description=collection.description,
+            send_schema=False
         )
         logging.info(f"Flashcards generated, {user_id}")
     except Exception as e:

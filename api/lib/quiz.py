@@ -306,6 +306,7 @@ THe quiz in json with {number_of_questions} questions:"""
         collection_name: str = "Anything",
         maximium_flashcards: int = 10,
         collection_description: str = "Anything",
+        send_schema: bool = False
     ) -> list[FlashCard]:
         parser = PydanticOutputParser(pydantic_object=FlashCards)
         prompt_template = ChatPromptTemplate(
@@ -345,6 +346,8 @@ The generated flashcards in proper schema. You must follow the schema and return
         flashcards: List[FlashCard] = []
 
         try:
+            if not send_schema:
+                raise BadRequestError
             chain = LLMChain(
                 prompt=prompt_template,
                 output_parser=parser,
