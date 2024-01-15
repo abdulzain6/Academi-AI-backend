@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Optional, cast, Dict
 from langchain_community.embeddings.openai import OpenAIEmbeddings, embed_with_retry
 from langchain_community.utils.openai import is_openai_v1
@@ -97,27 +98,54 @@ class AnyscaleEmbeddings(OpenAIEmbeddings):
     def embed_documents(
         self, texts: List[str], chunk_size: Optional[int] = 0
     ) -> List[List[float]]:
-        """Call out to OpenAI's embedding endpoint for embedding search docs.
+        """Parallelize embedding of documents by sending two documents per request.
 
         Args:
             texts: The list of texts to embed.
-            chunk_size: The chunk size of embeddings. If None, will use the chunk size
-                specified by the class.
 
         Returns:
             List of embeddings, one for each text.
         """
-        # NOTE: to keep things simple, we assume the list may contain texts longer
-        #       than the maximum context and use length-safe embedding function.
+
+        def worker(index: int, text_pair: List[str]) -> (int, List[List[float]]):
+            return index, self.embed_pair(text_pair)
+
+        # Pairing the texts with their indices
+        text_pairs = [(i, texts[i:i + 2]) for i in range(0, len(texts), 2)]
+
+        # Use ThreadPoolExecutor to process pairs in parallel
+        results = []
+        with ThreadPoolExecutor() as executor:
+            futures = [executor.submit(worker, idx, pair) for idx, pair in text_pairs]
+            for future in as_completed(futures):
+                results.append(future.result())
+
+        # Sort the results by indices and flatten the embeddings list
+        results.sort(key=lambda x: x[0])
+        embeddings = [embedding for _, pair_embeddings in results for embedding in pair_embeddings]
+
+        # Handle the last text if the number of texts is odd
+        if len(texts) % 2 != 0:
+            embeddings.append(self.embed_pair([texts[-1]])[0])
+
+        return embeddings
+
+    def embed_pair(self, text_pair: List[str]) -> List[List[float]]:
+        """Embed a pair of documents.
+
+        Args:
+            text_pair: A pair of texts to embed.
+
+        Returns:
+            Embeddings for the pair.
+        """
         engine = cast(str, self.deployment)
         response = embed_with_retry(
             self,
-            input=texts,
+            input=text_pair,
             **self._invocation_params,
         )
         if not isinstance(response, dict):
             response = response.model_dump()
         return [r["embedding"] for r in response["data"]]
-    
-    
 
