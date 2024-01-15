@@ -90,12 +90,21 @@ def verify_subscription(
         if subscription_state == 'SUBSCRIPTION_STATE_ACTIVE':
             if line_items := data.get('lineItems', []):
                 if product_id := line_items[0].get('productId'):
+                    if "6_monthly" in product_id:
+                        muliplier = 6
+                    elif "monthly" in product_id:
+                     muliplier = 1
+                    elif "yearly" in product_id:
+                        muliplier = 12
+                    else:
+                        muliplier = 1
                     subscription_type = PRODUCT_ID_MAP[product_id]
                     subscription_manager.apply_or_default_subscription(
                         user_id=user_id,
                         purchase_token=subscription_data.purchase_token,
                         subscription_type=subscription_type,
-                        update=True
+                        update=True,
+                        mulitplier=muliplier
                     )
                     logging.info(f"{user_id} Just subscribed {subscription_data.purchase_token}")
                     return {"status" : "success"}   
