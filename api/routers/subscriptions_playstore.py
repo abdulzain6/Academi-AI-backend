@@ -106,7 +106,9 @@ def verify_subscription(
                         update=True,
                         mulitplier=muliplier
                     )
+                    subscription_manager.reset_monthly_limits(user_id, True, muliplier)
                     logging.info(f"{user_id} Just subscribed {subscription_data.purchase_token}")
+
                     return {"status" : "success"}   
     except Exception as e:
         logging.error(f"Error in verify subscription {e}")
