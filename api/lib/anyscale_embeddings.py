@@ -107,33 +107,21 @@ class AnyscaleEmbeddings(OpenAIEmbeddings):
         Returns:
             List of embeddings, one for each text.
         """
-        def worker(index: int, text_group: List[str]) -> (int, List[List[float]]):
-            return index, self.embed_pair(text_group)
+        def worker(text_group: List[str]) -> List[List[float]]:
+            return self.embed_pair(text_group)
 
-        # Function to determine group size dynamically
-        def get_group_size():
-            # Logic to determine group size (4 or 5)
-            # Implement your logic here based on your requirements
-            return 4 if len(texts) % 5 != 0 else 5
-
-        # Grouping the texts with their indices
-        group_size = get_group_size()
-        text_groups = [(i, list(group)) for i, group in enumerate(itertools.zip_longest(
-                        *[iter(texts)] * group_size)) if group[0] is not None]
-        print(text_groups)
+        # Grouping the texts into groups of 4
+        group_size = 4
+        text_groups = [texts[i:i + group_size] for i in range(0, len(texts), group_size)]
 
         # Use ThreadPoolExecutor to process groups in parallel
         results = []
-        with ThreadPoolExecutor() as executor:
-            futures = [executor.submit(worker, idx, group) for idx, group in text_groups]
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            futures = [executor.submit(worker, group) for group in text_groups]
             for future in as_completed(futures):
-                results.append(future.result())
+                results.extend(future.result())
 
-        # Sort the results by indices and flatten the embeddings list
-        results.sort(key=lambda x: x[0])
-        embeddings = [embedding for _, group_embeddings in results for embedding in group_embeddings if embedding is not None]
-
-        return embeddings
+        return results
 
     def embed_pair(self, text_pair: List[str]) -> List[List[float]]:
         """Embed a pair of documents.
