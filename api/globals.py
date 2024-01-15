@@ -259,7 +259,7 @@ chat_manager = ChatManagerRetrieval(
         max_retries=2
     ),
     conversation_limit=800,
-    docs_limit=2100,
+    docs_limit=3000,
     qdrant_api_key=QDRANT_API_KEY,
     qdrant_url=QDRANT_URL,
 )

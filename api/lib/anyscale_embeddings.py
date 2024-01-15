@@ -106,27 +106,29 @@ class AnyscaleEmbeddings(OpenAIEmbeddings):
         Returns:
             List of embeddings, one for each text.
         """
+        def worker(index: int, text_group: List[str]) -> (int, List[List[float]]):
+            return index, self.embed_pair(text_group)
 
-        def worker(index: int, text_pair: List[str]) -> (int, List[List[float]]):
-            return index, self.embed_pair(text_pair)
+        # Grouping the texts with their indices, handling any remainder texts separately
+        group_size = 4
+        num_full_groups = len(texts) // group_size
+        text_groups = [(i, texts[i*group_size:(i+1)*group_size]) for i in range(num_full_groups)]
 
-        # Pairing the texts with their indices
-        text_pairs = [(i, texts[i:i + 2]) for i in range(0, len(texts), 2)]
-
-        # Use ThreadPoolExecutor to process pairs in parallel
+        # Use ThreadPoolExecutor to process groups in parallel
         results = []
         with ThreadPoolExecutor() as executor:
-            futures = [executor.submit(worker, idx, pair) for idx, pair in text_pairs]
+            futures = [executor.submit(worker, idx, group) for idx, group in text_groups]
             for future in as_completed(futures):
                 results.append(future.result())
 
         # Sort the results by indices and flatten the embeddings list
         results.sort(key=lambda x: x[0])
-        embeddings = [embedding for _, pair_embeddings in results for embedding in pair_embeddings]
+        embeddings = [embedding for _, group_embeddings in results for embedding in group_embeddings]
 
-        # Handle the last text if the number of texts is odd
-        if len(texts) % 2 != 0:
-            embeddings.append(self.embed_pair([texts[-1]])[0])
+        # Handle any remaining texts if the total number is not divisible by group size
+        remainder_start_index = num_full_groups * group_size
+        if remainder_start_index < len(texts):
+            embeddings.extend(self.embed_pair(texts[remainder_start_index:]))
 
         return embeddings
 
