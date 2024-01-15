@@ -12,7 +12,7 @@ from langchain.embeddings.base import Embeddings
 from langchain.chat_models.base import BaseChatModel
 from langchain.document_loaders import UnstructuredAPIFileLoader
 from langchain.schema import Document
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.text_splitter import TokenTextSplitter
 from langchain.vectorstores.qdrant import Qdrant
 from langchain.document_loaders import YoutubeLoader
 from langchain.callbacks.base import BaseCallbackHandler
@@ -186,7 +186,7 @@ class KnowledgeManager:
             self.qdrant = None
 
     def split_docs(self, docs: Document) -> List[Document]:
-        return RecursiveCharacterTextSplitter(
+        return TokenTextSplitter(
             chunk_size=self.chunk_size
         ).split_documents(docs)
 

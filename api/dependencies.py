@@ -8,11 +8,6 @@ from .globals import (
     subscription_manager,
     file_manager,
     collection_manager,
-    global_chat_model,
-    global_kwargs,
-    fallback_chat_models,
-    get_model_and_fallback,
-    get_model
 )
 from fastapi import HTTPException
 from functools import wraps
