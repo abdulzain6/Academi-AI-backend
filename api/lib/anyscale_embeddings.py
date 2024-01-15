@@ -1,4 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import itertools
 from typing import List, Optional, cast, Dict
 from langchain_community.embeddings.openai import OpenAIEmbeddings, embed_with_retry
 from langchain_community.utils.openai import is_openai_v1
@@ -109,10 +110,17 @@ class AnyscaleEmbeddings(OpenAIEmbeddings):
         def worker(index: int, text_group: List[str]) -> (int, List[List[float]]):
             return index, self.embed_pair(text_group)
 
-        # Grouping the texts with their indices, handling any remainder texts separately
-        group_size = 4
-        num_full_groups = len(texts) // group_size
-        text_groups = [(i, texts[i*group_size:(i+1)*group_size]) for i in range(num_full_groups)]
+        # Function to determine group size dynamically
+        def get_group_size():
+            # Logic to determine group size (4 or 5)
+            # Implement your logic here based on your requirements
+            return 4 if len(texts) % 5 != 0 else 5
+
+        # Grouping the texts with their indices
+        group_size = get_group_size()
+        text_groups = [(i, list(group)) for i, group in enumerate(itertools.zip_longest(
+                        *[iter(texts)] * group_size)) if group[0] is not None]
+        print(text_groups)
 
         # Use ThreadPoolExecutor to process groups in parallel
         results = []
@@ -123,12 +131,7 @@ class AnyscaleEmbeddings(OpenAIEmbeddings):
 
         # Sort the results by indices and flatten the embeddings list
         results.sort(key=lambda x: x[0])
-        embeddings = [embedding for _, group_embeddings in results for embedding in group_embeddings]
-
-        # Handle any remaining texts if the total number is not divisible by group size
-        remainder_start_index = num_full_groups * group_size
-        if remainder_start_index < len(texts):
-            embeddings.extend(self.embed_pair(texts[remainder_start_index:]))
+        embeddings = [embedding for _, group_embeddings in results for embedding in group_embeddings if embedding is not None]
 
         return embeddings
 
