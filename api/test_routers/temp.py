@@ -16,6 +16,79 @@ from ..dependencies import get_model, require_points_for_feature, use_feature_wi
 from langchain.chat_models import ChatOpenAI
 from pydantic import BaseModel
 from ..gpts_routers.auth import verify_token
+from typing import Generator, List, Optional
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi import Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
+
+from api.lib.database.collections import CollectionModel
+from api.lib.presentation_maker.image_gen import PexelsImageSearch
+from ..lib.cv_maker.cv_maker import CVMaker
+from ..lib.cv_maker.template_loader import template_loader
+from api.lib.presentation_maker.presentation_maker import PresentationMaker
+from api.lib.uml_diagram_maker import AIPlantUMLGenerator
+from api.config import CACHE_DOCUMENT_URL_TEMPLATE
+from api.dependencies import can_add_more_data
+from ..lib.notes_maker import make_notes_maker, get_available_note_makers
+from api.config import REDIS_URL, CACHE_DOCUMENT_URL_TEMPLATE, SEARCHX_HOST
+from api.lib.database.cache_manager import RedisCacheManager
+from api.lib.tools import ScholarlySearchRun, MarkdownToDocConverter, RequestsGetTool, SearchTool, SearchImage
+from ..lib.database.messages import MessagePair
+from ..lib.utils import split_into_chunks, extract_schema_fields, timed_random_choice
+from ..lib.tools import (
+    MakePresentationInput,
+    make_ppt,
+    make_uml_diagram,
+    make_cv_from_string,
+    make_vega_graph,
+    make_graphviz_graph,
+    create_link_file,
+    make_notes,
+    write_content
+)
+from ..lib.writer import Writer
+from ..lib.inmemory_vectorstore import InMemoryVectorStore
+from ..auth import get_user_id, verify_play_integrity
+from ..globals import (
+    collection_manager,
+    chat_manager,
+    file_manager,
+    conversation_manager,
+    chat_manager_agent_non_retrieval,
+    knowledge_manager,
+    subscription_manager,
+    redis_cache_manager,
+    plantuml_server,
+    template_manager,
+    temp_knowledge_manager,
+    get_model,
+    get_model_and_fallback
+)
+from ..dependencies import (
+    can_use_premium_model,
+    require_points_for_feature,
+    deduct_points_for_feature,
+    use_feature_with_premium_model_check,
+)
+from ..routers.utils import select_random_chunks, find_most_similar
+from pydantic import BaseModel
+from openai import OpenAIError
+from langchain.tools import StructuredTool
+from langchain.pydantic_v1 import BaseModel as OldBaseModel
+from langchain.pydantic_v1 import Field as OldField
+from langchain.utilities.searx_search import SearxSearchWrapper
+from langchain.tools.youtube.search import YouTubeSearchTool
+from langchain.utilities.requests import TextRequestsWrapper
+from langchain.schema import Document
+
+import logging
+
+
+tools_vectorstore = InMemoryVectorStore()
+
+class ChatGeneralInput(BaseModel):
+    prompt: str
+    language: str = "English"
 
 class GetTemplateResponse(BaseModel):
     templates: list[dict[str, str]]
@@ -32,6 +105,14 @@ class MakePresentationInput(BaseModel):
     auto_select_template: bool = True
     template_name: Optional[str] = ""
 
+
+
+def pick_relavent_tools(tools: list[StructuredTool], query: str, k: int = 2) -> list[StructuredTool]:
+    docs = [Document(page_content=tool.description, metadata={"name" : tool.name}) for tool in tools]
+    tools_vectorstore.add_documents(docs)
+    relavent_tools = tools_vectorstore.query_vectorstore(query=query, k=k)
+    relavent_tool_names = [tool.metadata["name"] for tool in relavent_tools]
+    return [tool for tool in tools if tool.name in relavent_tool_names]
 
 def verify_file_existance(
     user_id: str, file_names: list[str], collection_uid: str
@@ -103,93 +184,6 @@ def make_presentation(
 
     return FileResponse(file_path, headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(file_path.split('/')[-1], safe='')}"})
 
-
-
-
-from typing import Generator, List, Optional
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi import Depends, HTTPException, status
-from fastapi.responses import StreamingResponse
-
-from api.lib.database.collections import CollectionModel
-from api.lib.presentation_maker.image_gen import PexelsImageSearch
-from ..lib.cv_maker.cv_maker import CVMaker
-from ..lib.cv_maker.template_loader import template_loader
-from api.lib.presentation_maker.presentation_maker import PresentationMaker
-from api.lib.uml_diagram_maker import AIPlantUMLGenerator
-from api.config import CACHE_DOCUMENT_URL_TEMPLATE
-from api.dependencies import can_add_more_data
-from ..lib.notes_maker import make_notes_maker, get_available_note_makers
-from api.config import REDIS_URL, CACHE_DOCUMENT_URL_TEMPLATE, SEARCHX_HOST
-from api.lib.database.cache_manager import RedisCacheManager
-from api.lib.tools import ScholarlySearchRun, MarkdownToDocConverter, RequestsGetTool, SearchTool, SearchImage
-from ..lib.database.messages import MessagePair
-from ..lib.utils import split_into_chunks, extract_schema_fields, timed_random_choice
-from ..lib.tools import (
-    MakePresentationInput,
-    make_ppt,
-    make_uml_diagram,
-    make_cv_from_string,
-    make_vega_graph,
-    make_graphviz_graph,
-    create_link_file,
-    make_notes,
-    write_content
-)
-from ..lib.writer import Writer
-from ..lib.inmemory_vectorstore import InMemoryVectorStore
-from ..auth import get_user_id, verify_play_integrity
-from ..globals import (
-    collection_manager,
-    chat_manager,
-    file_manager,
-    conversation_manager,
-    chat_manager_agent_non_retrieval,
-    knowledge_manager,
-    subscription_manager,
-    redis_cache_manager,
-    plantuml_server,
-    template_manager,
-    temp_knowledge_manager,
-    get_model,
-    get_model_and_fallback
-)
-from ..dependencies import (
-    can_use_premium_model,
-    require_points_for_feature,
-    deduct_points_for_feature,
-    use_feature_with_premium_model_check,
-)
-from ..routers.utils import select_random_chunks, find_most_similar
-from pydantic import BaseModel
-from openai import OpenAIError
-from langchain.tools import StructuredTool
-from langchain.pydantic_v1 import BaseModel as OldBaseModel
-from langchain.pydantic_v1 import Field as OldField
-from langchain.utilities.searx_search import SearxSearchWrapper
-from langchain.tools.youtube.search import YouTubeSearchTool
-from langchain.utilities.requests import TextRequestsWrapper
-from langchain.schema import Document
-
-import logging
-
-
-tools_vectorstore = InMemoryVectorStore()
-
-
-
-class ChatGeneralInput(BaseModel):
-    prompt: str
-    language: str = "English"
-
-
-
-def pick_relavent_tools(tools: list[StructuredTool], query: str, k: int = 2) -> list[StructuredTool]:
-    docs = [Document(page_content=tool.description, metadata={"name" : tool.name}) for tool in tools]
-    tools_vectorstore.add_documents(docs)
-    relavent_tools = tools_vectorstore.query_vectorstore(query=query, k=k)
-    relavent_tool_names = [tool.metadata["name"] for tool in relavent_tools]
-    return [tool for tool in tools if tool.name in relavent_tool_names]
 
 
 @router.post("/chat")

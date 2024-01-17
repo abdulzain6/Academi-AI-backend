@@ -63,6 +63,7 @@ def verify_onetime(
     try:
         subscription_checker.check_one_time_purchase(APP_PACKAGE_NAME, onetime_data.purchase_token, product_id=onetime_data.product_id)
         subscription_manager.add_onetime_token(user_id=user_id, token=onetime_data.purchase_token, product_purchased=onetime_data.product_id)
+        user_points_manager.increment_user_points(user_id, points=PRODUCT_ID_COIN_MAP[onetime_data.product_id])
         return {"status" : "success"}   
     except Exception as e:
         logging.error(f"Error in verify subscription {e}")
@@ -198,14 +199,4 @@ def receive_notification(notification: dict, token_verified=Depends(verify_googl
                 logging.error("Product not found")
                 raise HTTPException(400, detail="Product not found")
             user_points_manager.decrement_user_points(uid, PRODUCT_ID_COIN_MAP[product])
-        return {"status": "success"}
-    elif "oneTimeProductNotification" in notification:
-        one_time_product_notfication = notification.get("oneTimeProductNotification")
-        notif_type = OneTimeNotficationTypes(one_time_product_notfication.get("notificationType"))
-        if notif_type.ONE_TIME_PRODUCT_PURCHASED:
-            user_id = subscription_manager.find_user_by_token(token=one_time_product_notfication.get("purchaseToken"))
-            if not user_id:
-                logging.error("User not found")
-                raise HTTPException(400, detail="User not found")
-            user_points_manager.increment_user_points(user_id, points=PRODUCT_ID_COIN_MAP[one_time_product_notfication.get("sku")])
         return {"status": "success"}
