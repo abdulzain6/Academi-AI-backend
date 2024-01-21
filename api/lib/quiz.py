@@ -172,7 +172,6 @@ class QuizGenerator:
         collection_name: str = "Anything",
         maximum_questions: int = 10,
         collection_description: str = "Anything",
-        send_schema: bool = True
     ) -> list[QuizQuestionResponse]:
         parser = PydanticOutputParser(pydantic_object=Quiz)
         fotmat_instructions = f"""You will follow the following schema and will not return anything else or an error will be raised
@@ -213,37 +212,17 @@ THe quiz in json with {number_of_questions} questions:"""
             },
         )
         questions: List[QuizQuestion] = []
-        try:
-            if not send_schema:
-                raise ValueError()
-            
-            chain = LLMChain(
-                prompt=prompt_template,
-                output_parser=parser,
-                llm=self.llm,
-                llm_kwargs={
-                    "response_format": {
-                        "type": "json_object",
-                        "schema": Quiz.model_json_schema(),
-                    }
-                },
-            )
-            questions = chain.run(
-                data=data or f"Use your knowledge to generate the quiz about '{collection_name}' Description : {collection_description}. if you dont know about the term, make a general quiz",
-                number_of_questions=min(number_of_questions, maximum_questions),
-                fotmat_instructions=""
-            ).questions
-        except (BadRequestError, ValueError):
-            chain = LLMChain(
-                prompt=prompt_template,
-                output_parser=parser,
-                llm=self.llm,
-            )
-            questions = chain.run(
-                data=data or f"Use your knowledge to generate the quiz about '{collection_name}' Description : {collection_description}. if you dont know about the term, make a general quiz",
-                number_of_questions=min(number_of_questions, maximum_questions),
-                fotmat_instructions=fotmat_instructions
-            ).questions
+        chain = LLMChain(
+            prompt=prompt_template,
+            output_parser=parser,
+            llm=self.llm,
+        )
+        questions = chain.run(
+            data=data or f"Use your knowledge to generate the quiz about '{collection_name}' Description : {collection_description}. if you dont know about the term, make a general quiz",
+            number_of_questions=min(number_of_questions, maximum_questions),
+            fotmat_instructions=fotmat_instructions,
+          #  llm_kwargs={"stop" : ["[/INST]","</s>"]}
+        ).questions
         questions_response = []
         for question in questions[:maximum_questions]:
             questions_response.append(
@@ -306,7 +285,6 @@ THe quiz in json with {number_of_questions} questions:"""
         collection_name: str = "Anything",
         maximium_flashcards: int = 10,
         collection_description: str = "Anything",
-        send_schema: bool = False
     ) -> list[FlashCard]:
         parser = PydanticOutputParser(pydantic_object=FlashCards)
         prompt_template = ChatPromptTemplate(
@@ -332,8 +310,7 @@ You will follow the following schema and will not return anything else
 The schema:
 {format_instructions}
 
-The generated flashcards in proper schema. You must follow the schema and return json only!!:
-"""
+The generated flashcards in proper schema. You must follow the schema and return json only!!:"""
                 ),
             ],
             input_variables=["data", "number_of_questions"],
@@ -344,46 +321,17 @@ The generated flashcards in proper schema. You must follow the schema and return
             },
         )
         flashcards: List[FlashCard] = []
-
-        try:
-            if not send_schema:
-                raise ValueError()
-
-            chain = LLMChain(
-                prompt=prompt_template,
-                output_parser=parser,
-                llm=self.llm,
-                llm_kwargs={
-                    "response_format": {
-                        "type": "json_object",
-                        "schema": FlashCards.model_json_schema(),
-                    }
-                },
-            )
-            flashcards = self.run_chain_fc(
-                chain,
-                data
-                or f"Make flashcards about {collection_name}, {collection_description}, if it doesnt make sense make general flashcards on the world",
-                min(number_of_flashcards, maximium_flashcards),
-            )
-        except (BadRequestError, ValueError) as e:
-            chain = LLMChain(
-                prompt=prompt_template,
-                output_parser=parser,
-                llm=self.llm,
-                llm_kwargs={
-                    "response_format": {
-                        "type": "json_object",
-                    }
-                },
-            )
-            flashcards = self.run_chain_fc(
-                chain,
-                data
-                or f"Make flashcards about {collection_name}, {collection_description}",
-                min(number_of_flashcards, maximium_flashcards),
-            )
-
+        chain = LLMChain(
+            prompt=prompt_template,
+            output_parser=parser,
+            llm=self.llm,
+        )
+        flashcards = self.run_chain_fc(
+            chain,
+            data
+            or f"Make flashcards about {collection_name}, {collection_description}",
+            min(number_of_flashcards, maximium_flashcards),
+        )
         return flashcards[:number_of_flashcards]
 
     @retry(stop_max_attempt_number=3)

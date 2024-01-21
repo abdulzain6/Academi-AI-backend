@@ -4,7 +4,7 @@ import tempfile
 from fastapi.responses import StreamingResponse
 from ..auth import get_user_id, verify_play_integrity
 from ..dependencies import require_points_for_feature, use_feature, can_use_premium_model
-from ..lib.notes_maker import make_notes_maker, get_available_note_makers
+from ..lib.notes_maker import make_notes_maker, get_available_note_makers, MarkdownNotesMaker
 from ..globals import get_model, text_ocr, collection_manager, file_manager
 from typing import Optional
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
@@ -95,12 +95,19 @@ def make_notes(
         data = "\n".join([file.file_content for file in files])
 
     model_name, premium_model = can_use_premium_model(user_id=user_id)
-    model = get_model({"temperature": 0.2}, False, premium_model)
+    if notes_input.template_name == "Text Notes":
+        chat = True
+    else:
+        chat = False
+
+    model = get_model({"temperature": 0.2}, False, premium_model, alt=True, together_chat=chat)
 
     try:
         notes_maker = make_notes_maker(notes_input.template_name, llm=model)
     except Exception as e:
         raise HTTPException(400, detail=str(e))
+    
+        
 
     content = select_random_chunks(data, 600, 1850)
     data = notes_maker.make_notes_from_string(content, notes_input.instructions)

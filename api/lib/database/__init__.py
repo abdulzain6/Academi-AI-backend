@@ -5,3 +5,4 @@ from .points import UserPointsManager
 from .purchases import SubscriptionManager
 from .users import UserDBManager
 from .referrals import ReferralManager
+from .log_manager import MongoLogManager

@@ -1,17 +1,15 @@
-from api.lib.anyscale_embeddings import AnyscaleEmbeddings
 from typing import List
 from langchain.vectorstores.qdrant import Qdrant
 from langchain.schema import Document
 from qdrant_client import QdrantClient
 from qdrant_client.http import models as rest
 from langchain.embeddings.openai import OpenAIEmbeddings
+from ..lib.embeddings import TogetherEmbeddingsParallel
 
 class InMemoryVectorStore:
     def __init__(self, embeddings = None) -> None:
         if not embeddings:
-            self.embeddings = AnyscaleEmbeddings(
-                base_url="https://api.endpoints.anyscale.com/v1",
-                model="thenlper/gte-large",
+            self.embeddings = TogetherEmbeddingsParallel(
                max_retries=2,
                timeout=5
             )

@@ -103,7 +103,6 @@ class PresentationMaker:
         pexel_image_gen_cls: PexelsImageSearch,
         vectorstore: KnowledgeManager,
         image_gen_args: dict,
-        use_schema: bool = True,
     ) -> None:
         self.template_manager = template_manager
         self.template_knowledge_manager = template_knowledge_manager
@@ -111,7 +110,6 @@ class PresentationMaker:
         self.pexel_image_gen_cls = pexel_image_gen_cls
         self.image_gen_args = image_gen_args
         self.vectorstore = vectorstore
-        self.use_schema = use_schema
         
     def query_vectorstore(self, query: str, collection_name: str, k: int, metadata: Dict[str, str] = None, **kwargs) -> str:
         if not collection_name:
@@ -207,45 +205,19 @@ THe sequence in proper schema:"""
                 "format_instructions"
             ],
         )
-
-        try:
-            if not self.use_schema:
-                raise ValueError()
-            
-            chain = LLMChain(
-                prompt=prompt,
-                output_parser=parser,
-                llm=self.llm,
-                llm_kwargs={
-                    "response_format": {
-                        "type": "json_object",
-                        "schema": PresentationSequence.model_json_schema(),
-                    }
-                }
-            )
-            return chain.run(
-                topic=presentation_input.topic,
-                pages=presentation_input.number_of_pages,
-                instructions="",
-                negative_prompt=presentation_input.negative_prompt,
-                slides=self.format_slides(template.slides),
-                format_instructions=""
-            )
-        except (BadRequestError, ValueError):
-            logging.info("Using openai way")
-            chain = LLMChain(
-                prompt=prompt,
-                output_parser=parser,
-                llm=self.llm,
-            )
-            return chain.run(
-                topic=presentation_input.topic,
-                pages=presentation_input.number_of_pages,
-                instructions=presentation_input.instructions,
-                negative_prompt=presentation_input.negative_prompt,
-                slides=self.format_slides(template.slides),
-                format_instructions=parser.get_format_instructions()
-            )
+        chain = LLMChain(
+            prompt=prompt,
+            output_parser=parser,
+            llm=self.llm,
+        )
+        return chain.run(
+            topic=presentation_input.topic,
+            pages=presentation_input.number_of_pages,
+            instructions=presentation_input.instructions,
+            negative_prompt=presentation_input.negative_prompt,
+            slides=self.format_slides(template.slides),
+            format_instructions=parser.get_format_instructions()
+        )
 
     def validate_slides(
         self, template: TemplateModel, slides: PresentationSequence
@@ -481,39 +453,13 @@ The placeholders following the schema:"""
         else:
             help_text = "Use your own knowledge to fill the placeholders"
 
+        
+        chain = LLMChain(
+            output_parser=parser,
+            prompt=prompt,
+            llm=self.llm,
+        )
         try:
-            if not self.use_schema:
-                raise ValueError()
-            
-            chain = LLMChain(
-                output_parser=parser,
-                prompt=prompt,
-                llm=self.llm,
-                llm_kwargs={
-                    "response_format": {
-                        "type": "json_object",
-                        "schema": Placeholders.model_json_schema(),
-                    }
-                }
-            )
-            placeholders: Placeholders = chain.run(
-                placeholders=self.format_placeholders(slide.placeholders, True),
-                slide_detail=sequence_part.slide_detail,
-                slides="\n".join([slide.slide_detail for slide in all_slides]),
-                presentation_topic=presentation_input.topic,
-                instructions=presentation_input.instructions,
-                negative_prompt=presentation_input.negative_prompt,
-                page_no=sequence_part.page_number,
-                help_text=help_text,
-                format_instructions=""
-            )
-        except (BadRequestError, ValueError):
-            logging.info("Using openai way")
-            chain = LLMChain(
-                output_parser=parser,
-                prompt=prompt,
-                llm=self.llm,
-            )
             placeholders: Placeholders = chain.run(
                 placeholders=self.format_placeholders(slide.placeholders, True),
                 slide_detail=sequence_part.slide_detail,
@@ -525,7 +471,11 @@ The placeholders following the schema:"""
                 help_text=help_text,
                 format_instructions=parser.get_format_instructions()
             )
+            print("done")
+        except Exception as e:
+            print(e)
             
+                
         for placeholder in placeholders.placeholders:
             placeholder.placeholder_data = placeholder.placeholder_data.replace(
                 "\n\n", "\n"
@@ -690,6 +640,8 @@ The placeholders following the schema:"""
                 template = self.get_best_template(presentation_input.topic)
             except Exception:
                 template = random.choice(self.template_manager.get_all_templates()).template_name
+                template = self.template_manager.read_template(template)
+
             slide_path = self.template_manager.get_template_file(template.template_name)
         else:
             slide_path = self.template_manager.get_template_file(template_name)
@@ -709,7 +661,7 @@ The placeholders following the schema:"""
                 if self.validate_slides(template, sequence):
                     break
             except Exception as e:
-                logging.info(f"Erorr {e}")
+                logging.error(f"Erorr {e}")
                 
         else:
             raise NoValidSequenceException("Couldn't find the best sequence")

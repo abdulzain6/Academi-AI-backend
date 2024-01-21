@@ -144,7 +144,7 @@ def chat_collection_stream(
 
     model_name, premium_model = can_use_premium_model(user_id=user_id)
     model_default, model_fallback = get_model_and_fallback(
-        {"temperature": 0.3}, True, premium_model, alt=True,
+        {"temperature": 0.3}, True, premium_model, alt=True, together_chat=True
     )
     data_queue = queue.Queue()
 
@@ -272,7 +272,7 @@ def chat_file_stream(
 
     model_name, premium_model = can_use_premium_model(user_id=user_id)
     model_default, model_fallback = get_model_and_fallback(
-        {"temperature": 0.3}, True, premium_model, alt=True,
+        {"temperature": 0.3}, True, premium_model, alt=True, together_chat=True
     )
     data_queue = queue.Queue()
 

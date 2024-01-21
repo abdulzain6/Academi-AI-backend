@@ -1,12 +1,11 @@
 from enum import Enum
 from fastapi import APIRouter, Depends, HTTPException, status
-
 from api.lib.database.purchases import SubscriptionType
 from ..auth import get_user_id, verify_play_integrity, verify_google_token
 from ..globals import subscription_checker, subscription_manager, user_points_manager
 from ..config import APP_PACKAGE_NAME, PRODUCT_ID_MAP, PRODUCT_ID_COIN_MAP, SUB_COIN_MAP
 from pydantic import BaseModel
-import logging
+from ..globals import log_manager as logging
 
 router = APIRouter()
 
@@ -56,7 +55,9 @@ def verify_onetime(
     user_id=Depends(get_user_id),
     play_integrity_verified=Depends(verify_play_integrity),
 ):
+    logging.info(f"Coins purchase attempt by {user_id}")
     if onetime_data.purchase_token in subscription_manager.retrieve_onetime_tokens(user_id):
+        logging.error(f"Coins purchase attempt by {user_id}. Tokens already used.")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Token already used"
         )
@@ -64,6 +65,7 @@ def verify_onetime(
         subscription_checker.check_one_time_purchase(APP_PACKAGE_NAME, onetime_data.purchase_token, product_id=onetime_data.product_id)
         subscription_manager.add_onetime_token(user_id=user_id, token=onetime_data.purchase_token, product_purchased=onetime_data.product_id)
         user_points_manager.increment_user_points(user_id, points=PRODUCT_ID_COIN_MAP[onetime_data.product_id])
+        logging.info(f"Coins purchase attempt by {user_id}. Coins granted.")
         return {"status" : "success"}   
     except Exception as e:
         logging.error(f"Error in verify subscription {e}")
@@ -72,7 +74,6 @@ def verify_onetime(
         status_code=status.HTTP_400_BAD_REQUEST, detail="Token verification failed."
     )
     
-
 @router.post("/verify")
 def verify_subscription(
     subscription_data: SubscriptionData,
@@ -80,11 +81,13 @@ def verify_subscription(
     play_integrity_verified=Depends(verify_play_integrity),
 ):
     if subscription_manager.purchase_token_exists(subscription_data.purchase_token):
+        logging.info(f"Subscription purchase attempt by {user_id}. Tokens already used.")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Token already used"
         )
-    
-        
+
+    logging.info(f"Subscription purchase attempt by {user_id}")
+
     try:    
         data = subscription_checker.check_subscription(APP_PACKAGE_NAME, subscription_data.purchase_token)
         subscription_state = data.get('subscriptionState', '')
@@ -109,8 +112,8 @@ def verify_subscription(
                     )
                     subscription_manager.reset_monthly_limits(user_id, True, muliplier)
                     logging.info(f"{user_id} Just subscribed {subscription_data.purchase_token}")
-
                     return {"status" : "success"}   
+    
     except Exception as e:
         logging.error(f"Error in verify subscription {e}")
         
@@ -141,22 +144,35 @@ def receive_notification(notification: dict, token_verified=Depends(verify_googl
                     update=True
                 )
                 logging.info(f"{sub_doc['user_id']} Just unsubscribed {sub_notification.purchaseToken}")
+            else:
+                logging.error("Document not found !")
+                raise HTTPException(detail="Document not found.", status_code=400)
 
         elif sub_notification.notificationType in [SubscriptionStatus.SUBSCRIPTION_PAUSED]:
             if sub_doc := subscription_manager.get_subscription_by_token(sub_notification.purchaseToken):
                 subscription_manager.enable_disable_subscription(sub_doc["user_id"], False)
                 logging.info(f"{sub_doc['user_id']} got disabled {sub_notification.notificationType} {sub_notification.purchaseToken}")
-
+            else:
+                logging.error("Document not found !")
+                raise HTTPException(detail="Document not found.", status_code=400)
+            
         elif sub_notification.notificationType == [SubscriptionStatus.SUBSCRIPTION_RESTARTED, SubscriptionStatus.SUBSCRIPTION_RECOVERED]:
             if sub_doc := subscription_manager.get_subscription_by_token(sub_notification.purchaseToken):
                 subscription_manager.enable_disable_subscription(sub_doc["user_id"], True)
                 subscription_manager.cancel_uncancel_subscription(sub_doc["user_id"], False)
                 logging.info(f"{sub_doc['user_id']} got enabled {sub_notification.notificationType} {sub_notification.purchaseToken}")
-                
+            else:
+                logging.error("Document not found !")
+                raise HTTPException(detail="Document not found.", status_code=400)
+                  
         elif sub_notification.notificationType == SubscriptionStatus.SUBSCRIPTION_CANCELED:
             if sub_doc := subscription_manager.get_subscription_by_token(sub_notification.purchaseToken):
                 subscription_manager.cancel_uncancel_subscription(sub_doc["user_id"], True)
                 logging.info(f"{sub_doc['user_id']} got cancelled {sub_notification.notificationType} {sub_notification.purchaseToken}")
+            else:
+                logging.error("Document not found !")
+                raise HTTPException(detail="Document not found.", status_code=400)
+            
         elif sub_notification.notificationType == SubscriptionStatus.SUBSCRIPTION_RENEWED:
             if sub_doc := subscription_manager.get_subscription_by_token(sub_notification.purchaseToken):
                 data = subscription_checker.check_subscription(APP_PACKAGE_NAME, sub_notification.purchaseToken)
@@ -171,8 +187,10 @@ def receive_notification(notification: dict, token_verified=Depends(verify_googl
                     muliplier = 1
                 subscription_manager.allocate_monthly_coins(sub_doc["user_id"], multiplier=muliplier)
                 subscription_manager.reset_monthly_limits(sub_doc["user_id"], True, muliplier)
-
-
+            else:
+                logging.error("Document not found !")
+                raise HTTPException(detail="Document not found.", status_code=400)
+            
         return {"status": "success"}
     elif "voidedPurchaseNotification" in notification:
         voided_notification = notification.get("voidedPurchaseNotification")
@@ -185,18 +203,36 @@ def receive_notification(notification: dict, token_verified=Depends(verify_googl
                     subscription_type=SubscriptionType.FREE,
                     update=True
                 )
+                logging.info(f"Subscription Voided {sub_doc['user_id']} Chenged to free tier.", )
+            else:
+                logging.error("Document not found !")
+                raise HTTPException(detail="Document not found.", status_code=400)
+            
             if uid := subscription_manager.retrieve_user_id_by_token(voided_notification.get("purchaseToken")):
                 data = subscription_checker.check_subscription(APP_PACKAGE_NAME, voided_notification.get("purchaseToken"))
                 product_ids = [item['productId'] for item in data.get('lineItems', [])]
                 for product_id in product_ids:
-                    logging.info(f"Decrementing {PRODUCT_ID_MAP[product_id]} coins")
-                    user_points_manager.decrement_user_points(uid, SUB_COIN_MAP[product_id])
+                    if "6_monthly" in product_id:
+                        muliplier = 6
+                    elif "monthly" in product_id:
+                        muliplier = 1
+                    elif "yearly" in product_id:
+                        muliplier = 12
+                    else:
+                        muliplier = 1
+                    logging.info(f"Decrementing {PRODUCT_ID_MAP[product_id] * muliplier} coins for {uid}")
+                    user_points_manager.decrement_user_points(uid, SUB_COIN_MAP[product_id] * muliplier)
+            else:
+                logging.error("uid not found !")
+                raise HTTPException(detail="uid not found.", status_code=400)
+            
             logging.info(f"{uid} Just unsubscribed (Voided Notification) {voided_notification.get('purchaseToken')}")            
         elif product_type.PRODUCT_TYPE_ONE_TIME:
             uid = subscription_manager.find_user_by_token(voided_notification.get("purchaseToken"))
-            product = subscription_manager.get_product_by_user_id_and_token(user_id, voided_notification.get("purchaseToken"))
+            product = subscription_manager.get_product_by_user_id_and_token(uid, voided_notification.get("purchaseToken"))
             if not product:
                 logging.error("Product not found")
                 raise HTTPException(400, detail="Product not found")
             user_points_manager.decrement_user_points(uid, PRODUCT_ID_COIN_MAP[product])
+
         return {"status": "success"}

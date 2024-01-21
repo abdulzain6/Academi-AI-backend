@@ -51,3 +51,4 @@ graphviz
 replicate
 yt-dlp
 html2text
+langchain-together

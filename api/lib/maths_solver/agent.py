@@ -108,6 +108,7 @@ Do not pass in Markdown just a normal python string (Important)
 Try to run all the code at once
 Use tools if you think you need help or to confirm answer. Make sure arguments are loadable by json.loads (Super important) use double quotes or it will cause error
 You will not run unsafe code or perform harm to the server youre on. Or import potentially harmful libraries (Very Important).
+You must print the answer to be able to see it (Dont forget or the tool will return None)
         """
 
         def extract_python_code(text: str) -> List[str]:

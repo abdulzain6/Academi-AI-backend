@@ -119,7 +119,7 @@ class CustomCallbackAgent(BaseCallbackHandler):
         parent_run_id: Optional[UUID] = None,
         **kwargs: Any,
     ) -> Any:
-        """Run when tool ends running."""
+        """Run when tool eenginends running."""
         self.callback(
             "\n*AI has finished using the tool and will respond shortly...*\n\n"
         )
@@ -182,7 +182,8 @@ class KnowledgeManager:
                 timeout=50,
                 prefer_grpc=True
             )
-        except Exception:
+        except Exception as e:
+            print(e)
             self.qdrant = None
 
     def split_docs(self, docs: Document) -> List[Document]:

@@ -1,6 +1,5 @@
 from api.lib.uml_diagram_maker import PlantUML
 from .config import *
-from .lib.anyscale_embeddings import AnyscaleEmbeddings
 from .lib.ocr import AzureOCR
 from .lib.database import (
     FileDBManager,
@@ -9,6 +8,7 @@ from .lib.database import (
     MessageDBManager,
     UserPointsManager,
     ReferralManager,
+    MongoLogManager
 )
 from .lib.database.purchases import (
     SubscriptionFeatures,
@@ -34,7 +34,7 @@ from .lib.presentation_maker.database import (
 from .lib.maths_solver.python_exec_client import PythonClient, Urls
 from .lib.maths_solver.ocr import ImageOCR
 from .lib.redis_cache import RedisCache
-from langchain.chat_models import ChatOpenAI, ChatAnyscale
+from langchain.chat_models import ChatOpenAI
 from langchain.chat_models.azure_openai import AzureChatOpenAI
 from .lib.purchases_play_store import SubscriptionChecker
 from .ai_model import AIModel
@@ -43,6 +43,8 @@ from azure.ai.formrecognizer import DocumentAnalysisClient
 from azure.core.credentials import AzureKeyCredential
 from .lib.email_integrity_checker import EmailIntegrityChecker
 from .lib.mermaid_maker import MermaidClient
+from .lib.together_llm import Together
+from .lib.embeddings import TogetherEmbeddingsParallel
 import langchain
 import redis
 import logging
@@ -51,19 +53,19 @@ import logging
 
 langchain.verbose = False
 current_directory = os.path.dirname(os.path.abspath(__file__))
-global_kwargs = {"request_timeout": 60, "max_retries": 4}
+global_kwargs = {}
 global_chat_model = AIModel(
     regular_model=ChatOpenAI,
-    regular_args={"model_name": "gpt-3.5-turbo-1106"},
+    regular_args={"model_name": "gpt-3.5-turbo-1106", "request_timeout": 60, "max_retries": 4},
     premium_model=ChatOpenAI,
-    premium_args={"model_name": "gpt-4-1106-preview", "max_tokens": 2700},
+    premium_args={"model_name": "gpt-4-1106-preview", "max_tokens": 2700, "request_timeout": 60, "max_retries": 4},
 )
 
 global_chat_model_alternative = AIModel(
-    regular_model=ChatAnyscale,
-    regular_args={"model_name": "mistralai/Mixtral-8x7B-Instruct-v0.1", "max_tokens": 7000},
+    regular_model=Together,
+    regular_args={},
     premium_model=ChatOpenAI,
-    premium_args={"model_name": "gpt-4-1106-preview", "max_tokens": 2700},
+    premium_args={"model_name": "gpt-4-1106-preview", "max_tokens": 2700, "request_timeout": 60, "max_retries": 4},
 )
 
 fallback_chat_models = [
@@ -83,6 +85,24 @@ fallback_chat_models = [
     )
 ]
 
+def get_together_args(chat: bool = False):
+    if chat:
+        return {"model" : "NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO", "max_tokens": 7000, "stop" : ["<|im_end|>","<|im_start|>"]}
+    else:
+        return {"model" : "mistralai/Mixtral-8x7B-Instruct-v0.1", "max_tokens": 7000, "stop" : ["[/INST]","</s>"]}
+
+def create_model(model_class: AIModel, premium: bool, model_kwargs: dict, together_chat: bool =  False) -> BaseChatModel:
+    model_type = 'premium' if premium else 'regular'
+    args = getattr(model_class, f"{model_type}_args")
+    if getattr(model_class, f"{model_type}_model") == Together:
+        args.update(get_together_args(together_chat))
+    print(args)
+    return getattr(model_class, f"{model_type}_model")(**args, **model_kwargs)
+
+def set_model_attributes(model: BaseChatModel, attributes: dict):
+    for k, v in attributes.items():
+        with suppress(Exception):
+            setattr(model, k, v)
 
 def get_model(
     model_kwargs: dict,
@@ -90,97 +110,36 @@ def get_model(
     is_premium: bool,
     alt: bool = False,
     cache: bool = True,
+    together_chat: bool = False
 ) -> BaseChatModel:
-    args = {**model_kwargs, **{"streaming": stream, "cache": cache}}
-
-    if not alt:
-        if is_premium:
-            model = global_chat_model.premium_model(
-                **global_chat_model.premium_args, **global_kwargs
-            )
-        else:
-            model = global_chat_model.regular_model(
-                **global_chat_model.regular_args, **global_kwargs
-            )
-    else:
-        if is_premium:
-            model = global_chat_model_alternative.premium_model(
-                **global_chat_model_alternative.premium_args, **global_kwargs
-            )
-        else:
-            model = global_chat_model_alternative.regular_model(
-                **global_chat_model_alternative.regular_args, **global_kwargs
-            )
-
-
-    for k, v in args.items():
-        with suppress(Exception):
-            setattr(model, k, v)
+    args = {**model_kwargs, "streaming": stream, "cache": cache}
+    model_class = global_chat_model_alternative if alt else global_chat_model
+    model = create_model(model_class, is_premium, args, together_chat)
+    set_model_attributes(model, args)
 
     fallbacks = []
     for fallback in fallback_chat_models:
         try:
-            if is_premium:
-                fallback_model = fallback.premium_model(
-                    **fallback.premium_args, **global_kwargs
-                )
-            else:
-                fallback_model = fallback.regular_model(
-                    **fallback.regular_args, **global_kwargs
-                )
+            fallback_model = create_model(fallback, is_premium, args, together_chat)
+            set_model_attributes(fallback_model, args)
+            fallbacks.append(fallback_model)
+        except Exception as e:
+            logging.error(f"Error in fallback {e}")
 
-            for k, v in args.items():
-                with suppress(Exception):
-                    setattr(fallback_model, k, v)
-            try:
-                fallbacks.append(fallback_model)
-            except Exception as e:
-                logging.error(f"Error in fallback {e}")
-        except Exception:
-            pass
-
-        logging.info(f"\nAdding fallback {fallback_model}\n")
-
-    logging.info(f"Model used : {model}")
     return model.with_fallbacks(fallbacks=fallbacks)
 
-
 def get_model_and_fallback(
-    model_kwargs: dict, stream: bool, is_premium: bool, alt: bool = False
+    model_kwargs: dict, stream: bool, is_premium: bool, alt: bool = False, together_chat: bool =  False
 ):
     model_kwargs = {**model_kwargs, "streaming": stream}
-    if is_premium:
-        if not alt:
-            model = global_chat_model.premium_model(
-                **global_chat_model.premium_args, **global_kwargs
-            )
-        else:
-            model = global_chat_model_alternative.premium_model(
-                **global_chat_model_alternative.premium_args, **global_kwargs
-            )
+    model_class = global_chat_model_alternative if alt else global_chat_model
+    fallback_class = fallback_chat_models[-1]
 
-        fallback_model = fallback_chat_models[-1].premium_model(
-            **fallback_chat_models[-1].premium_args, **global_kwargs
-        )
-    else:
-        if not alt:
-            model = global_chat_model.regular_model(
-                **global_chat_model.regular_args, **global_kwargs
-            )
-        else:
-            model = global_chat_model_alternative.regular_model(
-                **global_chat_model_alternative.regular_args, **global_kwargs
-            )
-                
-        fallback_model = fallback_chat_models[-1].regular_model(
-            **fallback_chat_models[-1].regular_args, **global_kwargs
-        )
-            
-    for k, v in model_kwargs.items():
-        with suppress(Exception):
-            setattr(model, k, v)
-        with suppress(Exception):
-            setattr(fallback_model, k, v)
+    model = create_model(model_class, is_premium, model_kwargs, together_chat=together_chat)
+    fallback_model = create_model(fallback_class, is_premium, model_kwargs, together_chat=together_chat)
+
+    set_model_attributes(model, model_kwargs)
+    set_model_attributes(fallback_model, model_kwargs)
 
     return model, fallback_model
 
@@ -230,17 +189,20 @@ conversation_manager = MessageDBManager(
     file_manager,
     cache_manager=RedisCacheManager(redis.from_url(REDIS_URL), 50000),
 )
-
+log_manager = MongoLogManager(
+    uri=MONGODB_URL,
+    db_name=DATABASE_NAME,
+    collection_name="logs"
+)
 
 # OCR
 text_ocr = AzureOCR(AZURE_OCR_ENDPOINT, AZURE_OCR_KEY)
 knowledge_manager = KnowledgeManager(
-    AnyscaleEmbeddings(
-        base_url="https://api.endpoints.anyscale.com/v1",
-        model="thenlper/gte-large",
+    TogetherEmbeddingsParallel(
         timeout=10,
         max_retries=2
     ),
+    chunk_size=2250,
     unstructured_api_key=UNSTRUCTURED_API_KEY,
     unstructured_url=UNSTRUCTURED_URL,
     qdrant_api_key=QDRANT_API_KEY,
@@ -250,11 +212,10 @@ knowledge_manager = KnowledgeManager(
         endpoint=DOC_INTELLIGENCE_ENDPOINT,
         credential=AzureKeyCredential(AZURE_DOC_INTELLIGENCE_KEY),
     ),
+    qdrant_collection_name="academi"
 )
 chat_manager = ChatManagerRetrieval(
-    AnyscaleEmbeddings(
-        base_url="https://api.endpoints.anyscale.com/v1",
-        model="thenlper/gte-large",
+    TogetherEmbeddingsParallel(
         timeout=10,
         max_retries=2
     ),
@@ -264,9 +225,7 @@ chat_manager = ChatManagerRetrieval(
     qdrant_url=QDRANT_URL,
 )
 chat_manager_agent_non_retrieval = ChatManagerNonRetrieval(
-    AnyscaleEmbeddings(
-        base_url="https://api.endpoints.anyscale.com/v1",
-        model="thenlper/gte-large",
+    TogetherEmbeddingsParallel(
         timeout=10,
         max_retries=2
     ),
@@ -327,7 +286,6 @@ subscription_manager = SubscriptionManager(
 
 
 # Presentation
-
 template_manager, temp_knowledge_manager = initialize_managers(
     template_json_path=DEFAULT_TEMPLATES_JSON, template_dir=DEFAULT_TEMPLATE_DIR
 )

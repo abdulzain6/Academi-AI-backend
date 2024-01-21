@@ -1,18 +1,31 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import itertools
-from typing import List, Optional, cast, Dict
+from typing import List, Optional, cast
+import warnings
 from langchain_community.embeddings.openai import OpenAIEmbeddings, embed_with_retry
-from langchain_community.utils.openai import is_openai_v1
-from langchain_core.utils import get_from_dict_or_env, get_pydantic_field_names
-from langchain_core.pydantic_v1 import BaseModel, Extra, Field, root_validator
-import os, warnings
 
-class AnyscaleEmbeddings(OpenAIEmbeddings):
+import os
+import warnings
+from typing import (
+    Dict,
+    List,
+    Optional,
+    cast,
+)
+
+
+from langchain_core.pydantic_v1 import root_validator
+from langchain_core.utils import get_from_dict_or_env
+from langchain_community.utils.openai import is_openai_v1
+
+class TogetherEmbeddingsParallel(OpenAIEmbeddings):    
+    openai_api_base: Optional[str] ="https://api.together.xyz/v1"
+    model: str = "togethercomputer/m2-bert-80M-8k-retrieval"
+
     @root_validator()
     def validate_environment(cls, values: Dict) -> Dict:
         """Validate that api key and python package exists in environment."""
         values["openai_api_key"] = get_from_dict_or_env(
-            values, "openai_api_key", "ANYSCALE_API_KEY"
+            values, "openai_api_key", "TOGETHER_API_KEY"
         )
         values["openai_api_base"] = values["openai_api_base"] or os.getenv(
             "OPENAI_API_BASE"
@@ -132,13 +145,6 @@ class AnyscaleEmbeddings(OpenAIEmbeddings):
         Returns:
             Embeddings for the pair.
         """
-        engine = cast(str, self.deployment)
-        response = embed_with_retry(
-            self,
-            input=text_pair,
-            **self._invocation_params,
-        )
-        if not isinstance(response, dict):
-            response = response.model_dump()
-        return [r["embedding"] for r in response["data"]]
+        embeddings = embed_with_retry(self, input=text_pair, model=self.model)
+        return [r.embedding for r in embeddings.data]
 
