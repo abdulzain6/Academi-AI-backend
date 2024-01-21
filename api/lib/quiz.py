@@ -15,7 +15,7 @@ from langchain.pydantic_v1 import BaseModel, Field
 from pydantic import BaseModel as RealBaseModel
 from pydantic import BaseModel, Field
 from retrying import retry
-from langchain.chains import create_extraction_chain_pydantic
+from langchain.output_parsers import PydanticOutputParser, OutputFixingParser, RetryWithErrorOutputParser
 from openai import BadRequestError
 from typing import List, Literal
 
@@ -174,6 +174,8 @@ class QuizGenerator:
         collection_description: str = "Anything",
     ) -> list[QuizQuestionResponse]:
         parser = PydanticOutputParser(pydantic_object=Quiz)
+        parser = OutputFixingParser.from_llm(parser=parser, llm=self.llm)
+
         fotmat_instructions = f"""You will follow the following schema and will not return anything else or an error will be raised
 The schema:
 {parser.get_format_instructions()}
@@ -287,6 +289,7 @@ THe quiz in json with {number_of_questions} questions:"""
         collection_description: str = "Anything",
     ) -> list[FlashCard]:
         parser = PydanticOutputParser(pydantic_object=FlashCards)
+        parser = OutputFixingParser.from_llm(parser=parser, llm=self.llm)
         prompt_template = ChatPromptTemplate(
             messages=[
                 SystemMessagePromptTemplate.from_template(
@@ -337,6 +340,8 @@ The generated flashcards in proper schema. You must follow the schema and return
     @retry(stop_max_attempt_number=3)
     def evaluate_quiz(self, user_answers: list[UserResponse], use_schema: bool = True) -> Result:
         parser = PydanticOutputParser(pydantic_object=QuestionResults)
+        parser = OutputFixingParser.from_llm(parser=parser, llm=self.llm)
+
         format_instruction = f"""The schema:
 {parser.get_format_instructions()}"""
 

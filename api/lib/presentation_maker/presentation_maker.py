@@ -3,23 +3,26 @@ import random
 from .pptx.enum.shapes import MSO_SHAPE_TYPE
 from .pptx import Presentation
 from threading import Thread
-from typing import Any, Dict, Optional, List, Tuple
-from langchain.output_parsers import PydanticOutputParser
+from typing import Any, Dict, Literal, Optional, List, Tuple
+from langchain.output_parsers.prompts import NAIVE_FIX
+from langchain.output_parsers import PydanticOutputParser, OutputFixingParser, RetryWithErrorOutputParser
 from .exceptions import NoValidSequenceException
 from langchain.prompts import (
     ChatPromptTemplate,
     SystemMessagePromptTemplate,
     HumanMessagePromptTemplate,
+    PromptTemplate
 )
 from langchain.chains import LLMChain
 from langchain.output_parsers import PydanticOutputParser
 from .database import TemplateDBManager, TemplateKnowledgeManager, TemplateModel, PlaceholderModel, SlideModel, initialize_managers
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, create_model, validator
 from .image_gen import PexelsImageSearch
 from ..knowledge_manager import KnowledgeManager
 from retrying import retry
 from langchain.chat_models.base import BaseChatModel
 from langchain.chat_models.openai import ChatOpenAI
+
 from openai import BadRequestError
 
 
@@ -40,16 +43,6 @@ class PresentationInput(BaseModel):
     user_id: Optional[str] = ""
 
 
-class PresentationSequencePart(BaseModel):
-    page_number: int = Field(
-        json_schema_extra={
-            "description": "The page number of the slide. Make sure this isn't repeated"
-        }
-    )
-    slide_detail: str = Field(
-        json_schema_extra={"description": "What the slide should be about. This must be unique. Don't repeat this"}
-    )
-    slide_type: str = Field(json_schema_extra={"description": "The type of the slide."})
 
 
 class PlaceholderData(BaseModel):
@@ -66,9 +59,20 @@ class PlaceholderData(BaseModel):
 
 
 class Placeholders(BaseModel):
-    placeholders: Optional[List[PlaceholderData]] = Field(
+    placeholders: List[PlaceholderData] = Field(
         json_schema_extra={"description": "The placeholder data"}
     )
+
+class PresentationSequencePart(BaseModel):
+    page_number: int = Field(
+        json_schema_extra={
+            "description": "The page number of the slide. Make sure this isn't repeated"
+        }
+    )
+    slide_detail: str = Field(
+        json_schema_extra={"description": "What the slide should be about. This must be unique. Don't repeat this"}
+    )
+    slide_type: str = Field(json_schema_extra={"description": "The type of the slide."})
 
 
 class PresentationSequence(BaseModel):
@@ -149,11 +153,18 @@ class PresentationMaker:
                 unique_sequence.append(slide)
                 seen.add(slide.slide_detail)
         return unique_sequence
-
+    
     def create_sequence(
         self, template: TemplateModel, presentation_input: PresentationInput
     ) -> PresentationSequence:
-        parser = PydanticOutputParser(pydantic_object=PresentationSequence)
+        py_parser = PydanticOutputParser(pydantic_object=PresentationSequence)
+        parser = OutputFixingParser.from_llm(
+            parser=py_parser,
+            llm=self.llm,
+            prompt=PromptTemplate.from_template(
+            template=f"Important Instructions:\n Only pick slides from the following: \n{self.format_slides(template.slides)}\n" + NAIVE_FIX
+        )
+        )
         prompt = ChatPromptTemplate(
             messages=[
                 SystemMessagePromptTemplate.from_template(
@@ -193,7 +204,7 @@ Do not choose slide types that are not shown to you.
 
 Dont make slides with same heading and detail failure to do so will cause error. Last time you caused one!
 
-THe sequence in proper schema:"""
+THe sequence in proper schema (Only pick slide types from what is shown to you):"""
                 ),
             ],
             input_variables=[
@@ -207,8 +218,8 @@ THe sequence in proper schema:"""
         )
         chain = LLMChain(
             prompt=prompt,
-            output_parser=parser,
             llm=self.llm,
+            output_parser=parser
         )
         return chain.run(
             topic=presentation_input.topic,
@@ -359,7 +370,7 @@ THe sequence in proper schema:"""
         word_limit_points: int,
         word_limit_hybrid: int,
     ) -> Placeholders:
-        parser = PydanticOutputParser(pydantic_object=Placeholders)
+        py_parser = PydanticOutputParser(pydantic_object=Placeholders)
         prompt = ChatPromptTemplate(
             messages=[
                 SystemMessagePromptTemplate.from_template(
@@ -453,29 +464,23 @@ The placeholders following the schema:"""
         else:
             help_text = "Use your own knowledge to fill the placeholders"
 
-        
+        parser = OutputFixingParser.from_llm(llm=self.llm, parser=py_parser, max_retries=2)
         chain = LLMChain(
-            output_parser=parser,
             prompt=prompt,
             llm=self.llm,
+            output_parser=parser
         )
-        try:
-            placeholders: Placeholders = chain.run(
-                placeholders=self.format_placeholders(slide.placeholders, True),
-                slide_detail=sequence_part.slide_detail,
-                slides="\n".join([slide.slide_detail for slide in all_slides]),
-                presentation_topic=presentation_input.topic,
-                instructions=presentation_input.instructions,
-                negative_prompt=presentation_input.negative_prompt,
-                page_no=sequence_part.page_number,
-                help_text=help_text,
-                format_instructions=parser.get_format_instructions()
-            )
-            print("done")
-        except Exception as e:
-            print(e)
-            
-                
+        placeholders: Placeholders = chain.run(
+            placeholders=self.format_placeholders(slide.placeholders, True),
+            slide_detail=sequence_part.slide_detail,
+            slides="\n".join([slide.slide_detail for slide in all_slides]),
+            presentation_topic=presentation_input.topic,
+            instructions=presentation_input.instructions,
+            negative_prompt=presentation_input.negative_prompt,
+            page_no=sequence_part.page_number,
+            help_text=help_text,
+            format_instructions=parser.get_format_instructions()
+        )
         for placeholder in placeholders.placeholders:
             placeholder.placeholder_data = placeholder.placeholder_data.replace(
                 "\n\n", "\n"
@@ -483,7 +488,7 @@ The placeholders following the schema:"""
             try:
                 placeholder.placeholder_data = str(self.auto_reduce_text_by_words(placeholder.placeholder_data, word_limit_para=word_limit_para, word_limit_points=word_limit_points, word_limit_hybrid=word_limit_hybrid))                
             except Exception as e:
-                logging.error(f"Error in presentation {e}")
+                logging.error(f"Error in presentation (get_slide_content) {e}")
 
         return self.combine_placeholders(slide.placeholders, placeholders.placeholders)
 
@@ -504,7 +509,7 @@ The placeholders following the schema:"""
                 if shape.shape_type == MSO_SHAPE_TYPE.PLACEHOLDER and (shape.has_text_frame and not shape.text):
                     shapes_to_remove.append(shape)
             except Exception as e:
-                logging.error(f"An error occurred while processing the shape: {e}")
+                logging.error(f"An error occurred while processing the shape (remove_placeholders_and_artifacts): {e}")
 
 
         for shape in shapes_to_remove:
@@ -601,7 +606,7 @@ The placeholders following the schema:"""
                     slide_content_obtained = True  # Set the flag to True if content is obtained
                     break
                 except Exception as e:
-                    logging.error(f"Error in presentation {e}")
+                    logging.error(f"Error in presentation (fill_single_slide){e}")
 
             if not slide_content_obtained:
                 logging.error(f"Failed to get content for slide {i + 1}. Deleting the slide.")
@@ -613,7 +618,7 @@ The placeholders following the schema:"""
             presentation_slide = prs.slides[i]
             self.replace_placeholders_in_single_slide(presentation_slide, slide_content)
         except Exception as e:
-            logging.error(f"Error in presentation {e}")
+            logging.error(f"Error in presentation (fill_single_slide){e}")
 
     def fill_presentation_with_content(
         self,
@@ -660,8 +665,9 @@ The placeholders following the schema:"""
                 )
                 if self.validate_slides(template, sequence):
                     break
+                print("no break")
             except Exception as e:
-                logging.error(f"Erorr {e}")
+                logging.error(f"Error (make_presentation){e}")
                 
         else:
             raise NoValidSequenceException("Couldn't find the best sequence")
@@ -757,7 +763,7 @@ The placeholders following the schema:"""
 
                     shapes_to_remove.append(shape)
             except Exception as e:
-                logging.error(f"Error in presentation {e}")
+                logging.error(f"Error in presentation (process_shape) {e}")
 
                     
         with ThreadPoolExecutor(max_workers=len(slide.shapes)) as executor:

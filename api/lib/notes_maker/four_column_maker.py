@@ -10,7 +10,8 @@ from langchain.prompts import (
     HumanMessagePromptTemplate,
 )
 from langchain.chains import LLMChain
-from langchain.output_parsers import PydanticOutputParser
+from langchain.output_parsers import PydanticOutputParser, OutputFixingParser
+
 from datetime import date
 import os, io
 
@@ -146,6 +147,7 @@ class QuestionsKeywordsNotesMaker(NotesMaker):
 
     def make_notes_from_string(self, string: str, instructions: str) -> io.BytesIO:
         parser = PydanticOutputParser(pydantic_object=InputData)
+        parser = OutputFixingParser.from_llm(parser=parser, llm=self.llm)
         prompt = ChatPromptTemplate(
             messages=[
                 SystemMessagePromptTemplate.from_template(

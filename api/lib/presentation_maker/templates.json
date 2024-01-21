@@ -28,7 +28,7 @@
                 ]
             },
             {
-                "slide_type": "Content Slide",
+                "slide_type": "CONTENT_SLIDE",
                 "page_number": 2,
                 "placeholders": [
                     {
@@ -48,7 +48,7 @@
                 ]
             },
             {
-                "slide_type": "Multi Column",
+                "slide_type": "MULTI_COLUMN",
                 "page_number": 3,
                 "placeholders": [
                     {
@@ -89,7 +89,7 @@
                 ]
             },
             {
-                "slide_type": "Transition Slide",
+                "slide_type": "TRANSITION_SLIDE",
                 "page_number": 4,
                 "placeholders": [
                     {
@@ -102,7 +102,7 @@
                 ]
             },
             {
-                "slide_type": "Thank You Slide",
+                "slide_type": "THANKYOU_SLIDE",
                 "page_number": 5,
                 "placeholders": []
             }
@@ -123,7 +123,7 @@
         "color_scheme": null,
         "slides": [
             {
-                "slide_type": "Title Slide",
+                "slide_type": "TITLE_SLIDE",
                 "page_number": 1,
                 "placeholders": [
                     {
@@ -244,7 +244,7 @@
                 ]
             },
             {
-                "slide_type": "Transition Slide",
+                "slide_type": "TRANSITION_SLIDE",
                 "page_number": 6,
                 "placeholders": [
                     {
@@ -304,7 +304,7 @@
                 ]
             },
             {
-                "slide_type": "Thank you Slide",
+                "slide_type": "THANK_YOU_SLIDE",
                 "page_number": 9,
                 "placeholders": []
             }

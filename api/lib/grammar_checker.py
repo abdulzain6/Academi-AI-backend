@@ -9,6 +9,8 @@ from langchain.prompts import (
     SystemMessagePromptTemplate,
     HumanMessagePromptTemplate,
 )
+from langchain.output_parsers import PydanticOutputParser, OutputFixingParser, RetryWithErrorOutputParser
+
 
 class GrammarIssue(BaseModel):
     problematic_part: str = Field(json_schema_extra={"description" : "The problematic part in the text. This must be exactly same as from the text."})
@@ -25,6 +27,8 @@ class GrammarChecker:
         
     def check_grammar(self, text: str) -> dict:
         parser = PydanticOutputParser(pydantic_object=GrammarIssues)
+        parser = OutputFixingParser.from_llm(parser=parser, llm=self.llm)
+
         prompt = ChatPromptTemplate(
             messages=[
                 SystemMessagePromptTemplate.from_template(
