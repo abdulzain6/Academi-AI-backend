@@ -488,16 +488,13 @@ Help Data (This data is from files/subjects the human has provided and can be fr
 =========
 
 Let's think in a step by step, answer the humans question in {language}. Use the data provided by the human and personal knowledge to answer (Important)
-
-{conversation}
-
-Human: {question}
-
 Use the help data to answer the student question.
 help data = contents of webpages, youtube links, files, images and much more
 Remember!, If there is no meaningful data in help data. The ocr might have not been able to detect handwritten text. Or link maybe broken. Tell the user if so
 dont forget the above rules
 
+{conversation}
+Human: {question}
 {ai_name}:"""
             ),
         ],
