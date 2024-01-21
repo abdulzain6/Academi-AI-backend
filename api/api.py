@@ -50,7 +50,7 @@ from .globals import (
     APP_DOMAIN
 )
 
-langchain.verbose = False
+langchain.verbose = True
 logging.basicConfig(level=logging.INFO)
 
 
