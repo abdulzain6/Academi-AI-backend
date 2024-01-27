@@ -170,7 +170,7 @@ class QuizGenerator:
         data: str,
         number_of_questions: int,
         collection_name: str = "Anything",
-        maximum_questions: int = 10,
+        maximum_questions: int = 7,
         collection_description: str = "Anything",
     ) -> list[QuizQuestionResponse]:
         parser = PydanticOutputParser(pydantic_object=Quiz)
@@ -204,7 +204,7 @@ Here is the data used to generate the quiz
 
 
 {fotmat_instructions}
-THe quiz in json with {number_of_questions} questions:"""
+THe quiz in json with {number_of_questions} questions be brief:"""
                 ),
             ],
             input_variables=["data", "number_of_questions", "description", "format_instructions"],
@@ -285,7 +285,7 @@ THe quiz in json with {number_of_questions} questions:"""
         data: str,
         number_of_flashcards: int,
         collection_name: str = "Anything",
-        maximium_flashcards: int = 10,
+        maximium_flashcards: int = 7,
         collection_description: str = "Anything",
     ) -> list[FlashCard]:
         parser = PydanticOutputParser(pydantic_object=FlashCards)
@@ -313,7 +313,7 @@ You will follow the following schema and will not return anything else
 The schema:
 {format_instructions}
 
-The generated flashcards in proper schema. You must follow the schema and return json only!!:"""
+The generated flashcards in proper schema. You must follow the schema and return json only!! (Be brief):"""
                 ),
             ],
             input_variables=["data", "number_of_questions"],
