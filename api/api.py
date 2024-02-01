@@ -27,8 +27,7 @@ from api.gpts_routers.youtube import router as youtube_router
 from api.gpts_routers.amazongpt import router as amazon_router
 from api.gpts_routers.notes import router as notes_router_gpt
 
-from api.test_routers.temp import router as temp_router
-
+from api.mist_demo.api import router as mist_demo_router
 
 from fastapi import FastAPI, Request, HTTPException, status, Depends
 from fastapi.responses import JSONResponse
@@ -205,9 +204,7 @@ app.include_router(youtube_router, prefix="/gpts/youtube", tags=["gpts", "youtub
 app.include_router(amazon_router, prefix="/gpts/amazon", tags=["gpts", "amazon"])
 app.include_router(notes_router_gpt, prefix="/gpts/notes", tags=["gpts", "notes"])
 
-
-app.include_router(temp_router, prefix="/class/temp", tags=[])
-
+#app.include_router(mist_demo_router, prefix="/demo", tags=["mist_demo"])
 
 @app.middleware('http')
 async def timeout_middleware(request: Request, call_next):

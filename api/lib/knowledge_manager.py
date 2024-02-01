@@ -753,10 +753,9 @@ Human: {question}
         chat_history_messages: list[BaseMessage],
         prompt_args: dict,
         extra_tools: list[Tool] = [],
+        sys_template: str = None
     ) -> AgentExecutor:
-        agent_kwargs = {
-            "system_message": SystemMessagePromptTemplate.from_template(
-                template="""
+        sys_message_default_template = """
 You are {ai_name}, an AI teacher designed to teach students. 
 You are to take the tone of a teacher.
 You must answer the human in {language} (Important)
@@ -787,6 +786,12 @@ They are:
 
 Follow all above rules (Important)
 """
+        if not sys_template:
+            sys_template = sys_message_default_template
+            
+        agent_kwargs = {
+            "system_message": SystemMessagePromptTemplate.from_template(
+                template=sys_template
             ).format(**prompt_args),
             "extra_prompt_messages": chat_history_messages,
         }
@@ -865,6 +870,8 @@ You will not run unsafe code or perform harm to the server youre on. Or import p
         chat_history: list[tuple[str, str]] = None,
         extra_tools: list = None,
         files: str = "",
+        sys_template: str = None,
+        prompt_args: dict = None
     ):
         if extra_tools is None:
             extra_tools = []
@@ -872,13 +879,19 @@ You will not run unsafe code or perform harm to the server youre on. Or import p
         if chat_history is None:
             chat_history = []
 
+        if not sys_template:
+            prompt_args = {"language": language, "ai_name": self.ai_name, "files": files}
+
+            print("in")
+        print(prompt_args)
         agent = self.make_agent(
             llm=llm,
             chat_history_messages=self.format_messages_into_messages(
                 chat_history, self.conversation_limit, llm
             ),
-            prompt_args={"language": language, "ai_name": self.ai_name, "files": files},
+            prompt_args=prompt_args,
             extra_tools=extra_tools,
+            sys_template=sys_template
         )
         
         #picked_tools = self.tool_picker(llm, tools=[*self.make_code_runner(), *extra_tools, *self.base_tools], query=prompt)

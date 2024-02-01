@@ -52,3 +52,4 @@ replicate
 yt-dlp
 html2text
 langchain-together
+langchain-google-genai
