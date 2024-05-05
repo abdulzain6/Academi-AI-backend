@@ -183,38 +183,6 @@ The notes in proper format (Failure causes big error):"""
             ],
             partial_variables={"format_instructions" : parser.get_format_instructions()}
         )
-        chain = LLMChain(prompt=prompt, output_parser=parser, llm=self.llm)
+        chain = LLMChain(prompt=prompt, output_parser=parser, llm=self.llm, llm_kwargs={"response_format": {"type": "json_object"}})
         notes: InputData = chain.run(data=string, instructions=instructions)
         return self.make_notes(notes.notes, notes.notes_metadata)
-
-if __name__ == '__main__':
-    from langchain.chat_models import ChatOpenAI
-    
-    note_maker = QuestionsKeywordsNotesMaker(
-        ChatOpenAI(temperature=0, openai_api_key="")
-    )
-    notes = note_maker.make_notes_from_string("""
-World War II: An Epoch of Global Conflict and Change
-
-The history of the 20th century is profoundly marked by the cataclysmic events of World War II, a global conflict that spanned six years, from 1939 to 1945. This war reshaped the world's geopolitical boundaries, altered global power dynamics, and set the stage for both the Cold War and the modern world order.
-
-The war was principally a confrontation between two sets of powers: the Axis and the Allies. The Axis powers, chiefly comprised of Germany, Italy, and Japan, were driven by expansionist ambitions and authoritarian ideologies. Germany, under the rule of Adolf Hitler, played a pivotal role in the war's outbreak and progression. Hitler's aggressive policies and relentless pursuit of territorial expansion pushed Europe into a state of turmoil.
-
-Japan's role in the Pacific theater was equally consequential. The Japanese attack on Pearl Harbor on December 7, 1941, marked a significant escalation of the war, drawing the United States into active combat. This surprise attack, aimed at neutralizing the American Pacific Fleet, stemmed from Japan's desire to dominate Southeast Asia without American intervention. The strategic motivations behind Japan's military actions in the Pacific, driven by economic and resource scarcities, illustrate the complex interplay of national interests that characterized the war.
-
-The Allies, consisting of major powers like the United Kingdom, the United States, the Soviet Union, and France, among others, united to counter the aggression of the Axis powers. Their collaboration was marked by a shared commitment to defeating the forces of fascism and militarism.
-
-Several key battles defined the trajectory of World War II. The Battle of Stalingrad was a turning point on the Eastern Front. The Soviet victory in this grueling battle marked the beginning of the decline for Nazi Germany. The Battle of Midway, a crucial naval conflict, signified a decisive shift in the Pacific, as American forces dealt a critical blow to the Japanese navy.
-
-Another significant event was the Normandy Invasion, commonly known as D-Day, on June 6, 1944. This massive military operation, involving the landing of Allied forces on the beaches of Normandy, France, was a pivotal moment in liberating Western Europe from Nazi occupation.
-
-The war's impact extended far beyond the battlefield. It brought about profound changes in political, social, and cultural realms. The Holocaust, a horrific genocide perpetrated by Nazi Germany, led to the systematic extermination of six million Jews, along with millions of others deemed undesirable by the Nazi regime. This atrocity highlighted the depths of human cruelty and the necessity for a robust international framework to prevent such crimes against humanity.
-
-In the wake of the war, the United Nations was established, symbolizing the global community's aspiration for peace and cooperation. However, the world also witnessed the emergence of the Cold War, a period of geopolitical tension between the Soviet Union and the United States that lasted for decades.
-
-As we delve deeper into the multifaceted narrative of World War II, it becomes evident that this conflict was not just a series of military engagements but also a clash of ideologies and civilizations. It challenged the notions of power, sovereignty, and human rights, leaving an indelible imprint on the course of human history.
-""", "Dont miss anything")
-    print(notes)
-    with open("file.docx", "wb") as fp:
-        notes.seek(0)
-        fp.write(notes.read())

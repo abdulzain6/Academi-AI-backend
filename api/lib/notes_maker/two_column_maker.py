@@ -113,7 +113,7 @@ The notes in proper format (Failure causes big error):"""
             ],
             partial_variables={"format_instructions" : parser.get_format_instructions()}
         )
-        chain = LLMChain(prompt=prompt, output_parser=parser, llm=self.llm)
+        chain = LLMChain(prompt=prompt, output_parser=parser, llm=self.llm, llm_kwargs={"response_format": {"type": "json_object"}})
         notes: InputData = chain.run(data=string, instructions=instructions)
         return self.make_notes(notes.notes, notes.notes_metadata)
 
@@ -159,7 +159,7 @@ The notes in proper format (Failure causes big error):"""
 
 
 if __name__ == "__main__":
-    from langchain.chat_models import ChatOpenAI
+    from langchain_community.chat_models import ChatOpenAI
     
     note_maker = QuestionsDetailsSummaryNotesMaker(
         ChatOpenAI(temperature=0, openai_api_key="")

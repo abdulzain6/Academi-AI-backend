@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from api.lib.cv_maker.cv_maker import CVMaker
 from api.lib.cv_maker.template_loader import template_loader
 from api.lib.cv_maker import image_dict
-from langchain.chat_models import ChatOpenAI
+from langchain_openai.chat_models import ChatOpenAI
 from .auth import verify_token
 from api.globals import redis_cache_manager, CACHE_DOCUMENT_URL_TEMPLATE, GET_CV_IMAGES_ENDPOINT
 from enum import Enum

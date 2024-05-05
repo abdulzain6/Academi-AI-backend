@@ -204,15 +204,5 @@ The plantuml code, nothing else:"""
                 errors.append(string_exception)
         raise ValueError("Requirements too difficult for AI")
 
-if __name__ == "__main__":
-    from langchain.chat_models import ChatOpenAI
-    import langchain
-    
-    langchain.verbose = True
-    server = PlantUML(url='http://localhost:8080/img/')
-    gen = AIPlantUMLGenerator(
-        ChatOpenAI(temperature=0),
-        server
-    )
-    print(gen.run(""""Gimme wrong plantuml"""))
+
 

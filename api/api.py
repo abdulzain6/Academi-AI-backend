@@ -23,11 +23,7 @@ from .routers.info import router as info_router
 #gpts
 from api.gpts_routers.resume import router as gpt_resume_router
 from api.gpts_routers.uml import router as gpts_uml_router
-from api.gpts_routers.youtube import router as youtube_router
-from api.gpts_routers.amazongpt import router as amazon_router
 from api.gpts_routers.notes import router as notes_router_gpt
-
-from api.mist_demo.api import router as mist_demo_router
 
 from fastapi import FastAPI, Request, HTTPException, status, Depends
 from fastapi.responses import JSONResponse
@@ -162,21 +158,6 @@ def get_openapi_schema():
     openapi_schema["servers"] = [{"url": APP_DOMAIN}]
     return openapi_schema
 
-@app.get("/gpts/youtube/get-openapi-schema/")
-def get_openapi_schema():
-    app_for_schema_generation = FastAPI()
-    app_for_schema_generation.include_router(youtube_router, prefix="/gpts/youtube", tags=["gpts", "youtube"])
-    openapi_schema = app_for_schema_generation.openapi()
-    openapi_schema["servers"] = [{"url": APP_DOMAIN}]
-    return openapi_schema
-
-@app.get("/gpts/amazon/get-openapi-schema/")
-def get_openapi_schema():
-    app_for_schema_generation = FastAPI()
-    app_for_schema_generation.include_router(amazon_router, prefix="/gpts/amazon", tags=["gpts", "amazon"])
-    openapi_schema = app_for_schema_generation.openapi()
-    openapi_schema["servers"] = [{"url": APP_DOMAIN}]
-    return openapi_schema
 
 app.include_router(users_router, prefix="/api/v1/users", tags=["user"])
 app.include_router(files_router, prefix="/api/v1/files", tags=["files"])
@@ -200,11 +181,7 @@ app.include_router(info_router, prefix="/api/v1/info", tags=["info"])
 
 app.include_router(gpt_resume_router, prefix="/gpts/resume", tags=["gpts", "resume"])
 app.include_router(gpts_uml_router, prefix="/gpts/uml", tags=["gpts", "uml"])
-app.include_router(youtube_router, prefix="/gpts/youtube", tags=["gpts", "youtube"])
-app.include_router(amazon_router, prefix="/gpts/amazon", tags=["gpts", "amazon"])
 app.include_router(notes_router_gpt, prefix="/gpts/notes", tags=["gpts", "notes"])
-
-#app.include_router(mist_demo_router, prefix="/demo", tags=["mist_demo"])
 
 @app.middleware('http')
 async def timeout_middleware(request: Request, call_next):

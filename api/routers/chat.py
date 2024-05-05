@@ -1,4 +1,4 @@
-from typing import Generator, List, Optional
+from typing import Generator, List, Optional, Tuple
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi import Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
@@ -59,7 +59,7 @@ from langchain.tools import StructuredTool
 from langchain.pydantic_v1 import BaseModel as OldBaseModel
 from langchain.pydantic_v1 import Field as OldField
 from langchain.utilities.searx_search import SearxSearchWrapper
-from langchain.tools.youtube.search import YouTubeSearchTool
+from langchain_community.tools.youtube.search import YouTubeSearchTool
 from langchain.utilities.requests import TextRequestsWrapper
 from langchain.schema import Document
 
@@ -76,13 +76,13 @@ tools_vectorstore = InMemoryVectorStore()
 
 
 class ChatGeneralInput(BaseModel):
-    chat_history: Optional[list[tuple[str, str]]] = None
+    chat_history: Optional[List[Tuple[str, str]]] = None
     prompt: str
     language: str = "English"
 
 class ChatCollectionInput(BaseModel):
     collection_name: str
-    chat_history: Optional[list[tuple[str, str]]] = None
+    chat_history: Optional[List[Tuple[str, str]]] = None
     prompt: str
     language: str = "English"
 
@@ -94,11 +94,11 @@ class SubjectMissingException(Exception):
 
 
 def convert_message_pairs_to_tuples(
-    message_pairs: list[MessagePair],
-) -> list[tuple[str, str]]:
+    message_pairs: List[MessagePair],
+) -> List[Tuple[str, str]]:
     return [(pair.human_message, pair.bot_response) for pair in message_pairs]
 
-def pick_relavent_tools(tools: list[StructuredTool], query: str, k: int = 2) -> list[StructuredTool]:
+def pick_relavent_tools(tools: List[StructuredTool], query: str, k: int = 2) -> List[StructuredTool]:
     docs = [Document(page_content=tool.description, metadata={"name" : tool.name}) for tool in tools]
     tools_vectorstore.add_documents(docs)
     relavent_tools = tools_vectorstore.query_vectorstore(query=query, k=k)
@@ -383,7 +383,7 @@ def chat_general_stream(
 
     model_name, premium_model = can_use_premium_model(user_id=user_id)
     model_default, model_fallback = get_model_and_fallback(
-        {"temperature": 0.5}, True, premium_model,
+        {"temperature": 0.5}, True, premium_model, alt=False
     )
     data_queue = queue.Queue()
 
@@ -542,7 +542,7 @@ File Content:
         except Exception:
             return "Limit reached user cannot make more ppts"
 
-        llm = get_model({"temperature": 0.3}, False, premium_model)
+        llm = get_model({"temperature": 0.3}, False, premium_model, alt=True)
         ppt_pages = (
             subscription_manager.get_feature_value(user_id, "ppt_pages").main_data or 12
         )
@@ -555,7 +555,6 @@ File Content:
             pexel_image_gen_cls=PexelsImageSearch,
             image_gen_args={"image_cache_dir": "/tmp/.image_cache"},
             vectorstore=knowledge_manager,
-            use_schema=False
         )
         try:
             return deduct_points_for_feature(
@@ -584,7 +583,7 @@ File Content:
     def make_uml_digram(detailed_instructions: str):
         logging.info(f"Making uml diagram on {detailed_instructions}")
         model_name, premium_model = can_use_premium_model(user_id=user_id)
-        model = get_model({"temperature": 0}, False, premium_model, alt=False)
+        model = get_model({"temperature": 0}, False, premium_model, alt=True)
         uml_maker = AIPlantUMLGenerator(model, generator=plantuml_server)
         logging.info(f"UML request from {user_id}, Data: {detailed_instructions}")
         try:
@@ -609,7 +608,7 @@ File Content:
             string = "Make a random cv"
         logging.info(f"Making cv for text {string}")
         model_name, premium_model = can_use_premium_model(user_id=user_id)
-        model = get_model({"temperature": 0}, False, premium_model, alt=False)
+        model = get_model({"temperature": 0}, False, premium_model, alt=True)
         cv_maker = CVMaker(
             templates=template_loader(),
             chrome_path="/usr/bin/google-chrome",
@@ -760,7 +759,7 @@ File Content:
         except Exception:
             return "Limit reached user cannot make more notes"
 
-        llm = get_model({"temperature": 0.3}, False, premium_model)
+        llm = get_model({"temperature": 0.3}, False, premium_model, alt=True)
         try:
             return deduct_points_for_feature(
                 user_id,
@@ -967,23 +966,6 @@ File Content:
                 extra_tools=extra_tools,
                 files=collection_manager.get_all_files_for_user_as_string(user_id),
             )
-        except OpenAIError as e:
-            logging.error(f"Error in openai {e}")
-            try:
-                chat_manager_agent_non_retrieval.chat(
-                    prompt=data.prompt,
-                    chat_history=chat_history,
-                    language=data.language,
-                    llm=model_fallback,
-                    callback_func=callback,
-                    on_end_callback=on_end_callback,
-                )
-            except Exception as e:
-                logging.error(f"Error running chat in general chat: {e}")
-                error_message = "Error in getting response"
-                for chunk in split_into_chunks(error_message, 4):
-                    callback(chunk)
-                callback(None)
         except Exception as e:
             import traceback
 
@@ -995,5 +977,4 @@ File Content:
             callback(None)
 
     threading.Thread(target=run_chat).start()
-
     return StreamingResponse(data_generator())

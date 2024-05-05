@@ -46,7 +46,7 @@ Do not explictly mention intro body conclusion, the output must be good so no ch
 Lets think step by step, keeping in mind whats said above to generate the summary for the data provided it must be of {minimum_words} words.
 Follow the limit, you gave too small before.
 
-The summary in markdown:"""   
+The summary in markdown (DO NOT RETURN ANY OTHER TEXT):"""   
         prompt = ChatPromptTemplate(
             messages=[
                 SystemMessagePromptTemplate.from_template(template=system_prompt),

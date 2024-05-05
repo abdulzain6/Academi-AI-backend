@@ -100,7 +100,7 @@ def make_notes(
     else:
         chat = False
 
-    model = get_model({"temperature": 0.2}, False, premium_model, alt=False, together_chat=chat)
+    model = get_model({"temperature": 0.2}, False, premium_model, alt=True, together_chat=chat)
 
     try:
         notes_maker = make_notes_maker(notes_input.template_name, llm=model)

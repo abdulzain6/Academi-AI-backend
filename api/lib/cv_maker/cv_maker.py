@@ -5,7 +5,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from .template import ResumeTemplate
 from html2image import Html2Image
 from langchain.chat_models.base import BaseChatModel
-from langchain.chains import create_extraction_chain, LLMChain
+from langchain.chains import LLMChain
 from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 
 
@@ -75,6 +75,7 @@ class CVMaker:
         template = self.get_template_by_name(template_name)
         chain = LLMChain(
             llm=self.chat_model,
+            llm_kwargs={"response_format": {"type": "json_object"}},
             prompt=ChatPromptTemplate(messages=[
                     SystemMessagePromptTemplate.from_template(
                         """

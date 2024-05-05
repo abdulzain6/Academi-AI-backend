@@ -1,29 +1,23 @@
 import logging
 import re
-import time
-from typing import Dict, List, Optional, Sequence, Tuple, Union
+from typing import List, Optional, Sequence, Tuple
+from langchain import hub
+from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder, BaseChatPromptTemplate, HumanMessagePromptTemplate, StringPromptTemplate
 from uuid import UUID
 from langchain.agents import Tool
 from langchain.agents import AgentExecutor
-from pydantic import BaseModel, Field
 from .python_exec_client import PythonClient
 from langchain.schema import (
     SystemMessage,
     BaseMessage,
     HumanMessage,
     AIMessage,
-    LLMResult,
 )
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.chat_models.base import BaseChatModel
-from langchain.agents.structured_chat.base import StructuredChatAgent
-from langchain.chains import create_extraction_chain
-from .modified_openai_agent import ModifiedOpenAIAgent
-from typing import Any, Optional, Sequence
+from langchain.agents import AgentExecutor, create_tool_calling_agent
+from typing import Any, Optional
 from langchain.agents.agent import AgentExecutor
-from langchain.callbacks.base import BaseCallbackManager
-from langchain.schema.language_model import BaseLanguageModel
-from langchain.tools.base import BaseTool
 from langchain.schema.agent import AgentFinish
 
 
@@ -104,11 +98,6 @@ class MathSolver:
 
         description = f"""
 Used to execute multiline python code wont persist states so run everything once.
-Do not pass in Markdown just a normal python string (Important)
-Try to run all the code at once
-Use tools if you think you need help or to confirm answer. Make sure arguments are loadable by json.loads (Super important) use double quotes or it will cause error
-You will not run unsafe code or perform harm to the server youre on. Or import potentially harmful libraries (Very Important).
-You must print the answer to be able to see it (Dont forget or the tool will return None)
         """
 
         def extract_python_code(text: str) -> List[str]:
@@ -142,73 +131,46 @@ You must print the answer to be able to see it (Dont forget or the tool will ret
         return [Tool("python", python_function, description), *self.extra_tools]
 
     def make_agent(
-        self, llm: BaseChatModel, chat_history_messages: list[BaseMessage]
+        self, llm: BaseChatModel
     ) -> AgentExecutor:
-        agent_kwargs = {
-            "system_message": SystemMessage(
-                content="""
-You are An AI designed to solve problems and assist students. 
+        system_prompt = """
+You are an AI designed to assist students by solving problems with a set of tools. Your responses should include:
 
-You must return (Important):
-    1. The answer to the user question in markdown.
-    2. The explanation for the answer with definitions, assumptions intermediate results, units and problem statement Must explain in the easiest language as possible to a non programmer. Must be in english
-    3. The step by step methodology on how the student can solve the exact same question on paper. Keep in mind the student will solve it by hand he has no tools. (Very very important)
-    4. The steps must be in english and understandable.
-    5. Mathematical steps also if applicable Also return what rules, formulas you use.
-    
-Rules:
-    You will not run unsafe code or perform harm to the server youre on. Or import potentially harmful libraries (Very Important).
-    Do not return python code to the user.(Super important)
-    Explain in detail in english (Important).
-    The student is solving the question on paper, help him solve on paper he has no tools.
-    Use tools if you think you need help or to confirm answer.
-    You must use tools to confirm your answer. (Important)
-    Use latex for maths equations and symbols (important)
-    
-Use tools to get accurate answer, dont give approximations (Important)
-Always use tools when needed not unneccerily (Important)
-Lets think step by step to help the student following all rules. 
-"""
-            ),
-            "extra_prompt_messages": chat_history_messages,
-        }
-        return self.initialize_agent(
-            self.make_tools(),
-            llm,
-            agent_kwargs=agent_kwargs,
-            max_iterations=5,
+1. The answer to the user's question in markdown format.
+2. A clear explanation of the answer, including definitions, assumptions, intermediate results, units, and the problem statement. Use simple language suitable for someone without a technical background.
+3. A detailed, step-by-step guide on how the student can solve the same question by hand, as they will not have access to any tools.
+4. Ensure all instructions are in English and easy to understand, including any necessary mathematical steps. Specify any rules or formulas used.
+5. Use LaTeX for any mathematical equations and symbols.
+6. Do not provide code, as the user is not technical. But run python tool to get to the answers.
+7. YOu must use python for getting the answer.
+
+
+Remember to explain thoroughly in English, as the student will be solving the problem on paper without any digital tools.
+        """
+
+        prompt = ChatPromptTemplate.from_messages(
+            [
+                SystemMessage(content=system_prompt),
+                MessagesPlaceholder(variable_name='chat_history'),
+                MessagesPlaceholder(variable_name='input'),
+                MessagesPlaceholder(variable_name='agent_scratchpad')
+            ]
         )
 
-    def initialize_agent(
-        self,
-        tools: Sequence[BaseTool],
-        llm: BaseLanguageModel,
-        callback_manager: Optional[BaseCallbackManager] = None,
-        agent_kwargs: Optional[dict] = None,
-        **kwargs: Any,
-    ):
-        if self.is_openai_functions:
-            agent_obj = ModifiedOpenAIAgent.from_llm_and_tools(
-                llm, tools, callback_manager=callback_manager, **agent_kwargs
-            )
-        else:
-            agent_obj = StructuredChatAgent.from_llm_and_tools(
-                llm,
-                tools,
-                callback_manager=callback_manager,
-                prefix=agent_kwargs["system_message"].content,
-                memory_prompts=agent_kwargs["extra_prompt_messages"]
-            )
+
+        tools = self.make_tools()
+        agent_obj = create_tool_calling_agent(llm, tools, prompt)
         return AgentExecutor.from_agent_and_tools(
             agent=agent_obj,
             tools=tools,
-            callback_manager=callback_manager,
             handle_parsing_errors=True,
-            **kwargs,
+            max_iterations=5,
         )
 
+
+
     def wrap_prompt(self, prompt: str) -> str:
-        return f"""{prompt}, System: Use tools to confirm if required not uselessly"""
+        return f"""{prompt}. [Remember to get to the answer using tools]"""
 
     def run_agent(
         self,
@@ -222,15 +184,18 @@ Lets think step by step to help the student following all rules.
 
         agent = self.make_agent(
             llm=self.llm,
-            chat_history_messages=self.format_messages(chat_history, 700, self.llm),
         )
-        if not callback:
-            raise ValueError("Callback not passed for streaming to")
-        
-        return agent.run(
-            self.wrap_prompt(prompt),
-            callbacks=[CustomCallback(callback, on_end_callback, self.is_openai_functions)],
+       
+        return agent.invoke(
+            {
+                "input": [HumanMessage(content=self.wrap_prompt(prompt))],
+                "chat_history" : self.format_messages(chat_history, 2000, self.llm)
+            },
+            config={
+                "callbacks" : [CustomCallback(callback, on_end_callback, self.is_openai_functions)]
+            }
         )
+
 
     def format_messages(
         self,
@@ -242,8 +207,8 @@ Lets think step by step to help the student following all rules.
         tokens_used: int = 0
 
         for human_msg, ai_msg in reversed(chat_history):
-            human_tokens = llm.get_num_tokens(human_msg)
-            ai_tokens = llm.get_num_tokens(ai_msg)
+            human_tokens = len(human_msg)
+            ai_tokens = len(ai_msg)
             if tokens_used + ai_tokens <= tokens_limit:
                 messages.append(AIMessage(content=ai_msg))
                 tokens_used += ai_tokens

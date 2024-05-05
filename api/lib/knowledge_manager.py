@@ -10,26 +10,27 @@ from urllib.parse import urlparse
 from uuid import UUID
 from langchain.embeddings.base import Embeddings
 from langchain.chat_models.base import BaseChatModel
-from langchain.document_loaders import UnstructuredAPIFileLoader
-from langchain.schema import Document
+from langchain_community.document_loaders import UnstructuredAPIFileLoader
 from langchain.text_splitter import TokenTextSplitter
 from langchain.vectorstores.qdrant import Qdrant
-from langchain.document_loaders import YoutubeLoader
+from langchain_community.document_loaders import YoutubeLoader
 from langchain.callbacks.base import BaseCallbackHandler
-from langchain.schema import Document, LLMResult
+from langchain.schema import Document, LLMResult, SystemMessage
 from langchain.chains import LLMChain
 from langchain.embeddings.base import Embeddings
 from langchain.prompts import (
     ChatPromptTemplate,
     SystemMessagePromptTemplate,
     HumanMessagePromptTemplate,
-    PromptTemplate
+    MessagesPlaceholder
 )
+from langchain.agents import AgentExecutor, create_tool_calling_agent
+from langchain.chains.combine_documents import create_stuff_documents_chain
+
 
 from typing import Dict, List, Tuple, Union
 from qdrant_client import QdrantClient
-from qdrant_client.http.models import HnswConfig, OptimizersConfigDiff
-from langchain.pydantic_v1 import BaseModel, Field
+from qdrant_client.http.models import OptimizersConfigDiff
 from langchain.agents import Tool
 from langchain.agents import AgentExecutor
 from langchain.schema import (
@@ -38,9 +39,8 @@ from langchain.schema import (
     AIMessage,
     LLMResult,
 )
-from langchain.chains import create_extraction_chain_pydantic
 import requests
-from api.lib.maths_solver.modified_openai_agent import ModifiedOpenAIAgent
+from langchain.agents.openai_functions_agent.base import OpenAIFunctionsAgent
 from api.lib.maths_solver.python_exec_client import PythonClient
 from api.lib.ocr import AzureOCR
 from langchain.callbacks.base import BaseCallbackHandler
@@ -51,7 +51,7 @@ from langchain.callbacks.base import BaseCallbackManager
 from langchain.schema.language_model import BaseLanguageModel
 from langchain.tools.base import BaseTool
 from langchain.schema.agent import AgentFinish
-from langchain.document_loaders import WebBaseLoader
+from langchain_community.document_loaders import WebBaseLoader
 from azure.ai.formrecognizer import DocumentAnalysisClient
 from langchain.document_loaders.pdf import DocumentIntelligenceLoader
 from .database.files import FileDBManager
@@ -469,45 +469,6 @@ class KnowledgeManager:
 
 
 class ChatManagerRetrieval:
-    prompt = ChatPromptTemplate(
-        messages=[
-            SystemMessagePromptTemplate.from_template(
-                """
-You are {ai_name}, an AI teacher designed to teach students. You are {model_name} 
-You are to take the tone of a teacher.
-Talk as if you're a teacher. Use the data provided to answer user questions. 
-Only return the next message content in {language}. dont return anything else not even the name of AI.
-You must answer the human in {language} (important)
-The help data is from files/subjects the human has provided and can be from webpages, youtube links, files, images and much more"""
-            ),
-            HumanMessagePromptTemplate.from_template(
-                """
-Help Data (This data is from files/subjects the human has provided and can be from webpages, youtube links, files, images and much more):
-=========
-{help_data}
-=========
-
-Let's think in a step by step, answer the humans question in {language}. Use the data provided by the human and personal knowledge to answer (Important)
-Use the help data to answer the student question.
-help data = contents of webpages, youtube links, files, images and much more
-Remember!, If there is no meaningful data in help data. The ocr might have not been able to detect handwritten text. Or link maybe broken. Tell the user if so
-dont forget the above rules
-
-{conversation}
-Human: {question}
-{ai_name}:"""
-            ),
-        ],
-        input_variables=[
-            "ai_name",
-            "help_data",
-            "conversation",
-            "question",
-            "language",
-            "model_name",
-        ],
-    )
-
     def __init__(
         self,
         embeddings: Embeddings,
@@ -570,17 +531,37 @@ Human: {question}
         filename: str = None,
         help_data_random: str = "Ask user to reupload file!"
     ) -> str:
+        
+        prompt_template = ChatPromptTemplate.from_messages(
+            [
+                (
+                    "system",
+                    """You are {ai_name}, an AI teacher designed to teach students. You are {model_name} 
+You are to take the tone of a teacher.
+Talk as if you're a teacher. Use the data provided to answer user questions. 
+Use easy Language.
+
+The help data is from files/subjects the human has provided and can be from webpages, youtube links, files, images and much more
+Help Data (This data is from files/subjects the human has provided and can be from webpages, youtube links, files, images and much more):
+=========
+{context}
+=========
+
+Let's think in a step by step. Use the data provided by the human and personal knowledge to answer (Important)
+Use the help data to answer the student question.
+help data = contents of webpages, youtube links, files, images and much more
+Remember!, If there is no meaningful data in help data. The ocr might have not been able to detect handwritten text. Or link maybe broken. Tell the user if so
+dont forget the above rules""",
+                ),
+                MessagesPlaceholder(variable_name="messages"),
+            ]
+        )
+        
+           
         if metadata is None:
             metadata = {}
 
         llm.callbacks = [CustomCallback(callback_func, on_end_callback)]
-
-        conversation = self.format_messages(
-            chat_history=chat_history,
-            tokens_limit=self.conversation_limit,
-            ai_name=self.ai_name,
-            llm=llm,
-        )
         combined = (
             self.format_messages(
                 chat_history=chat_history,
@@ -604,20 +585,26 @@ Human: {question}
         similar_docs = self._reduce_tokens_below_limit(
             similar_docs, llm=llm, docs_limit=self.docs_limit
         )
-        similar_docs_string = "\n".join([doc.page_content for doc in similar_docs])
         
-        if not similar_docs_string:
+        if not similar_docs:
             logging.info("Using random data")
-            similar_docs_string = help_data_random
-
-        chain = LLMChain(llm=llm, prompt=self.prompt)
-        return chain.run(
-            ai_name=self.ai_name,
-            help_data=similar_docs_string,
-            conversation=conversation,
-            question=prompt,
-            language="In the same langage of user",
-            model_name="gpt",
+            similar_docs = [Document(page_content=help_data_random)]
+            
+        chat_history = self.format_messages_into_messages(chat_history, self.conversation_limit, llm)
+        document_chain = create_stuff_documents_chain(llm, prompt_template)
+        print(chat_history)
+        return document_chain.invoke(
+            {
+                "context": similar_docs,
+                "ai_name": self.ai_name,
+                "language":"In the same langage of user",
+                "model_name":"gpt",
+                "messages": [
+                    *chat_history,
+                    HumanMessage(content=prompt)
+                ],
+            },
+            config={"verbose" : True}
         )
 
     def format_messages(
@@ -635,8 +622,8 @@ Human: {question}
             human_msg_formatted = f"Human: {human_msg}"
             ai_msg_formatted = f"{ai_name}: {ai_msg}"
 
-            human_tokens = llm.get_num_tokens(human_msg_formatted)
-            ai_tokens = llm.get_num_tokens(ai_msg_formatted)
+            human_tokens = len(human_msg_formatted)
+            ai_tokens = len(ai_msg_formatted)
 
             if not human_only:
                 new_tokens_used = tokens_used + human_tokens + ai_tokens
@@ -669,21 +656,22 @@ Human: {question}
         messages: List[BaseMessage] = []
         tokens_used: int = 0
 
+        # Process chat history from most recent to oldest
         for human_msg, ai_msg in reversed(chat_history):
-            human_tokens = llm.get_num_tokens(human_msg)
-            ai_tokens = llm.get_num_tokens(ai_msg)
-            if tokens_used + ai_tokens <= tokens_limit:
+            human_tokens = len(human_msg)
+            ai_tokens = len(ai_msg)
+            total_tokens = human_tokens + ai_tokens
+
+            # Check if both messages can be added without exceeding the token limit
+            if tokens_used + total_tokens <= tokens_limit:
+                # Add AI message first, then Human message to keep order when reversed later
                 messages.append(AIMessage(content=ai_msg))
-                tokens_used += ai_tokens
-
-            # Add the human message if it doesn't exceed the limit.
-            if tokens_used + human_tokens <= tokens_limit:
                 messages.append(HumanMessage(content=human_msg))
-                tokens_used += human_tokens
+                tokens_used += total_tokens
             else:
-                break  # If we can't add a human message, we have reached the token limit.
+                break  # Stop if adding the next pair would exceed the token limit
 
-        logging.info(f"Chat history: {list(reversed(messages))}")
+        # Reverse to maintain the original order
         return list(reversed(messages))
 
     def _reduce_tokens_below_limit(
@@ -691,7 +679,7 @@ Human: {question}
     ) -> list[Document]:
         random.shuffle(docs)
         num_docs = len(docs)
-        tokens = [llm.get_num_tokens(doc.page_content) for doc in docs]
+        tokens = [len(doc.page_content) for doc in docs]
         token_count = sum(tokens[:num_docs])
         while token_count > docs_limit:
             num_docs -= 1
@@ -701,38 +689,6 @@ Human: {question}
 
 
 class ChatManagerNonRetrieval(ChatManagerRetrieval):
-    prompt = ChatPromptTemplate(
-        messages=[
-            SystemMessagePromptTemplate.from_template(
-                """
-You are {ai_name}, an AI teacher designed to teach students. You are {model_name} 
-You are to take the tone of a teacher.
-Talk as if you're a teacher.
-You're integrated within an app, which serves as a versatile study aid for students. Your role is to assist users by interacting with their uploaded study materials to facilitate personalized learning. The app features functions like quiz and flashcard creation, math problem-solving, and assistance with writing and presentations. Your AI capabilities are central to providing a tailored and efficient educational experience. coins are used as currency
-Only return the next message content in {language}. dont return anything else not even the name of AI.
-You must answer the human in {language} (important)
-"""
-            ),
-            HumanMessagePromptTemplate.from_template(
-                """
-Let's think in a step by step, answer the humans question in {language}.
-
-{conversation}
-
-Human: {question}
-
-{ai_name} ({language}):"""
-            ),
-        ],
-        input_variables=[
-            "ai_name",
-            "conversation",
-            "question",
-            "language",
-            "model_name",
-        ],
-    )
-
     def __init__(
         self,
         embeddings: Embeddings,
@@ -750,15 +706,12 @@ Human: {question}
     def make_agent(
         self,
         llm: BaseChatModel,
-        chat_history_messages: list[BaseMessage],
-        prompt_args: dict,
         extra_tools: list[Tool] = [],
         sys_template: str = None
     ) -> AgentExecutor:
         sys_message_default_template = """
 You are {ai_name}, an AI teacher designed to teach students. 
 You are to take the tone of a teacher.
-You must answer the human in {language} (Important)
 Talk as if you're a teacher. Use the data provided to answer user questions if its available. 
 You're integrated within an app, which serves as a versatile study aid for students. Your role is to assist users by interacting with their uploaded study materials to facilitate personalized learning. The app features functions like quiz and flashcard creation, math problem-solving, and assistance with writing and presentations. Your AI capabilities are central to providing a tailored and efficient educational experience. coins are used as currency
 Keep asking for a positive review on the app from time to time but no overdoing !(Important)
@@ -788,17 +741,21 @@ Follow all above rules (Important)
 """
         if not sys_template:
             sys_template = sys_message_default_template
-            
-        agent_kwargs = {
-            "system_message": SystemMessagePromptTemplate.from_template(
-                template=sys_template
-            ).format(**prompt_args),
-            "extra_prompt_messages": chat_history_messages,
-        }
-        return self.initialize_agent(
-            [*self.make_code_runner(), *extra_tools, *self.base_tools],
-            llm,
-            agent_kwargs=agent_kwargs,
+                    
+        prompt = ChatPromptTemplate.from_messages(
+            [
+                SystemMessage(content=sys_template),
+                MessagesPlaceholder(variable_name='chat_history'),
+                MessagesPlaceholder(variable_name='input'),
+                MessagesPlaceholder(variable_name='agent_scratchpad')
+            ]
+        )
+        tools = [*self.make_code_runner(), *extra_tools, *self.base_tools]
+        agent_obj = create_tool_calling_agent(llm, tools, prompt)
+        return AgentExecutor.from_agent_and_tools(
+            agent=agent_obj,
+            tools=tools,
+            handle_parsing_errors=True,
             max_iterations=5,
         )
 
@@ -840,25 +797,6 @@ You will not run unsafe code or perform harm to the server youre on. Or import p
                 return result
 
         return [Tool("python", python_function, description)]
-    
-    def initialize_agent(
-        self,
-        tools: Sequence[BaseTool],
-        llm: BaseLanguageModel,
-        callback_manager: Optional[BaseCallbackManager] = None,
-        agent_kwargs: Optional[dict] = None,
-        **kwargs: Any,
-    ):
-        agent_obj = ModifiedOpenAIAgent.from_llm_and_tools(
-            llm=llm, tools=tools, callback_manager=callback_manager, **agent_kwargs
-        )
-        return AgentExecutor.from_agent_and_tools(
-            agent=agent_obj,
-            tools=tools,
-            callback_manager=callback_manager,
-            handle_parsing_errors=True,
-            **kwargs,
-        )
          
     def run_agent(
         self,
@@ -879,52 +817,34 @@ You will not run unsafe code or perform harm to the server youre on. Or import p
         if chat_history is None:
             chat_history = []
 
-        if not sys_template:
-            prompt_args = {"language": language, "ai_name": self.ai_name, "files": files}
-
-            print("in")
-        print(prompt_args)
+        chat_history_messages = self.format_messages_into_messages(
+            chat_history, self.conversation_limit, llm
+        )
         agent = self.make_agent(
             llm=llm,
-            chat_history_messages=self.format_messages_into_messages(
-                chat_history, self.conversation_limit, llm
-            ),
-            prompt_args=prompt_args,
             extra_tools=extra_tools,
             sys_template=sys_template
         )
-        
-        #picked_tools = self.tool_picker(llm, tools=[*self.make_code_runner(), *extra_tools, *self.base_tools], query=prompt)
         if callback and on_end_callback:
-            return agent.run(
-                prompt,
-                callbacks=[CustomCallbackAgent(callback, on_end_callback)],
+            return agent.invoke(
+                {
+                    "input": [HumanMessage(content=prompt)],
+                    "ai_name" : self.ai_name,
+                    "files" : files,
+                    "chat_history" : chat_history_messages
+                },
+                config={
+                    "callbacks" : [CustomCallbackAgent(callback, on_end_callback)],
+                }
             )
         else:
-            return agent.run(prompt)
+            return agent.invoke(
+                {
+                    "input": [HumanMessage(content=prompt)],
+                    "ai_name" : self.ai_name,
+                    "files" : files,
+                    "chat_history" : chat_history_messages
+                },
+            )
 
-    def chat(
-        self,
-        prompt: str,
-        chat_history: list[tuple[str, str]],
-        language: str,
-        llm: BaseChatModel,
-        callback_func: callable = None,
-        on_end_callback: callable = None,
-    ) -> str:
-        llm.callbacks = [CustomCallback(callback_func, on_end_callback)]
 
-        conversation = self.format_messages(
-            chat_history=chat_history,
-            tokens_limit=self.conversation_limit,
-            ai_name=self.ai_name,
-            llm=llm,
-        )
-        chain = LLMChain(llm=llm, prompt=self.prompt)
-        return chain.run(
-            ai_name=self.ai_name,
-            conversation=conversation,
-            question=prompt,
-            language=language,
-            model_name="gpt",
-        )

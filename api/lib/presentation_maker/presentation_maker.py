@@ -16,14 +16,11 @@ from langchain.prompts import (
 from langchain.chains import LLMChain
 from langchain.output_parsers import PydanticOutputParser
 from .database import TemplateDBManager, TemplateKnowledgeManager, TemplateModel, PlaceholderModel, SlideModel, initialize_managers
-from pydantic import BaseModel, Field, create_model, validator
+from pydantic import BaseModel, Field
 from .image_gen import PexelsImageSearch
 from ..knowledge_manager import KnowledgeManager
 from retrying import retry
 from langchain.chat_models.base import BaseChatModel
-from langchain.chat_models.openai import ChatOpenAI
-
-from openai import BadRequestError
 
 
 import re
@@ -103,7 +100,7 @@ class PresentationMaker:
         self,
         template_manager: TemplateDBManager,
         template_knowledge_manager: TemplateKnowledgeManager,
-        llm: BaseChatModel | ChatOpenAI,
+        llm: BaseChatModel,
         pexel_image_gen_cls: PexelsImageSearch,
         vectorstore: KnowledgeManager,
         image_gen_args: dict,
@@ -219,7 +216,8 @@ THe sequence in proper schema (Only pick slide types from what is shown to you):
         chain = LLMChain(
             prompt=prompt,
             llm=self.llm,
-            output_parser=parser
+            output_parser=parser,
+            llm_kwargs={"response_format": {"type": "json_object"}}
         )
         return chain.run(
             topic=presentation_input.topic,
@@ -468,7 +466,8 @@ The placeholders following the schema:"""
         chain = LLMChain(
             prompt=prompt,
             llm=self.llm,
-            output_parser=parser
+            output_parser=parser,
+            llm_kwargs={"response_format": {"type": "json_object"}}
         )
         placeholders: Placeholders = chain.run(
             placeholders=self.format_placeholders(slide.placeholders, True),

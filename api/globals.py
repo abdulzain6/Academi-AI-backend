@@ -21,6 +21,7 @@ from .lib.database.purchases import (
 )
 from langchain.chat_models.base import BaseChatModel
 from .lib.database.cache_manager import RedisCacheManager
+from .lib.database.rotating_redis_list import RotatingRedisList
 from .lib.knowledge_manager import (
     KnowledgeManager,
     ChatManagerRetrieval,
@@ -34,8 +35,8 @@ from .lib.presentation_maker.database import (
 from .lib.maths_solver.python_exec_client import PythonClient, Urls
 from .lib.maths_solver.ocr import ImageOCR
 from .lib.redis_cache import RedisCache
-from langchain.chat_models import ChatOpenAI
-from langchain.chat_models.azure_openai import AzureChatOpenAI
+from langchain_openai.chat_models import ChatOpenAI
+from langchain_openai import AzureChatOpenAI
 from .lib.purchases_play_store import SubscriptionChecker
 from .ai_model import AIModel
 from contextlib import suppress
@@ -43,8 +44,10 @@ from azure.ai.formrecognizer import DocumentAnalysisClient
 from azure.core.credentials import AzureKeyCredential
 from .lib.email_integrity_checker import EmailIntegrityChecker
 from .lib.mermaid_maker import MermaidClient
-from .lib.together_llm import Together
 from .lib.embeddings import TogetherEmbeddingsParallel
+from langchain_groq import ChatGroq
+
+
 import langchain
 import redis
 import logging
@@ -52,18 +55,32 @@ import logging
 
 
 langchain.verbose = False
-current_directory = os.path.dirname(os.path.abspath(__file__))
-global_kwargs = {}
+
+try:
+    langchain.llm_cache = RedisCache(redis_=redis.from_url(REDIS_URL), ttl=CACHE_TTL)
+except Exception:
+    logging.info("Fix redis cache")
+    
+try:
+    redis_cache_manager = RedisCacheManager(redis.from_url(REDIS_URL))
+except Exception:
+    redis_cache_manager = RedisCacheManager(None)
+    
+try:
+    rotating_list = RotatingRedisList(redis.from_url(REDIS_URL), "api_keys", GROQ_API_KEYS)
+except Exception:
+    rotating_list = RotatingRedisList(None, "api_keys", GROQ_API_KEYS)
+
 global_chat_model = AIModel(
     regular_model=ChatOpenAI,
-    regular_args={"model_name": "gpt-3.5-turbo-1106", "request_timeout": 60, "max_retries": 4},
+    regular_args={"max_tokens": 2700, "request_timeout": 60, "model_name" : "gpt-3.5-turbo-0125"},
     premium_model=ChatOpenAI,
     premium_args={"model_name": "gpt-4-1106-preview", "max_tokens": 2700, "request_timeout": 60, "max_retries": 4},
 )
 
 global_chat_model_alternative = AIModel(
-    regular_model=Together,
-    regular_args={},
+    regular_model=ChatGroq,
+    regular_args={"max_tokens": 2700, "request_timeout": 60, "model_name" : "llama3-70b-8192"},
     premium_model=ChatOpenAI,
     premium_args={"model_name": "gpt-4-1106-preview", "max_tokens": 2700, "request_timeout": 60, "max_retries": 4},
 )
@@ -85,18 +102,15 @@ fallback_chat_models = [
     )
 ]
 
-def get_together_args(chat: bool = False):
-    if chat:
-        return {"model" : "NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO", "max_tokens": 7000, "stop" : ["<|im_end|>","<|im_start|>"]}
-    else:
-        return {"model" : "mistralai/Mixtral-8x7B-Instruct-v0.1", "max_tokens": 7000, "stop" : ["[/INST]","</s>"]}
+
 
 def create_model(model_class: AIModel, premium: bool, model_kwargs: dict, together_chat: bool =  False) -> BaseChatModel:
     model_type = 'premium' if premium else 'regular'
     args = getattr(model_class, f"{model_type}_args")
-    if getattr(model_class, f"{model_type}_model") == Together:
-        args.update(get_together_args(together_chat))
-    print(args)
+    if getattr(model_class, f"{model_type}_model") is ChatGroq:
+        key = rotating_list.get_item()
+        logging.info(f"Using {key} for groq")
+        args["groq_api_key"] = key
     return getattr(model_class, f"{model_type}_model")(**args, **model_kwargs)
 
 def set_model_attributes(model: BaseChatModel, attributes: dict):
@@ -144,14 +158,7 @@ def get_model_and_fallback(
     return model, fallback_model
 
 
-try:
-    langchain.llm_cache = RedisCache(redis_=redis.from_url(REDIS_URL), ttl=CACHE_TTL)
-except Exception:
-    logging.info("Fix redis cache")
-try:
-    redis_cache_manager = RedisCacheManager(redis.from_url(REDIS_URL))
-except Exception:
-    redis_cache_manager = RedisCacheManager(None)
+
 
 
 # code runner
@@ -219,8 +226,8 @@ chat_manager = ChatManagerRetrieval(
         timeout=10,
         max_retries=2
     ),
-    conversation_limit=800,
-    docs_limit=3000,
+    conversation_limit=3000,
+    docs_limit=10000,
     qdrant_api_key=QDRANT_API_KEY,
     qdrant_url=QDRANT_URL,
 )
@@ -229,7 +236,7 @@ chat_manager_agent_non_retrieval = ChatManagerNonRetrieval(
         timeout=10,
         max_retries=2
     ),
-    conversation_limit=700,
+    conversation_limit=2000,
     python_client=client,
     base_tools=[],
 )
@@ -306,6 +313,7 @@ user_points_manager = UserPointsManager(MONGODB_URL, DATABASE_NAME, DEFAULT_POIN
 referral_manager = ReferralManager(
     user_manager, user_points_manager, DEFAULT_REFERRAL_POINTS
 )
+current_directory = os.path.dirname(os.path.abspath(__file__))
 credentials_path = os.path.join(
     current_directory, "creds", "academi-ai-6173d917c2a1.json"
 )

@@ -9,14 +9,13 @@ from .globals import (
     file_manager,
     collection_manager,
     global_chat_model,
-    global_kwargs,
     fallback_chat_models,
     get_model_and_fallback,
     get_model
 )
 from fastapi import HTTPException
 from functools import wraps
-from langchain.callbacks import get_openai_callback
+from langchain_community.callbacks.manager import get_openai_callback
 from typing import Callable, Any, Optional, Union
 from inspect import isfunction
 import traceback

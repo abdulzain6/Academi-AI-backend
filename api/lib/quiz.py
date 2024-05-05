@@ -214,10 +214,12 @@ THe quiz in json with {number_of_questions} questions be brief:"""
             },
         )
         questions: List[QuizQuestion] = []
+        
         chain = LLMChain(
             prompt=prompt_template,
             output_parser=parser,
             llm=self.llm,
+            llm_kwargs={"response_format": {"type": "json_object"}}
         )
         questions = chain.run(
             data=data or f"Use your knowledge to generate the quiz about '{collection_name}' Description : {collection_description}. if you dont know about the term, make a general quiz",
@@ -225,6 +227,7 @@ THe quiz in json with {number_of_questions} questions be brief:"""
             fotmat_instructions=fotmat_instructions,
           #  llm_kwargs={"stop" : ["[/INST]","</s>"]}
         ).questions
+        
         questions_response = []
         for question in questions[:maximum_questions]:
             questions_response.append(
@@ -328,6 +331,7 @@ The generated flashcards in proper schema. You must follow the schema and return
             prompt=prompt_template,
             output_parser=parser,
             llm=self.llm,
+            llm_kwargs={"response_format": {"type": "json_object"}}
         )
         flashcards = self.run_chain_fc(
             chain,
@@ -403,12 +407,7 @@ The result for the quiz, You must follow the schema(Important):
                 prompt=prompt_template,
                 output_parser=parser,
                 llm=self.llm,
-                llm_kwargs={
-                    "response_format": {
-                        "type": "json_object",
-                        "schema": QuestionResults.model_json_schema(),
-                    }
-                },           
+                llm_kwargs={"response_format": {"type": "json_object"}}     
             )
             if short_answers:
                 short_answer_result: list[QuestionResult] = chain.run(

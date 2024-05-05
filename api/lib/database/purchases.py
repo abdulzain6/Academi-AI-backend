@@ -98,7 +98,8 @@ class SubscriptionManager:
         self.cache_manager.set(cache_key, dumps(sub_doc), 3600)  # Cache for 1 hour
         return sub_doc
     
-    def purchase_token_exists(self, purchase_token: str) -> bool:
+    
+    def purchase_sub_token_exists(self, purchase_token: str) -> bool:
         return bool(
             sub_doc := self.subscriptions.find_one({"purchase_token": purchase_token})
         )
@@ -117,17 +118,19 @@ class SubscriptionManager:
         document = self.old_tokens_subscription.find_one({"user_id": user_id})
         return document["tokens"] if document else []
     
-
-    def retrieve_user_id_by_token(self, token: str) -> Optional[str]:
+    def retrieve_user_id_by_sub_token(self, token: str) -> Optional[str]:
         document = self.old_tokens_subscription.find_one({"tokens": token})
         return document["user_id"] if document else None
-    
+
+
+
     def add_onetime_token(self, user_id: str, token: str, product_purchased: str):
         self.old_tokens_ontime.update_one(
             {"user_id": user_id},
             {"$push": {"purchases": {"token": token, "product": product_purchased}}},
             upsert=True
         )
+   
     def retrieve_onetime_tokens(self, user_id: str) -> List[str]:
         document = self.old_tokens_ontime.find_one({"user_id": user_id})
         if document and "purchases" in document:
@@ -167,87 +170,51 @@ class SubscriptionManager:
             "purchase_token" : purchase_token,
             "subscription_type": subscription_type,
             "subscription_provider": subscription_provider,
-            "last_coin_allocation_date": now,
-            "last_monthly_reset_date": now,
             "incremental_features": [f.model_dump() for f in features.incremental],
             "static_features": [f.model_dump()  for f in features.static],
             "monthly_limit_features": [f.model_dump() for f in features.monthly_limit],
-            "is_cancelled" : False,
-            "enabled" : True,
-            "monthly_coins": features.monthly_coins.amount,
             "last_daily_reset_date": now,
         }
         
         existing_doc = self.subscriptions.find_one({"user_id": user_id})
         if update or not existing_doc:
             if purchase_token:
-                if existing_doc.get("purchase_token") and not existing_doc.get("is_cancelled", False):
-                    raise ValueError("Token already used")
-                
                 if purchase_token in self.retrieve_subscription_tokens(user_id):
                     raise ValueError("Token already used")
                 
-            self.add_subscription_token(user_id, purchase_token)
-            logging.info(f"Applying/Updating subscription for {user_id} token {purchase_token}")
+                self.add_subscription_token(user_id, purchase_token)
+                logging.info(f"Applying/Updating subscription for {user_id} token {purchase_token}")
+            
             self.subscriptions.update_one({"user_id": user_id}, {"$set": doc}, upsert=True)
             self.cache_manager.delete(f"user_subscription:{user_id}")
-            self.allocate_monthly_coins(user_id, allocate_no_check=True, multiplier=mulitplier)
+            self.allocate_coins(user_id, multiplier=mulitplier)
             
-    
-
-    def enable_disable_subscription(self, user_id: str, enable: bool) -> None:
-        self.cache_manager.delete(f"user_subscription:{user_id}")
-        self.subscriptions.update_one({"user_id": user_id}, {"$set": {"enabled": enable}}, upsert=True)
-            
-    def cancel_uncancel_subscription(self, user_id: str, cancel: bool) -> None:
-        self.cache_manager.delete(f"user_subscription:{user_id}")
-        self.subscriptions.update_one({"user_id": user_id}, {"$set": {"is_cancelled": cancel}}, upsert=True)
-      
-
-    def allocate_monthly_coins(self, user_id: str, allocate_no_check: bool = False, multiplier: int = 1) -> None:
+    def allocate_coins(self, user_id: str, multiplier: int = 1) -> None:
         sub_doc = self.fetch_or_cache_subscription(user_id)
-        if not sub_doc.get("enabled", True):
-            return
-        monthly_coins = sub_doc["monthly_coins"]
+        monthly_coins = self.plan_features[sub_doc["subscription_type"]].monthly_coins.amount
         logging.info(f"Granting coins {monthly_coins} coins to {user_id}")
         self.user_points_manager.increment_user_points(user_id, monthly_coins * multiplier)
         self.cache_manager.delete(f"user_subscription:{user_id}")
 
-
-    def reset_monthly_limits(self, user_id: str, reset_no_check: bool = False, multiplier: int = 1) -> None:
+    def reset_monthly_limits(self, user_id: str, multiplier: int = 1) -> None:
         sub_doc = self.fetch_or_cache_subscription(user_id)
-        if not sub_doc.get("enabled", True):
-            return
-        
-        now = datetime.now(timezone.utc)
-        last_reset_date = sub_doc.get("last_monthly_reset_date", datetime.min.replace(tzinfo=timezone.utc))
-        # Ensure last_reset_date is timezone-aware
-        if last_reset_date.tzinfo is None or last_reset_date.tzinfo.utcoffset(last_reset_date) is None:
-            last_reset_date = last_reset_date.replace(tzinfo=timezone.utc)
-
-        if (now - last_reset_date) >= timedelta(days=35) or reset_no_check:
-            logging.info(f"Resetting monthly limits for {user_id}")
-            default_features = self.plan_features[sub_doc["subscription_type"]].monthly_limit
-            for default_feature in default_features:
-                self.subscriptions.update_one(
-                    {"user_id": user_id},
-                    {
-                        "$set": {
-                            "monthly_limit_features.$[elem].limit": default_feature.limit * multiplier
-                        }
-                    },
-                    array_filters=[{"elem.name": {"$eq": default_feature.name}}],
-                )
-
+        logging.info(f"Resetting monthly limits for {user_id}")
+        default_features = self.plan_features[sub_doc["subscription_type"]].monthly_limit
+        for default_feature in default_features:
             self.subscriptions.update_one(
-                {"user_id": user_id}, {"$set": {"last_monthly_reset_date": now}}
+                {"user_id": user_id},
+                {
+                    "$set": {
+                        "monthly_limit_features.$[elem].limit": default_feature.limit * multiplier
+                    }
+                },
+                array_filters=[{"elem.name": {"$eq": default_feature.name}}],
             )
-            self.cache_manager.delete(f"user_subscription:{user_id}")
+        self.cache_manager.delete(f"user_subscription:{user_id}")
             
     def get_feature_value(self, user_id: str, feature_name: str) -> Union[FeatureValueResponse, None]:
         self.reset_all_limits(user_id)
         sub_doc = self.fetch_or_cache_subscription(user_id)
-        # Check if the feature is an Incremental feature
         for feature in sub_doc["incremental_features"]:
             if feature_name == feature["name"]:
                 return FeatureValueResponse(name=feature_name, main_data=feature["limit"], limit=feature["limit"], fallback_value=None)
@@ -272,6 +239,7 @@ class SubscriptionManager:
         return None  # Feature not found
     
     def undo_use_feature(self, user_id: str, feature_name: str) -> bool:
+        self.reset_all_limits(user_id)
         sub_doc = self.fetch_or_cache_subscription(user_id)
 
         # Incremental features
@@ -389,7 +357,6 @@ class SubscriptionManager:
         sub_doc = self.fetch_or_cache_subscription(user_id)
         return next((feature.get("enabled", False) for feature in sub_doc["monthly_limit_features"] if feature["name"] == feature_name), False)
 
-    
     def get_all_feature_usage_left(self, user_id: str) -> List[Dict[str, Union[str, int]]]:
         self.reset_all_limits(user_id)
         sub_doc = self.fetch_or_cache_subscription(user_id)
@@ -409,8 +376,6 @@ class SubscriptionManager:
 
     def reset_incremental_limits(self, user_id: str, reset_no_check: bool = False) -> None:
         sub_doc = self.fetch_or_cache_subscription(user_id)
-        if not sub_doc.get("enabled", True):
-            return
         now = datetime.now(timezone.utc)
         last_reset_date = sub_doc.get("last_daily_reset_date", datetime.min.replace(tzinfo=timezone.utc))
 
@@ -435,7 +400,6 @@ class SubscriptionManager:
                 {"user_id": user_id}, {"$set": {"last_daily_reset_date": now}}
             )
             self.cache_manager.delete(f"user_subscription:{user_id}")
-
 
     def reset_all_limits(self, user_id: str, reset_no_check: bool = False) -> None:
         try:

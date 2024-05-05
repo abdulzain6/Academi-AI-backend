@@ -52,7 +52,7 @@ it must be on {topic}
 
 Do not explictly mention intro body conclusion, the output must be good so no changes need to be made.
 Lets think step by step, keeping in mind whats said above to generate the '{to_generate}' for the '{topic}' it must be of {minimum_words} words.
-The {to_generate} in markdown:"""   
+The {to_generate} in markdown (DO NOT RETURN ANY OTHER TEXT):"""   
 
         prompt = PromptTemplate(
             template=prompt,

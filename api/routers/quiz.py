@@ -84,7 +84,7 @@ def make_quiz(
             status.HTTP_400_BAD_REQUEST, detail=f"Error: {str(e)}"
         ) from e
 
-    quiz = {"questions": [question.dict() for question in questions]}
+    quiz = {"questions": [question.model_dump() for question in questions]}
     logging.info(f"quiz made {quiz}")
     return quiz
 
@@ -95,7 +95,7 @@ def evaluate_quiz(
     play_integrity_verified=Depends(verify_play_integrity),
 ):
     logging.info(f"Got quiz evaluation request, {user_id}... Input: {user_answers}")
-    model = get_model({"temperature": 0}, False, False, alt=False)
+    model = get_model({"temperature": 0}, False, False, alt=True)
     quiz_generator = QuizGenerator(
         file_manager,
         None,
@@ -170,4 +170,4 @@ def make_flashcards(
         ) from e
 
     logging.info(f"Generated flashcards: {questions}")
-    return {"flashcards": [flashcards.dict() for flashcards in questions]}
+    return {"flashcards": [flashcards.model_dump() for flashcards in questions]}
