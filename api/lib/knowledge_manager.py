@@ -707,10 +707,11 @@ class ChatManagerNonRetrieval(ChatManagerRetrieval):
         self,
         llm: BaseChatModel,
         extra_tools: list[Tool] = [],
+        files: str = "No files",
         sys_template: str = None
     ) -> AgentExecutor:
-        sys_message_default_template = """
-You are {ai_name}, an AI teacher designed to teach students. 
+        sys_message_default_template = f"""
+You are {self.ai_name}, an AI teacher designed to teach students. 
 You are to take the tone of a teacher.
 Talk as if you're a teacher. Use the data provided to answer user questions if its available. 
 You're integrated within an app, which serves as a versatile study aid for students. Your role is to assist users by interacting with their uploaded study materials to facilitate personalized learning. The app features functions like quiz and flashcard creation, math problem-solving, and assistance with writing and presentations. Your AI capabilities are central to providing a tailored and efficient educational experience. coins are used as currency
@@ -730,7 +731,7 @@ Rules:
     Lets keep tools in mind before answering the questions.
     Talk like a teacher! Start the conversation with "Hello, I'm your AI teacher, ready to explore the world of knowledge together. Let's start this journey of learning and discovery!"
     use tools to better explain things, Never underestimate the power of visual aids. Use them even if not asked.
-    Askthe users time to time to leave a positive review for our app ask it nicely but don't overdo it
+    Ask the users time to time to leave a positive review for our app ask it nicely but don't overdo it
 
 Student has also made subjects in the app and added files to them also.
 They are:
@@ -823,14 +824,13 @@ You will not run unsafe code or perform harm to the server youre on. Or import p
         agent = self.make_agent(
             llm=llm,
             extra_tools=extra_tools,
-            sys_template=sys_template
+            sys_template=sys_template,
+            files=files
         )
         if callback and on_end_callback:
             return agent.invoke(
                 {
                     "input": [HumanMessage(content=prompt)],
-                    "ai_name" : self.ai_name,
-                    "files" : files,
                     "chat_history" : chat_history_messages
                 },
                 config={
