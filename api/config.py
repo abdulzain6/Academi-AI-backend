@@ -22,17 +22,14 @@ QDRANT_URL = os.getenv("QDRANT_URL", "localhost")
 MONGODB_URL = os.getenv("MONGODB_URL")
 DATABASE_NAME = os.getenv("DATABASE_NAME", "study-app")
 PEXELS_API_KEY = os.getenv("PEXELS_API_KEY")
-QUIZ_MAX_API_CALLS = int(os.getenv("QUIZ_MAX_API_CALLS", 4))
 PLANTUML_URL = os.getenv("PLANTUML_URL", "http://localhost:9080/img/")
 MAIN_URL_EXECUTOR = os.getenv("MAIN_URL_EXECUTOR", "http://127.0.0.1:9000/")
 EVALUATE_URL_EXECUTOR = os.getenv("EVALUATE_URL_EXECUTOR", "http://127.0.0.1:9000/evaluate")
 AVAILABLE_LIBRARIES_URL = os.getenv("AVAILABLE_LIBRARIES_URL", "http://127.0.0.1:9000/allowed_libraries")
-MATHPIX_APPID = os.getenv("MATHPIX_APPID")
-MATHPIX_API_KEY = os.getenv("MATHPIX_API_KEY")
 REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", 1000))
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
 CACHE_TTL = int(os.getenv("CACHE_TTL", 5 * 24 * 60 * 60))
-DEFAULT_POINTS = int(os.getenv("DEFAULT_POINTS", 20))
+DEFAULT_POINTS = int(os.getenv("DEFAULT_POINTS", 40))
 FEATURE_PRICING = get_dict_from_env_var(
     "FEATURE_PRICING", 
     {

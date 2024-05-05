@@ -298,13 +298,7 @@ template_manager, temp_knowledge_manager = initialize_managers(
 )
 
 
-# Maths Solver
-image_ocr = ImageOCR(
-    app_id=MATHPIX_APPID,
-    app_key=MATHPIX_API_KEY,
-    alt_ocr=text_ocr
-)
-
+image_ocr = ImageOCR()
 plantuml_server = PlantUML(url=PLANTUML_URL)
 mermaid_client = MermaidClient(server_url=MERMAID_SERVER_URL)
 
