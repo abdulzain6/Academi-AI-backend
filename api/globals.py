@@ -82,7 +82,7 @@ global_chat_model_alternative = AIModel(
     regular_model=ChatGroq,
     regular_args={"max_tokens": 2700, "request_timeout": 60, "model_name" : "llama3-70b-8192"},
     premium_model=ChatOpenAI,
-    premium_args={"model_name": "gpt-4-1106-preview", "max_tokens": 2700, "request_timeout": 60, "max_retries": 4},
+    premium_args={"model_name": "gpt-4-turbo-2024-04-09", "max_tokens": 2700, "request_timeout": 60, "max_retries": 4},
 )
 
 fallback_chat_models = [
