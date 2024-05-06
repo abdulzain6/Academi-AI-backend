@@ -904,7 +904,7 @@ File Content:
                 string=args[0] if args else kwargs.get("cv_details_text"),
             ),
             name="make_cv",
-            description="Used to make a cv, Ask the user for details if needed. You can make things up except for the image url",
+            description="Used to make a cv/ resume, Ask the user for details if needed. You can make things up except for the image url",
             args_schema=MakeCVArgs,
         ),
         StructuredTool.from_function(
@@ -923,7 +923,7 @@ File Content:
                 negative_prompt,
             ),
             name="make_ppt",
-            description="Used to make ppt using AI",
+            description="Used to make ppt/ppowerpoint presentation using AI",
             args_schema=MakePptArgs,
         ),
     ]

@@ -1,18 +1,17 @@
-import logging
-import requests
-import pytesseract
-import json
-from replicate.client import Client
 from typing import Optional
-from PIL import Image
-from ..ocr import VisionOCR
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_google_genai import ChatGoogleGenerativeAI, HarmBlockThreshold, HarmCategory
 from langchain.schema import HumanMessage
 
 
 class ImageOCR:        
     def gemini_ocr(self, image_path: str) -> str:
-        llm = ChatGoogleGenerativeAI(model="gemini-pro-vision")
+        llm = ChatGoogleGenerativeAI(model="gemini-pro-vision", safety_settings = {
+                HarmCategory.HARM_CATEGORY_UNSPECIFIED: HarmBlockThreshold.BLOCK_NONE,
+                HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+                HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+                HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
+                HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+            })
         return llm.invoke(
             [
                 HumanMessage(
