@@ -60,7 +60,7 @@ The notes in markdown (RETURN NO OTHER TEXT):"""
                 "instructions"
             ],
         )
-        chain = LLMChain(prompt=prompt, llm=self.llm})
+        chain = LLMChain(prompt=prompt, llm=self.llm)
         notes = chain.run(data=string, instructions=instructions)
         return self.make_notes(data=MarkdownData(content=notes))
         
