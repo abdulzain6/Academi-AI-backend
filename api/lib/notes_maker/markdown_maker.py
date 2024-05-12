@@ -52,7 +52,7 @@ Follow the instructions below also:
 {instructions}
 ============
 
-The notes in markdown:"""
+The notes in markdown (RETURN NO OTHER TEXT):"""
                 ),
             ],
             input_variables=[
@@ -60,7 +60,7 @@ The notes in markdown:"""
                 "instructions"
             ],
         )
-        chain = LLMChain(prompt=prompt, llm=self.llm, llm_kwargs={"response_format": {"type": "json_object"}})
+        chain = LLMChain(prompt=prompt, llm=self.llm)
         notes = chain.run(data=string, instructions=instructions)
         return self.make_notes(data=MarkdownData(content=notes))
         
