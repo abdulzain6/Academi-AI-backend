@@ -12,9 +12,10 @@ class RotatingRedisList:
         """
         self.redis = redis_client
         self.list_key = list_key
-        self.redis.delete(list_key)  # Make sure to start fresh for this key
-        if items:
-            self.redis.rpush(list_key, *items)
+        if redis_client:
+            self.redis.delete(list_key)  # Make sure to start fresh for this key
+            if items:
+                self.redis.rpush(list_key, *items)
 
     def get_item(self) -> str:
         """

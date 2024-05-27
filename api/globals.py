@@ -46,6 +46,8 @@ from .lib.email_integrity_checker import EmailIntegrityChecker
 from .lib.mermaid_maker import MermaidClient
 from .lib.embeddings import TogetherEmbeddingsParallel
 from langchain_groq import ChatGroq
+from langchain_community.llms.octoai_endpoint import OctoAIEndpoint
+
 
 
 import langchain
@@ -79,8 +81,8 @@ global_chat_model = AIModel(
 )
 
 global_chat_model_alternative = AIModel(
-    regular_model=ChatGroq,
-    regular_args={"max_tokens": 2700, "request_timeout": 60, "model_name" : "llama3-70b-8192", "max_retries" : 1},
+    regular_model=ChatOpenAI,
+    regular_args={"api_key" : os.getenv("TOGETHER_API_KEY") ,"base_url" : "https://api.together.xyz/v1", "max_tokens": 2700, "request_timeout": 60, "model_name" : "mistralai/Mixtral-8x7B-Instruct-v0.1", "max_retries" : 1},
     premium_model=ChatOpenAI,
     premium_args={"model_name": "gpt-4-turbo-2024-04-09", "max_tokens": 2700, "request_timeout": 60, "max_retries": 4},
 )

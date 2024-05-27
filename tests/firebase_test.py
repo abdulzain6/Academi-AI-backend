@@ -43,11 +43,11 @@ email = "test@gmail.com"
 password = "testpassword"
 
 register_user(email, password)
-register_user("zain@gmail.com", password)
+register_user("zain1@gmail.com", password)
 
 if id_token := login_with_email_and_password(email, password, "AIzaSyBdcuZHJyUFsGpKEG3-2TPl76Ax_Ehh-6c"):
     print("ID Token:", id_token)
 
-if id_token := login_with_email_and_password("zain@gmail.com", password, "AIzaSyBdcuZHJyUFsGpKEG3-2TPl76Ax_Ehh-6c"):
+if id_token := login_with_email_and_password("zain1@gmail.com", password, "AIzaSyBdcuZHJyUFsGpKEG3-2TPl76Ax_Ehh-6c"):
     print("\n\n\n\nID Token:", id_token)
 

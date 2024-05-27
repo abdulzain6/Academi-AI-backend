@@ -128,7 +128,7 @@
                 "placeholders": [
                     {
                         "name": "TOPIC",
-                        "description": "The topic of the presentation",
+                        "description": "The topic of the presentation. KEEP IT SHORT!",
                         "is_image": false,
                         "image_width": null,
                         "image_height": null
@@ -148,7 +148,7 @@
                 "placeholders": [
                     {
                         "name": "SECTION",
-                        "description": "The name of the section",
+                        "description": "The name of the section, keep it short",
                         "is_image": false,
                         "image_width": null,
                         "image_height": null
@@ -269,7 +269,7 @@
                 "placeholders": [
                     {
                         "name": "SECTION",
-                        "description": "The section name",
+                        "description": "The section name, keep it short",
                         "is_image": false,
                         "image_width": null,
                         "image_height": null
