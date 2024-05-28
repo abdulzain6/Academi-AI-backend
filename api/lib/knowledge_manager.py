@@ -440,7 +440,8 @@ class KnowledgeManager:
     ):
         try:
             return self.qdrant.similarity_search(query, k, filter=metadata)
-        except Exception:
+        except Exception as e:
+            print(f"error retrieving: {e}")
             return []
 
 
