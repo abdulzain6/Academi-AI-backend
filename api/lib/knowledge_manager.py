@@ -473,9 +473,10 @@ class ChatManagerRetrieval:
         metadata["collection"] = collection_name
         try:
             vectorstore = Qdrant(self.client, self.qdrant_collection_name, self.embeddings)
+            raise Exception()
             return vectorstore.similarity_search(query, k, filter=metadata)
         except Exception as e:
-            print(e)
+            print(f"Error retrieving: {e}")
             return []
 
     @staticmethod
