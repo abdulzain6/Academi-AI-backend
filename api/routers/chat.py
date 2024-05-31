@@ -879,11 +879,11 @@ File Content:
         SearchTool(
             seachx_wrapper=SearxSearchWrapper(searx_host=SEARCHX_HOST, unsecure=True, k=3)
         ),
+        SearchImage(instance_url=SEARCHX_HOST),
         MarkdownToDocConverter(
             cache_manager=RedisCacheManager(redis.from_url(REDIS_URL)),
             url_template=CACHE_DOCUMENT_URL_TEMPLATE,
         ),
-        SearchImage(instance_url=SEARCHX_HOST)
     ]
     
     optional_tools = [

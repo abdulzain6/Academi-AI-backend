@@ -26,7 +26,7 @@ from langchain.callbacks.manager import (
     AsyncCallbackManagerForToolRun,
     CallbackManagerForToolRun,
 )
-
+from PIL import Image
 from langchain.utilities.requests import TextRequestsWrapper
 from bs4 import BeautifulSoup
 from langchain.utilities.searx_search import SearxSearchWrapper
@@ -344,6 +344,7 @@ def make_ppt(
     document_url = url_template.format(doc_id=doc_id)
     return f"{document_url} Give this link as it is to the user dont add sandbox prefix to it, user wont recieve file until you explicitly read out the link to him"
 
+
 def make_uml_diagram(
     uml_maker: AIPlantUMLGenerator,
     cache_manager,
@@ -361,23 +362,51 @@ def make_vega_graph(
     cache_manager,
     url_template: str,
 ):
+    # Generate a unique document identifier
     doc_id = str(uuid.uuid4()) + ".png"
+    
+    # Convert Vega-Lite specification to image bytes
     img_bytes = vega_lite_to_images(vl_spec=vl_spec)
+    
+    # If width and height are provided, resize the image using Pillow
+    image = Image.open(io.BytesIO(img_bytes))
+    img_byte_arr = io.BytesIO()
+    image.save(img_byte_arr, format='PNG')
+    img_bytes = img_byte_arr.getvalue()
+
+    # Cache the image bytes using the provided cache manager
     cache_manager.set(key=doc_id, value=img_bytes, ttl=18000, suppress=False)
+    
+    # Format the document URL using the template and document ID
     document_url = url_template.format(doc_id=doc_id)
-    return f"{document_url} Give this link as it is to the user dont add sandbox prefix to it, user wont recieve file until you explicitly read out the link to him"
+    
+    return f"{document_url} Give this link as it is to the user; don't add a sandbox prefix to it. The user won't receive the file until you explicitly read out the link to him."
 
 def make_graphviz_graph(
     dot_code: str,
     cache_manager,
-    url_template: str
+    url_template: str,
 ) -> str:
+    # Generate a unique document identifier
     doc_id = str(uuid.uuid4()) + ".png"
+
+    # Create a Graphviz source object and generate PNG image bytes
     dot = Source(dot_code)
     img_bytes = dot.pipe(format='png')
+
+
+    image = Image.open(io.BytesIO(img_bytes))
+    img_byte_arr = io.BytesIO()
+    image.save(img_byte_arr, format='PNG')
+    img_bytes = img_byte_arr.getvalue()
+
+    # Cache the image bytes using the provided cache manager
     cache_manager.set(key=doc_id, value=img_bytes, ttl=18000, suppress=False)
+
+    # Format the document URL using the template and document ID
     document_url = url_template.format(doc_id=doc_id)
-    return f"{document_url} Give this link as it is to the user dont add sandbox prefix to it, user wont recieve file until you explicitly read out the link to him"
+
+    return f"{document_url} Give this link as it is to the user. Don't add a sandbox prefix to it. The user won't receive the file until you explicitly read out the link to him."
 
 def vega_lite_to_images(vl_spec: str) -> bytes:
     """
@@ -390,6 +419,7 @@ def vega_lite_to_images(vl_spec: str) -> bytes:
     #svg_data = vlc.vegalite_to_svg(vl_spec=vl_spec).encode('utf-8')
     png_data = vlc.vegalite_to_png(vl_spec=vl_spec, scale=2)
     return png_data
+
 
 def make_notes(
     notes_maker: NotesMaker,

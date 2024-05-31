@@ -5,7 +5,7 @@ from fastapi.responses import StreamingResponse
 from ..auth import get_user_id, verify_play_integrity
 from ..dependencies import require_points_for_feature, use_feature, can_use_premium_model
 from ..lib.notes_maker import make_notes_maker, get_available_note_makers, MarkdownNotesMaker
-from ..globals import get_model, text_ocr, collection_manager, file_manager
+from ..globals import get_model, text_ocr, collection_manager, file_manager, knowledge_manager
 from typing import Optional
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi import Depends, HTTPException
@@ -18,6 +18,7 @@ router = APIRouter()
 
 class MakeNotesInput(BaseModel):
     data: Optional[str] = None
+    url: Optional[str] = None
     collection_name: Optional[str] = None
     file_name: Optional[str] = None
     instructions: str
@@ -62,8 +63,8 @@ def make_notes(
     user_id: str = Depends(get_user_id),
     play_integrity_verified=Depends(verify_play_integrity),
 ):
-    if not notes_input.data and not notes_input.collection_name:
-        raise HTTPException(400, detail="Data or collection name must be provided")
+    if not notes_input.data and not notes_input.collection_name and not notes_input.url:
+        raise HTTPException(400, detail="Data, collection name or url must be provided")
 
     if notes_input.collection_name and not collection_manager.collection_exists(
         notes_input.collection_name, user_id
@@ -81,6 +82,12 @@ def make_notes(
 
     if notes_input.data:
         data = notes_input.data
+    elif notes_input.url:
+        try:
+            data, _, _ = knowledge_manager.load_web_youtube_link({}, None, web_url=notes_input.url)
+        except Exception:
+            raise HTTPException(400, detail=f"Error: {e}")
+
     elif notes_input.file_name:
         file = file_manager.get_file_by_name(
             user_id=user_id,
@@ -109,7 +116,7 @@ def make_notes(
     
         
 
-    content = select_random_chunks(data, 600, 1850)
+    content = select_random_chunks(data, 1000, 2700)
     data = notes_maker.make_notes_from_string(content, notes_input.instructions)
     data.seek(0)
 

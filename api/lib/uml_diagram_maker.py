@@ -1,6 +1,7 @@
 from __future__ import print_function
 import base64
 import logging
+import re
 import string
 import httplib2
 import six
@@ -196,6 +197,8 @@ The plantuml code, nothing else:"""
                 else:
                     error_message = "\n".join(errors)
                 code = self.generate_plantuml(prompt, errors=error_message)
+                logging.info(f"Code generated : {code}")
+                code = self.extract_code(code)
                 data = self.generator.processes(code)
                 return data
             except Exception as e:
@@ -204,5 +207,16 @@ The plantuml code, nothing else:"""
                 errors.append(string_exception)
         raise ValueError("Requirements too difficult for AI")
 
+    def extract_code(self, markdown_text: str) -> str:
+        """
+        Extracts content from code blocks in markdown.
+        Supports blocks that use triple backticks with optional language identifiers.
+        """
+        # Enhanced regex to handle nested content or special characters
+        code_blocks = re.findall(r'```[\w\s]*\n(.*?)```', markdown_text, re.DOTALL)
+        if code_blocks:
+            # Join multiple code blocks with a newline
+            return '\n\n'.join(code_blocks).strip()
+        return markdown_text  # Return original if no code blocks are found
 
 

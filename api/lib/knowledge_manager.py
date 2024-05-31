@@ -177,8 +177,8 @@ class KnowledgeManager:
                 texts=["test"],
                 embedding=self.embeddings,
                 collection_name=qdrant_collection_name,
-                hnsw_config={"on_disk" : True},
-                optimizers_config=OptimizersConfigDiff(memmap_threshold=20000),
+                hnsw_config={"on_disk" : False},
+              #  optimizers_config=OptimizersConfigDiff(memmap_threshold=20000),
                 timeout=50,
                 prefer_grpc=True
             )
@@ -473,7 +473,6 @@ class ChatManagerRetrieval:
         metadata["collection"] = collection_name
         try:
             vectorstore = Qdrant(self.client, self.qdrant_collection_name, self.embeddings)
-            raise Exception()
             return vectorstore.similarity_search(query, k, filter=metadata)
         except Exception as e:
             print(f"Error retrieving: {e}")

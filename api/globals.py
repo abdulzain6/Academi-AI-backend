@@ -46,7 +46,7 @@ from .lib.email_integrity_checker import EmailIntegrityChecker
 from .lib.mermaid_maker import MermaidClient
 from .lib.embeddings import TogetherEmbeddingsParallel
 from langchain_groq import ChatGroq
-from langchain_community.llms.octoai_endpoint import OctoAIEndpoint
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 
 
@@ -75,16 +75,16 @@ except Exception:
 
 global_chat_model = AIModel(
     regular_model=ChatOpenAI,
-    regular_args={"max_tokens": 2700, "request_timeout": 60, "model_name" : "gpt-3.5-turbo-0125"},
+    regular_args={"request_timeout": 60, "model_name" : "gpt-3.5-turbo-0125"},
     premium_model=ChatOpenAI,
-    premium_args={"model_name": "gpt-4-1106-preview", "max_tokens": 2700, "request_timeout": 60, "max_retries": 4},
+    premium_args={"model_name": "gpt-4o", "request_timeout": 60, "max_retries": 4},
 )
 
 global_chat_model_alternative = AIModel(
     regular_model=ChatOpenAI,
-    regular_args={"api_key" : os.getenv("TOGETHER_API_KEY") ,"base_url" : "https://api.together.xyz/v1", "max_tokens": 2700, "request_timeout": 60, "model_name" : "mistralai/Mixtral-8x7B-Instruct-v0.1", "max_retries" : 1},
+    regular_args={"api_key" : os.getenv("TOGETHER_API_KEY") ,"base_url" : "https://api.together.xyz/v1", "request_timeout": 60, "model_name" : "mistralai/Mixtral-8x7B-Instruct-v0.1", "max_retries" : 1},
     premium_model=ChatOpenAI,
-    premium_args={"model_name": "gpt-4-turbo-2024-04-09", "max_tokens": 2700, "request_timeout": 60, "max_retries": 4},
+    premium_args={"model": "gpt-4o", "request_timeout": 60, "max_retries": 4},
 )
 
 fallback_chat_models = [
