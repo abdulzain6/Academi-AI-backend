@@ -23,6 +23,7 @@ RUN apt-get update && \
     graphviz \
     ffmpeg \
     libreoffice \
+    poppler-utils \
     && apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
