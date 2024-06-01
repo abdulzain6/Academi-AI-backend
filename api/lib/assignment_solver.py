@@ -71,11 +71,17 @@ class AssignmentSolver:
     def set_tools(self, tools: list):
         self.solver_tools = tools
         
-    def solve_question(self, question, images):
+    def solve_question(self, question, images, instructions: str):
         #output_parser = OutputFixingParser.from_llm(
         #    parser=PydanticOutputParser(pydantic_object=Solution), llm=self.llm_solver
         #)
-        sys_template = """
+        if instructions:
+            instructions_message = f"""The student has also given the following instructions, so follow them:
+    {instructions}
+            """
+        else:
+            instructions_message = ""
+        sys_template = f"""
 You are an AI designed to solve assignments you will use tools to better answer the question.
 Rules:
     1. Use latex for maths equations
@@ -92,6 +98,9 @@ Rules:
     12. DONT ADD CODE TO THE SOLUTION UNLESS ASKED!!, tHIS IS FOR AN ASSIGNMENT. why you so dumb>>?
     14. your response will be directly put into an assignment. We dont want links in there you need to add the links in a way its visible like shown above also dont add useless text ffs
     15. Also if you decide to generate a diagram dont say they are 'generated'.
+    
+{instructions_message}
+
 FOLLOW ALL ABOVE RULES! 
 """
 
@@ -126,10 +135,10 @@ FOLLOW ALL ABOVE RULES!
         return Solution(solution_markdown=result.get('output'))
       #  return result.get("output", "[]")
 
-    def solve_questions(self, questions: Questions, images: list[str]) -> list[Solution]:
+    def solve_questions(self, questions: Questions, images: list[str], instructions: str) -> list[Solution]:
         with ThreadPoolExecutor(max_workers=3) as executor:
             # Start all tasks and mark each future with its question index
-            futures = [executor.submit(self.solve_question, question, images) for question in questions.questions_or_tasks]
+            futures = [executor.submit(self.solve_question, question, images, instructions) for question in questions.questions_or_tasks]
             # Collect results as they complete
             results = [future.result() for future in as_completed(futures)]
         return results
@@ -316,7 +325,7 @@ if __name__ == "__main__":
     )
     questions, images = solver.extract_questions("/home/zain/Documents/test.txt")
     print(questions)
-    solutions = solver.solve_questions(questions, images)
+    solutions = solver.solve_questions(questions, images, "")
     md_answer = solver.format_solution(questions, solutions)
     b = solver.markdown_to_docx(md_answer)
     with open("answer.docx", "wb") as fp:

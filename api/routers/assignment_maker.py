@@ -9,21 +9,27 @@ from api.lib.assignment_solver import AssignmentSolver
 from api.lib.tools import SearchImage, SearchTool, ScholarlySearchRun, RequestsGetTool, make_uml_diagram, make_vega_graph, make_graphviz_graph
 from fastapi import APIRouter, Response, UploadFile, Depends, HTTPException
 from api.globals import SEARCHX_HOST, get_model_and_fallback, plantuml_server, redis_cache_manager, client, subscription_manager
-from api.lib.uml_diagram_maker import AIPlantUMLGenerator
 from ..auth import get_user_id, verify_play_integrity
 from langchain.utilities.searx_search import SearxSearchWrapper
 from langchain.utilities.requests import TextRequestsWrapper
 from langchain_core.tools import tool
 from api.lib.database.purchases import SubscriptionType
+from fastapi import File
+from pydantic import BaseModel
 
 
 router = APIRouter()
 
 
+class AssignmentSubmission(BaseModel):
+    instructions: str
+    file: UploadFile = File(...)
+    
 @router.post("/solve")
 @require_points_for_feature("ASSIGNMENT")
 def solve_assignment(
     file: UploadFile,
+    instructions: str,
     user_id: str = Depends(get_user_id),
     play_integrity_verified = Depends(verify_play_integrity)
 ):
@@ -31,25 +37,6 @@ def solve_assignment(
         raise HTTPException(status_code=400, detail="You must be subscribed to pro or elite to use this feature.")
     solver_llm, _ = get_model_and_fallback({"temperature" : 0}, False, True, alt=True)
     extractor_llm, _ = get_model_and_fallback({"temperature" : 0}, False, True, alt=True)
-    
-    @tool
-    def uml_tool(detailed_instructions: str):
-        """ Used to make uml diagrams using AI. returns a link"""
-        logging.info(f"Making uml diagram on {detailed_instructions}")
-        uml_maker = AIPlantUMLGenerator(extractor_llm, generator=plantuml_server)
-        logging.info(f"UML request from {user_id}, Data: {detailed_instructions}")
-        try:
-            return make_uml_diagram(
-                **{
-                    "uml_maker": uml_maker,
-                    "prompt": detailed_instructions,
-                    "cache_manager": redis_cache_manager,
-                    "url_template": CACHE_DOCUMENT_URL_TEMPLATE,
-                }
-            )
-        except Exception as e:
-            logging.error(f"Error in uml diagram {e}")
-            return f"Error in uml diagram {e}"
 
     @tool
     def make_graph(vega_lite_spec: str):
@@ -133,7 +120,7 @@ Try to run all the code at once
                 raise HTTPException(detail="Invalid file/ File has no questions.")
             logging.info(f"Questions extracted, count: {len(questions.questions_or_tasks)}")
             
-            solutions = solver.solve_questions(questions, images)
+            solutions = solver.solve_questions(questions, images, instructions=instructions)
             logging.info(f"Questions solved")
 
             md_answer = solver.format_solution(questions, solutions)

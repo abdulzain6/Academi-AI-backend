@@ -22,6 +22,7 @@ RUN apt-get update && \
     fonts-noto \
     graphviz \
     ffmpeg \
+    libreoffice \
     && apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
