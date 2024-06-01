@@ -81,23 +81,34 @@ def make_cv(
     if not cv_maker.get_template_by_name(cv_input.template_name):
         raise HTTPException(400, detail="CV Template does not exist")
 
-    with tempfile.NamedTemporaryFile(delete=True, suffix=".png", mode='w+b') as tmp_file:
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf", mode='w+b') as tmp_file:
         try:
             tmp_file_path = tmp_file.name
+            logging.info(f"Temp file path: {tmp_file_path}")
             output_file_name = os.path.basename(tmp_file_path)
             output_file_directory = os.path.dirname(tmp_file_path)
         
             if cv_input.input_dict:
-                cv_maker.make_cv(cv_input.template_name, cv_input.input_dict, output_file_path=output_file_directory, output_file_name=output_file_name)
+                cv_maker.make_cv(
+                    cv_input.template_name,
+                    cv_input.input_dict,
+                    output_file_path=output_file_directory,
+                    output_file_name=output_file_name,
+                    pdf=True
+                )
             else:
-                cv_maker.make_cv_from_string(cv_input.template_name, cv_input.data_str, output_file_path=output_file_directory, output_file_name=output_file_name)
+                cv_maker.make_cv_from_string(
+                    cv_input.template_name,
+                    cv_input.data_str,
+                    output_file_path=output_file_directory,
+                    output_file_name=output_file_name,
+                    pdf=True
+                )
             
-            pdf_bytes = image_to_pdf_in_memory(tmp_file_path)
-            pdf_base64 = base64.b64encode(pdf_bytes).decode()
-
-            with open(tmp_file_path, "rb") as image_file:
-                image_base64 = base64.b64encode(image_file.read()).decode()
-
-            return {"pdf": pdf_base64, "image": image_base64}
+            with open(tmp_file_path, "rb") as pdf_file:
+                pdf_base64 = base64.b64encode(pdf_file.read()).decode()
+                
+            return {"pdf": pdf_base64}
         finally:
-            background_tasks.add_task(delete_temp_file, tmp_file_path)
+            ...
+            #background_tasks.add_task(delete_temp_file, tmp_file_path)

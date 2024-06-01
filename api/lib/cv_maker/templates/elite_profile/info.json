@@ -1,0 +1,7 @@
+{
+    "name" : "Elite Profile",
+    "path" : "index.html",
+    "css_path" : "styles.css",
+    "size" : [800, 1000],
+    "element_id" : "save"
+}

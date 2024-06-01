@@ -1,7 +1,11 @@
 import json, jsonschema
+import subprocess
+import os
+import tempfile
 import logging
 from pathlib import Path
 from jinja2 import Environment, FileSystemLoader, select_autoescape
+from pypdf import PdfReader, PdfWriter
 from .template import ResumeTemplate
 from html2image import Html2Image
 from langchain.chat_models.base import BaseChatModel
@@ -15,10 +19,12 @@ class CVMaker:
         templates: list[ResumeTemplate],
         chrome_path: str,
         chat_model: BaseChatModel,
+        wkhtmltopdf_path: str = '/usr/bin/wkhtmltopdf'
     ) -> None:
         self.templates = templates
         self.chrome_path = chrome_path
         self.chat_model = chat_model
+        self.wkhtmltopdf_path = wkhtmltopdf_path
 
     def get_template_names(self) -> list[str]:
         return [template.name for template in self.templates]
@@ -69,8 +75,9 @@ class CVMaker:
         self,
         template_name: str,
         string: str,
-        output_file_path: str = "/tmp",
-        output_file_name: str = "cv.png",
+        output_file_path: str,
+        output_file_name: str,
+        pdf: bool = False
     ):
         template = self.get_template_by_name(template_name)
         chain = LLMChain(
@@ -109,14 +116,16 @@ The json with no missing fields and schema followed:"""
             input_dict,
             output_file_path=output_file_path,
             output_file_name=output_file_name,
+            pdf=pdf
         ), self.find_empty_or_placeholder_keys(input_dict)
 
     def make_cv(
         self,
         template_name: str,
         template_input: dict,
-        output_file_path: str = "/tmp",
-        output_file_name: str = "cv.png",
+        output_file_path: str,
+        output_file_name: str,
+        pdf: bool = False
     ) -> str:
         if template_name not in self.get_template_names():
             raise ValueError("Template does not exist")
@@ -137,13 +146,21 @@ The json with no missing fields and schema followed:"""
         )
         template_jinga = env.get_template(file_name)
         resume_html = template_jinga.render(template_input)
-        return self.html_to_image(
-            resume_html,
-            Path(template.css_path).read_text(),
-            output_file_path=output_file_path,
-            size=template.size,
-            file_name=output_file_name,
-        )
+        if not pdf:
+            return self.html_to_image(
+                resume_html,
+                Path(template.css_path).read_text(),
+                output_file_path=output_file_path,
+                size=template.size,
+                file_name=output_file_name,
+            )
+        else:
+            return self.html_to_pdf(
+                resume_html,
+                Path(template.css_path).read_text(),
+                output_file_path=output_file_path,
+                file_name=output_file_name,
+            )
 
     def html_to_image(
         self,
@@ -169,6 +186,46 @@ The json with no missing fields and schema followed:"""
         )
         hti.output_path = output_file_path
         return hti.screenshot(html_str=html, css_str=css, save_as=file_name)
+    
+    def html_to_pdf(self, html: str, css: str, output_file_path: str, file_name: str) -> None:
+        # Create a temporary HTML file
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".html", mode='w+', encoding='utf-8') as temp_html_file:
+            temp_html_file.write(html)
+            html_file_path = temp_html_file.name
+
+        # Create a temporary CSS file
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".css", mode='w+', encoding='utf-8') as temp_css_file:
+            temp_css_file.write(css)
+            css_file_path = temp_css_file.name
+
+        # Define the output PDF path
+        output_pdf_path = os.path.join(output_file_path, file_name)
+
+        # Prepare the wkhtmltopdf command to convert HTML to PDF with CSS
+        command = [
+            self.wkhtmltopdf_path,
+            '--user-style-sheet', css_file_path,
+            '--javascript-delay', '3000',  # Wait 2000 milliseconds (2 seconds)
+            html_file_path,
+            output_pdf_path
+        ]
+
+        # Execute the command
+        subprocess.run(command, check=False)
+        reader = PdfReader(output_pdf_path)
+        writer = PdfWriter()
+
+        # Add only the first page
+        if len(reader.pages) > 0:
+            writer.add_page(reader.pages[0])
+
+        # Cleanup: Remove the temporary files after conversion
+        os.remove(html_file_path)
+        os.remove(css_file_path)
+        with open(output_pdf_path, 'wb') as f:
+            writer.write(f)
+
+        print(f"PDF generated at {output_pdf_path}")
 
 
 if __name__ == "__main__":

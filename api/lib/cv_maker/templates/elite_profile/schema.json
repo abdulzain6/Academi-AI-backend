@@ -1,0 +1,148 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+        "resume_data": {
+            "type": "object",
+            "properties": {
+                "applicant_name": {
+                    "type": "string"
+                },
+                "applicant_position": {
+                    "type": "string"
+                },
+                "contact": {
+                    "type": "object",
+                    "properties": {
+                        "location": {
+                            "type": "string"
+                        },
+                        "phone": {
+                            "type": "string"
+                        },
+                        "email": {
+                            "type": "string"
+                        },
+                        "website": {
+                            "type": "string"
+                        },
+                        "github": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "email"
+                    ]
+                },
+                "skills": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "technologies": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "professional_summary": {
+                    "type": "string"
+                },
+                "experiences": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "title": {
+                                "type": "string"
+                            },
+                            "company": {
+                                "type": "string"
+                            },
+                            "start_date": {
+                                "type": "string",
+                                "format": "date"
+                            },
+                            "end_date": {
+                                "type": "string",
+                                "format": "date"
+                            },
+                            "responsibilities": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "required": [
+                            "title",
+                            "company",
+                            "start_date",
+                            "end_date",
+                            "responsibilities"
+                        ]
+                    }
+                },
+                "educations": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "degree": {
+                                "type": "string"
+                            },
+                            "institution": {
+                                "type": "string"
+                            },
+                            "period": {
+                                "type": "string"
+                            },
+                            "additional_info": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "degree",
+                            "institution",
+                            "period"
+                        ]
+                    }
+                },
+                "references": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            },
+                            "company": {
+                                "type": "string"
+                            },
+                            "email": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "name",
+                            "company",
+                            "email"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "applicant_name",
+                "contact",
+                "skills",
+                "professional_summary",
+                "experiences",
+                "educations"
+            ]
+        }
+    },
+    "required": [
+        "resume_data"
+    ]
+}

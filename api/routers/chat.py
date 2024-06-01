@@ -387,9 +387,6 @@ def chat_general_stream(
     )
     data_queue = queue.Queue()
 
-    random_template = timed_random_choice(
-        CVMaker.get_all_templates_static(template_loader())
-    )
     class WriterArgs(OldBaseModel):
         topic: str = OldField(
             None,
@@ -427,18 +424,6 @@ def chat_general_stream(
     class MakeSubjectArgs(OldBaseModel):
         name: str = OldField(description="Name of the subject to create")
         description: str = OldField(description="Description of the subject to create")
-
-    class MakeCVArgs(OldBaseModel):
-        cv_details_text: str = OldField(
-            "random CV",
-            description="Details of the CV formatted as short text, it must have the following user details ask them if needed:\n "
-            + extract_schema_fields(random_template["schema"]),
-        )
-
-    class MakeUMLArgs(OldBaseModel):
-        detailed_instructions: str = OldField(
-            "random diagram", description="Details of the diagram to make"
-        )
 
     class ReadDataArgs(OldBaseModel):
         query: str = OldField("all", description="What you want to search")
@@ -579,58 +564,6 @@ File Content:
         except Exception as e:
             logging.error(f"Error in ppt {e}")
             return f"Error in ppt {e}"
-
-    def make_uml_digram(detailed_instructions: str):
-        logging.info(f"Making uml diagram on {detailed_instructions}")
-        model_name, premium_model = can_use_premium_model(user_id=user_id)
-        model = get_model({"temperature": 0}, False, premium_model, alt=True)
-        uml_maker = AIPlantUMLGenerator(model, generator=plantuml_server)
-        logging.info(f"UML request from {user_id}, Data: {detailed_instructions}")
-        try:
-            return deduct_points_for_feature(
-                user_id,
-                make_uml_diagram,
-                func_kwargs={
-                    "uml_maker": uml_maker,
-                    "prompt": detailed_instructions,
-                    "cache_manager": redis_cache_manager,
-                    "url_template": CACHE_DOCUMENT_URL_TEMPLATE,
-                },
-                feature_key="UML",
-                usage_key="UML",
-            )
-        except Exception as e:
-            logging.error(f"Error in uml diagram {e}")
-            return f"Error in uml diagram {e}"
-
-    def make_cv(string: str, template_name: str):
-        if not string:
-            string = "Make a random cv"
-        logging.info(f"Making cv for text {string}")
-        model_name, premium_model = can_use_premium_model(user_id=user_id)
-        model = get_model({"temperature": 0}, False, premium_model, alt=True)
-        cv_maker = CVMaker(
-            templates=template_loader(),
-            chrome_path="/usr/bin/google-chrome",
-            chat_model=model,
-        )
-        try:
-            return deduct_points_for_feature(
-                user_id,
-                make_cv_from_string,
-                func_kwargs={
-                    "cv_maker": cv_maker,
-                    "template_name": template_name,
-                    "cache_manager": redis_cache_manager,
-                    "url_template": CACHE_DOCUMENT_URL_TEMPLATE,
-                    "string": string + "\n Make things up if needed keep it detailed.",
-                },
-                feature_key="CV",
-                usage_key="CV",
-            )
-        except Exception as e:
-            logging.error(f"Error in cv generation {e}")
-            return f"Error in cv generation {e}"
 
     def make_graph(vega_lite_spec: str):
         if not vega_lite_spec:
@@ -897,23 +830,6 @@ File Content:
             name="make_vega_lite_graph",
             description="Used to make graphs using vega lite. Takes in a vega lite spec in json format.",
             #args_schema=MakeGraphArgs,
-        ),
-        StructuredTool.from_function(
-            func=lambda *args, **kwargs: make_cv(
-                template_name=random_template["name"],
-                string=args[0] if args else kwargs.get("cv_details_text"),
-            ),
-            name="make_cv",
-            description="Used to make a cv/ resume, Ask the user for details if needed. You can make things up except for the image url",
-            args_schema=MakeCVArgs,
-        ),
-        StructuredTool.from_function(
-            func=lambda detailed_instructions="Random", *args, **kwargs: make_uml_digram(
-                detailed_instructions=detailed_instructions
-            ),
-            name="make_uml_diagram",
-            description="Used to make uml diagrams using AI",
-            args_schema=MakeUMLArgs,
         ),
         StructuredTool.from_function(
             func=lambda topic, instructions="", number_of_pages=5, negative_prompt="", *args, **kwargs: make_presentation(
