@@ -62,7 +62,7 @@ def make_quiz(
         data = f"Make quiz about '{quiz_input.collection_name}' if the term doesnt make sense make general quiz on the world. Ignore spelling mistakes"
     
     model_name, premium_model = use_feature_with_premium_model_check(user_id=user_id, feature_name="QUIZ")     
-    model = get_model({"temperature": 0}, False, premium_model, alt=True)    
+    model = get_model({"temperature": 0}, False, premium_model, alt=False)    
     quiz_generator = QuizGenerator(
         file_manager,
         None,
@@ -95,7 +95,7 @@ def evaluate_quiz(
     play_integrity_verified=Depends(verify_play_integrity),
 ):
     logging.info(f"Got quiz evaluation request, {user_id}... Input: {user_answers}")
-    model = get_model({"temperature": 0}, False, False, alt=True)
+    model = get_model({"temperature": 0}, False, False, alt=False)
     quiz_generator = QuizGenerator(
         file_manager,
         None,
@@ -148,7 +148,7 @@ def make_flashcards(
         data = f"Make flashcards about '{fc_input.collection_name}' if the term doesnt make sense make general flashcards on the world. Ignore spelling issues"
     
     model_name, premium_model = can_use_premium_model(user_id=user_id)     
-    model = get_model({"temperature": 0}, False, premium_model, alt=True)
+    model = get_model({"temperature": 0}, False, premium_model, alt=False)
     
     quiz_generator = QuizGenerator(
         file_manager,
