@@ -27,9 +27,9 @@ from langchain.callbacks.manager import (
     CallbackManagerForToolRun,
 )
 from PIL import Image
-from langchain.utilities.requests import TextRequestsWrapper
+from langchain_community.utilities.requests import TextRequestsWrapper
 from bs4 import BeautifulSoup
-from langchain.utilities.searx_search import SearxSearchWrapper
+from langchain_community.utilities.searx_search import SearxSearchWrapper
 from api.lib.utils import convert_youtube_url_to_standard, format_url
 from api.routers.utils import image_to_pdf_in_memory
 from api.lib.cv_maker.cv_maker import CVMaker

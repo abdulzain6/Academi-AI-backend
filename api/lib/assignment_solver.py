@@ -135,10 +135,10 @@ FOLLOW ALL ABOVE RULES!
         return Solution(solution_markdown=result.get('output'))
       #  return result.get("output", "[]")
 
-    def solve_questions(self, questions: Questions, images: list[str], instructions: str) -> list[Solution]:
+    def solve_questions(self, questions: Questions, images: list[str], instructions: str, max_questions: int = 10) -> list[Solution]:
         with ThreadPoolExecutor(max_workers=3) as executor:
             # Start all tasks and mark each future with its question index
-            futures = [executor.submit(self.solve_question, question, images, instructions) for question in questions.questions_or_tasks]
+            futures = [executor.submit(self.solve_question, question, images, instructions) for question in questions.questions_or_tasks[:max_questions]]
             # Collect results as they complete
             results = [future.result() for future in as_completed(futures)]
         return results

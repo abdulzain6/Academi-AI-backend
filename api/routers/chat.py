@@ -58,9 +58,9 @@ from openai import OpenAIError
 from langchain.tools import StructuredTool
 from langchain.pydantic_v1 import BaseModel as OldBaseModel
 from langchain.pydantic_v1 import Field as OldField
-from langchain.utilities.searx_search import SearxSearchWrapper
+from langchain_community.utilities.searx_search import SearxSearchWrapper
 from langchain_community.tools.youtube.search import YouTubeSearchTool
-from langchain.utilities.requests import TextRequestsWrapper
+from langchain_community.utilities.requests import TextRequestsWrapper
 from langchain.schema import Document
 
 import redis

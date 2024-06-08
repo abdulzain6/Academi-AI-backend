@@ -1,9 +1,10 @@
 import logging
 from fastapi import APIRouter, Depends, HTTPException, Response
+
+from api.lib.diagram_maker import DiagramMaker
 from ..auth import get_user_id, verify_play_integrity
-from ..lib.uml_diagram_maker import AIPlantUMLGenerator
-from ..dependencies import require_points_for_feature, can_use_premium_model, get_model
-from ..globals import plantuml_server
+from ..dependencies import require_points_for_feature, can_use_premium_model, get_model_and_fallback
+from ..globals import plantuml_server, mermaid_client
 
 router = APIRouter()
 
@@ -15,12 +16,12 @@ def make_uml(
     play_integrity_verified=Depends(verify_play_integrity),
 ):     
     model_name, premium_model = can_use_premium_model(user_id=user_id)     
-    model = get_model({"temperature": 0}, False, premium_model, alt=True, cache=False)
-    uml_maker = AIPlantUMLGenerator(model, generator=plantuml_server)
+    model, _ = get_model_and_fallback({"temperature": 0}, False, premium_model, alt=False)
+    diagram_maker = DiagramMaker(mermaid_client, model, plantuml_server)
     logging.info(f"UML request from {user_id}, Data: {prompt}")
     
     try:
-        img_bytes = uml_maker.run(prompt)
+        img_bytes = diagram_maker.make_diagram(prompt)
         return Response(content=img_bytes, media_type="image/png")
     except Exception as e:
         logging.error(f"Error in making uml diagram {e}")

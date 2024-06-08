@@ -5,7 +5,7 @@ from fastapi import Depends, HTTPException, status
 from ..auth import get_user_id, verify_play_integrity
 from ..globals import file_manager, collection_manager
 from pydantic import BaseModel
-from ..dependencies import get_model, require_points_for_feature, can_use_premium_model, use_feature_with_premium_model_check
+from ..dependencies import get_model, require_points_for_feature, can_use_premium_model, use_feature_with_premium_model_check, get_model_and_fallback
 from ..lib.quiz import QuizGenerator, UserResponse
 from .utils import select_random_chunks
 import logging
@@ -148,7 +148,7 @@ def make_flashcards(
         data = f"Make flashcards about '{fc_input.collection_name}' if the term doesnt make sense make general flashcards on the world. Ignore spelling issues"
     
     model_name, premium_model = can_use_premium_model(user_id=user_id)     
-    model = get_model({"temperature": 0}, False, premium_model, alt=True)
+    model, fallback = get_model_and_fallback({"temperature": 0}, False, premium_model, alt=True)
     
     quiz_generator = QuizGenerator(
         file_manager,

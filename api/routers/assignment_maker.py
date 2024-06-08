@@ -10,8 +10,8 @@ from api.lib.tools import SearchImage, SearchTool, ScholarlySearchRun, RequestsG
 from fastapi import APIRouter, Response, UploadFile, Depends, HTTPException
 from api.globals import SEARCHX_HOST, get_model_and_fallback, plantuml_server, redis_cache_manager, client, subscription_manager
 from ..auth import get_user_id, verify_play_integrity
-from langchain.utilities.searx_search import SearxSearchWrapper
-from langchain.utilities.requests import TextRequestsWrapper
+from langchain_community.utilities.searx_search import SearxSearchWrapper
+from langchain_community.utilities.requests import TextRequestsWrapper
 from langchain_core.tools import tool
 from api.lib.database.purchases import SubscriptionType
 from fastapi import File
@@ -115,9 +115,14 @@ Try to run all the code at once
             tmp_file.write(file.file.read())
             tmp_file_path = tmp_file.name
             
-            questions, images = solver.extract_questions(tmp_file_path)
+            try:
+                questions, images = solver.extract_questions(tmp_file_path)
+            except AssertionError as e:
+                raise HTTPException(status_code=400, detail=str(e))
+            
             if not images or not questions:
                 raise HTTPException(detail="Invalid file/ File has no questions.")
+            
             logging.info(f"Questions extracted, count: {len(questions.questions_or_tasks)}")
             
             solutions = solver.solve_questions(questions, images, instructions=instructions)
@@ -131,6 +136,11 @@ Try to run all the code at once
             os.remove(tmp_file_path)
         except Exception:
             pass
+        
+    except HTTPException as e:
+        logging.error(f"Error in assignment maker: {e}")
+        raise e
+    
     except Exception as e:
         logging.error(f"Error in assignment maker: {e}")
         raise HTTPException(status_code=400, detail="Something went wrong, Try again later")
