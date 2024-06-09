@@ -144,7 +144,7 @@ def chat_collection_stream(
 
     model_name, premium_model = can_use_premium_model(user_id=user_id)
     model_default, model_fallback = get_model_and_fallback(
-        {"temperature": 0.3}, True, premium_model, alt=True, together_chat=True
+        {"temperature": 0.3}, True, premium_model, alt=True
     )
     data_queue = queue.Queue()
 
@@ -272,7 +272,7 @@ def chat_file_stream(
 
     model_name, premium_model = can_use_premium_model(user_id=user_id)
     model_default, model_fallback = get_model_and_fallback(
-        {"temperature": 0.3}, True, premium_model, alt=True, together_chat=True
+        {"temperature": 0.3}, True, premium_model, alt=True
     )
     data_queue = queue.Queue()
 
@@ -527,7 +527,7 @@ File Content:
         except Exception:
             return "Limit reached user cannot make more ppts"
 
-        llm = get_model({"temperature": 0.3}, False, premium_model, alt=True)
+        llm = get_model({"temperature": 0.3}, False, premium_model, alt=True, json_mode=True)
         ppt_pages = (
             subscription_manager.get_feature_value(user_id, "ppt_pages").main_data or 12
         )

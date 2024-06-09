@@ -183,6 +183,6 @@ The notes in proper format (Failure causes big error):"""
             ],
             partial_variables={"format_instructions" : parser.get_format_instructions()}
         )
-        chain = LLMChain(prompt=prompt, output_parser=parser, llm=self.llm, llm_kwargs={"response_format": {"type": "json_object"}})
+        chain = LLMChain(prompt=prompt, output_parser=parser, llm=self.llm)
         notes: InputData = chain.run(data=string, instructions=instructions)
         return self.make_notes(notes.notes, notes.notes_metadata)

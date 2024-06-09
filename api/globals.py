@@ -21,7 +21,6 @@ from .lib.database.purchases import (
 )
 from langchain.chat_models.base import BaseChatModel
 from .lib.database.cache_manager import RedisCacheManager
-from .lib.database.rotating_redis_list import RotatingRedisList
 from .lib.knowledge_manager import (
     KnowledgeManager,
     ChatManagerRetrieval,
@@ -45,7 +44,6 @@ from azure.core.credentials import AzureKeyCredential
 from .lib.email_integrity_checker import EmailIntegrityChecker
 from .lib.mermaid_maker import MermaidClient
 from .lib.embeddings import TogetherEmbeddingsParallel
-from langchain_groq import ChatGroq
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 
@@ -67,11 +65,6 @@ try:
     redis_cache_manager = RedisCacheManager(redis.from_url(REDIS_URL))
 except Exception:
     redis_cache_manager = RedisCacheManager(None)
-    
-try:
-    rotating_list = RotatingRedisList(redis.from_url(REDIS_URL), "api_keys", GROQ_API_KEYS)
-except Exception:
-    rotating_list = RotatingRedisList(None, "api_keys", GROQ_API_KEYS)
 
 global_chat_model = AIModel(
     regular_model=ChatOpenAI,
@@ -81,8 +74,8 @@ global_chat_model = AIModel(
 )
 
 global_chat_model_alternative = AIModel(
-    regular_model=ChatOpenAI,
-    regular_args={"api_key" : os.getenv("TOGETHER_API_KEY") ,"base_url" : "https://api.together.xyz/v1", "request_timeout": 60, "model_name" : "mistralai/Mixtral-8x7B-Instruct-v0.1", "max_retries" : 1},
+    regular_model=ChatGoogleGenerativeAI,
+    regular_args={"request_timeout": 60, "model" : "gemini-1.5-flash-latest", "max_retries" : 2},
     premium_model=ChatOpenAI,
     premium_args={"model": "gpt-4o", "request_timeout": 60, "max_retries": 4},
 )
@@ -106,19 +99,36 @@ fallback_chat_models = [
 
 
 
-def create_model(model_class: AIModel, premium: bool, model_kwargs: dict, together_chat: bool =  False) -> BaseChatModel:
+def create_model(model_class: AIModel, premium: bool, model_kwargs: dict, json_mode: bool = False) -> BaseChatModel:
     model_type = 'premium' if premium else 'regular'
     args = getattr(model_class, f"{model_type}_args")
-    if getattr(model_class, f"{model_type}_model") is ChatGroq:
-        key = rotating_list.get_item()
-        logging.info(f"Using {key} for groq")
-        args["groq_api_key"] = key
-    return getattr(model_class, f"{model_type}_model")(**args, **model_kwargs)
+    model =  getattr(model_class, f"{model_type}_model")(**args, **model_kwargs)
+    if json_mode:
+        return set_json_mode(model)
+    return model
 
 def set_model_attributes(model: BaseChatModel, attributes: dict):
     for k, v in attributes.items():
         with suppress(Exception):
             setattr(model, k, v)
+
+def set_json_mode(model: BaseChatModel):
+    if isinstance(model, ChatOpenAI):
+        return model.bind(response_format={"type": "json_object"})
+    elif isinstance(model, ChatGoogleGenerativeAI):
+        return model.bind(generation_config={"response_mime_type": "application/json"})
+    else:
+        return model
+    
+def set_fallbacks(model, fallbacks):
+    from langchain_core.runnables.fallbacks import RunnableWithFallbacks
+    return RunnableWithFallbacks(
+        runnable=model,
+        fallbacks=fallbacks,
+        exceptions_to_handle=(Exception, ),
+        exception_key=None,
+    )
+        
 
 def get_model(
     model_kwargs: dict,
@@ -126,33 +136,33 @@ def get_model(
     is_premium: bool,
     alt: bool = False,
     cache: bool = True,
-    together_chat: bool = False
+    json_mode: bool = False
 ) -> BaseChatModel:
     args = {**model_kwargs, "streaming": stream, "cache": cache}
     model_class = global_chat_model_alternative if alt else global_chat_model
-    model = create_model(model_class, is_premium, args, together_chat)
+    model = create_model(model_class, is_premium, args, json_mode=json_mode)
     set_model_attributes(model, args)
 
     fallbacks = []
     for fallback in fallback_chat_models:
         try:
-            fallback_model = create_model(fallback, is_premium, args, together_chat)
+            fallback_model = create_model(fallback, is_premium, args, json_mode=json_mode)
             set_model_attributes(fallback_model, args)
             fallbacks.append(fallback_model)
         except Exception as e:
             logging.error(f"Error in fallback {e}")
 
-    return model.with_fallbacks(fallbacks=fallbacks)
+    return set_fallbacks(model, fallbacks)
 
 def get_model_and_fallback(
-    model_kwargs: dict, stream: bool, is_premium: bool, alt: bool = False, together_chat: bool =  False
+    model_kwargs: dict, stream: bool, is_premium: bool, alt: bool = False
 ):
     model_kwargs = {**model_kwargs, "streaming": stream}
     model_class = global_chat_model_alternative if alt else global_chat_model
     fallback_class = fallback_chat_models[-1]
 
-    model = create_model(model_class, is_premium, model_kwargs, together_chat=together_chat)
-    fallback_model = create_model(fallback_class, is_premium, model_kwargs, together_chat=together_chat)
+    model = create_model(model_class, is_premium, model_kwargs)
+    fallback_model = create_model(fallback_class, is_premium, model_kwargs)
 
     set_model_attributes(model, model_kwargs)
     set_model_attributes(fallback_model, model_kwargs)

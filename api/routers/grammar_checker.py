@@ -21,6 +21,6 @@ def check_grammar(
         raise HTTPException(400, detail="Text cannot be above 4500 characters")
     
     model_name, premium_model = can_use_premium_model(user_id=user_id)
-    model = get_model({"temperature": 0.2}, False, premium_model, alt=True, cache=False)
+    model = get_model({"temperature": 0.2}, False, premium_model, alt=True, cache=False, json_mode=True)
     grammar_checker = GrammarChecker(model)
     return grammar_checker.check_grammar(input.text)

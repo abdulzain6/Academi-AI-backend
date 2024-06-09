@@ -103,11 +103,11 @@ def make_notes(
 
     model_name, premium_model = can_use_premium_model(user_id=user_id)
     if notes_input.template_name == "Text Notes":
-        chat = True
+        json_mode = False
     else:
-        chat = False
+        json_mode = True
 
-    model = get_model({"temperature": 0.2}, False, premium_model, alt=True, together_chat=chat)
+    model = get_model({"temperature": 0.2}, False, premium_model, alt=True, json_mode=json_mode)
 
     try:
         notes_maker = make_notes_maker(notes_input.template_name, llm=model)

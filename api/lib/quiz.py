@@ -1,6 +1,6 @@
-from enum import Enum
 import uuid
 
+from enum import Enum
 from .database import FileDBManager
 from .knowledge_manager import KnowledgeManager
 from langchain.chains import LLMChain
@@ -15,8 +15,7 @@ from langchain.pydantic_v1 import BaseModel, Field
 from pydantic import BaseModel as RealBaseModel
 from pydantic import BaseModel, Field
 from retrying import retry
-from langchain.output_parsers import PydanticOutputParser, OutputFixingParser, RetryWithErrorOutputParser
-from openai import BadRequestError
+from langchain.output_parsers import PydanticOutputParser, OutputFixingParser
 from typing import List, Literal
 
 class Option(BaseModel):
@@ -219,13 +218,11 @@ THe quiz in json with {number_of_questions} questions be brief:"""
             prompt=prompt_template,
             output_parser=parser,
             llm=self.llm,
-            llm_kwargs={"response_format": {"type": "json_object"}}
         )
         questions = chain.run(
             data=data or f"Use your knowledge to generate the quiz about '{collection_name}' Description : {collection_description}. if you dont know about the term, make a general quiz",
             number_of_questions=min(number_of_questions, maximum_questions),
             fotmat_instructions=fotmat_instructions,
-          #  llm_kwargs={"stop" : ["[/INST]","</s>"]}
         ).questions
         
         questions_response = []
@@ -240,7 +237,6 @@ THe quiz in json with {number_of_questions} questions be brief:"""
                 )
             )
         return questions_response
-    
 
     def format_user_responses(self, responses: List[UserResponse]) -> str:
         formatted_responses = []
@@ -331,7 +327,6 @@ The generated flashcards in proper schema. You must follow the schema and return
             prompt=prompt_template,
             output_parser=parser,
             llm=self.llm,
-            llm_kwargs={"response_format": {"type": "json_object"}}
         )
         flashcards = self.run_chain_fc(
             chain,
@@ -342,7 +337,7 @@ The generated flashcards in proper schema. You must follow the schema and return
         return flashcards[:number_of_flashcards]
 
     @retry(stop_max_attempt_number=3)
-    def evaluate_quiz(self, user_answers: list[UserResponse], use_schema: bool = True) -> Result:
+    def evaluate_quiz(self, user_answers: list[UserResponse]) -> Result:
         parser = PydanticOutputParser(pydantic_object=QuestionResults)
         parser = OutputFixingParser.from_llm(parser=parser, llm=self.llm)
 
@@ -398,36 +393,18 @@ The result for the quiz, You must follow the schema(Important):
                 )
 
             results.append(result)
-
-        try:
-            if not use_schema:
-                raise ValueError()
             
-            chain = LLMChain(
-                prompt=prompt_template,
-                output_parser=parser,
-                llm=self.llm,
-                llm_kwargs={"response_format": {"type": "json_object"}}     
-            )
-            if short_answers:
-                short_answer_result: list[QuestionResult] = chain.run(
-                    data=self.format_user_responses(short_answers) or "",
-                    format_instruction=""
-                ).results
-                results.extend(short_answer_result)
-                
-        except (ValueError, BadRequestError) as e:
-            chain = LLMChain(
-                prompt=prompt_template,
-                output_parser=parser,
-                llm=self.llm,
-            )
-            if short_answers:
-                short_answer_result: list[QuestionResult] = chain.run(
-                    data=self.format_user_responses(short_answers),
-                    format_instructions=format_instruction
-                ).results
-                results.extend(short_answer_result)
+        chain = LLMChain(
+            prompt=prompt_template,
+            output_parser=parser,
+            llm=self.llm
+        )
+        if short_answers:
+            short_answer_result: list[QuestionResult] = chain.run(
+                data=self.format_user_responses(short_answers) or "",
+                format_instructions=format_instruction
+            ).results
+            results.extend(short_answer_result)
 
         results = [result for result in results if result.question_id in incoming_ids]
         (

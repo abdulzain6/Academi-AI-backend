@@ -217,7 +217,6 @@ THe sequence in proper schema (Only pick slide types from what is shown to you):
             prompt=prompt,
             llm=self.llm,
             output_parser=parser,
-            llm_kwargs={"response_format": {"type": "json_object"}}
         )
         return chain.run(
             topic=presentation_input.topic,
@@ -467,7 +466,6 @@ The placeholders following the schema:"""
             prompt=prompt,
             llm=self.llm,
             output_parser=parser,
-            llm_kwargs={"response_format": {"type": "json_object"}}
         )
         placeholders: Placeholders = chain.run(
             placeholders=self.format_placeholders(slide.placeholders, True),

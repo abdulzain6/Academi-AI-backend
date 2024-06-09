@@ -60,7 +60,7 @@ The issues in proper format (Failure causes big error):"""
             ],
             partial_variables={"format_instructions" : parser.get_format_instructions()}
         )
-        chain = LLMChain(prompt=prompt, llm=self.llm, output_parser=parser, llm_kwargs={"response_format": {"type": "json_object"}})
+        chain = LLMChain(prompt=prompt, llm=self.llm, output_parser=parser)
         for _ in range(3):
             try:
                 issues: GrammarIssues = chain.run(data=text)

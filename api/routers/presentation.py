@@ -75,7 +75,7 @@ def make_presentation(
     play_integrity_verified=Depends(verify_play_integrity),
 ):
     model_name, premium_model = use_feature_with_premium_model_check("PRESENTATION", user_id=user_id)
-    llm = get_model({"temperature": 0}, False, premium_model, cache=False, alt=False)
+    llm = get_model({"temperature": 0}, False, premium_model, cache=False, alt=True, json_mode=True)
     if val := subscription_manager.get_feature_value(user_id, "ppt_pages"):   
         ppt_pages = val.main_data
     else:
