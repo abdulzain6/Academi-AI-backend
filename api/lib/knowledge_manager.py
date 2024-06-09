@@ -464,7 +464,7 @@ class ChatManagerRetrieval:
         self.ai_name = ai_name
         self.qdrant_collection_name = qdrant_collection_name
         self.client = QdrantClient(
-            url=self.qdrant_url, api_key=self.qdrant_api_key, prefer_grpc=True, timeout=15
+            url=self.qdrant_url, api_key=self.qdrant_api_key, prefer_grpc=True, timeout=7
         )
 
     def query_data(

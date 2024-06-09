@@ -1,18 +1,23 @@
+from io import BytesIO
 from typing import Optional
 from langchain_google_genai import ChatGoogleGenerativeAI, HarmBlockThreshold, HarmCategory
 from langchain.schema import HumanMessage
+import base64
+from PIL import Image
+
 
 
 class ImageOCR:        
     def gemini_ocr(self, image_path: str) -> str:
-        llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash-latest", safety_settings = {
-            HarmCategory.HARM_CATEGORY_UNSPECIFIED: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-        })
-        return llm.invoke(
+        llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash-latest")
+
+        with Image.open(image_path) as img:
+        # Convert the image to PNG format
+            buffered = BytesIO()
+            img.save(buffered, format="PNG")
+            encoded_image = base64.b64encode(buffered.getvalue()).decode('utf-8')
+        
+        response = llm.invoke(
             [
                 HumanMessage(
                     content=[
@@ -22,12 +27,16 @@ class ImageOCR:
                         },
                         {
                             "type": "image_url",
-                            "image_url": image_path
-                        },
+                            "image_url": {
+                                "url": f"data:image/png;base64,{encoded_image}",
+                                "detail": "high"
+                            }
+                        }
                     ]
                 )
             ]
-        ).content
+        )
+        return response.content
 
     def ocr_image(self, image_input: str) -> Optional[str]:
         return self.gemini_ocr(image_input)
