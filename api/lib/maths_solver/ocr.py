@@ -28,14 +28,13 @@ class ImageOCR:
                         {
                             "type": "image_url",
                             "image_url": {
-                                "url": f"data:image/png;base64,{encoded_image}",
-                                "detail": "high"
-                            }
+                                "url": f"data:image/png;base64,{encoded_image}"                            }
                         }
                     ]
                 )
             ]
         )
+        print(response)
         return response.content
 
     def ocr_image(self, image_input: str) -> Optional[str]:

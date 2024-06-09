@@ -539,17 +539,6 @@ dont forget the above rules""",
             metadata = {}
 
         llm.callbacks = [CustomCallback(callback_func, on_end_callback)]
-        combined = (
-            self.format_messages(
-                chat_history=chat_history,
-                tokens_limit=self.conversation_limit,
-                human_only=True,
-                llm=llm,
-                ai_name=self.ai_name,
-            )
-            + "\n"
-            + f"Human: {prompt}"
-        )
         if filename:
             metadata["file"] = filename
 
