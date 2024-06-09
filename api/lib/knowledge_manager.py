@@ -553,12 +553,10 @@ dont forget the above rules""",
         if filename:
             metadata["file"] = filename
 
-        similar_docs = self.query_data(
-            combined, collection_name, metadata=metadata, k=k // 2
-        )
-        #similar_docs.extend(
-        #    self.query_data(prompt, collection_name, metadata=metadata, k=k // 2)
-        #)
+      #  similar_docs = self.query_data(
+       #     combined, collection_name, metadata=metadata, k=k // 2
+       # )
+        similar_docs = self.query_data(prompt, collection_name, metadata=metadata, k=k)
         similar_docs = self._reduce_tokens_below_limit(
             similar_docs, llm=llm, docs_limit=self.docs_limit
         )
