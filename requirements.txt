@@ -207,3 +207,4 @@ yarl==1.9.4
 youtube-search==2.1.2
 youtube-transcript-api==0.6.2
 yt-dlp==2024.4.9
+reportlab

@@ -503,7 +503,7 @@ class ChatManagerRetrieval:
         llm: BaseChatModel,
         callback_func: callable = None,
         on_end_callback: callable = None,
-        k: int = 2,
+        k: int = 1,
         metadata: dict[str, str] = None,
         filename: str = None,
         help_data_random: str = "Ask user to reupload file!"
