@@ -221,7 +221,7 @@ knowledge_manager = KnowledgeManager(
         timeout=10,
         max_retries=2
     ),
-    chunk_size=1000,
+    chunk_size=700,
     unstructured_api_key=UNSTRUCTURED_API_KEY,
     unstructured_url=UNSTRUCTURED_URL,
     qdrant_api_key=QDRANT_API_KEY,
@@ -238,8 +238,8 @@ chat_manager = ChatManagerRetrieval(
         timeout=10,
         max_retries=2
     ),
-    conversation_limit=3000,
-    docs_limit=4500,
+    conversation_limit=2000,
+    docs_limit=3700,
     qdrant_api_key=QDRANT_API_KEY,
     qdrant_url=QDRANT_URL,
 )
