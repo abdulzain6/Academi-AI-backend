@@ -181,7 +181,6 @@ def handle_voided_subscription(voided_notification: dict):
         decrement_user_coins(user_id, voided_notification)
     else:
         logging.error(f"User not found! Data: {voided_notification}")
-        raise HTTPException(status_code=404, detail=f"User sub document not found. Data: {voided_notification}")
 
 def handle_voided_one_time(voided_notification: dict):
     uid = subscription_manager.find_user_by_token(voided_notification['purchaseToken'])
@@ -194,7 +193,6 @@ def handle_voided_one_time(voided_notification: dict):
             raise HTTPException(status_code=404, detail="Product not found")
     else:
         logging.error(f"User not found! Data: {voided_notification}")
-        raise HTTPException(status_code=404, detail="User ID not found.")
 
 def decrement_user_coins(user_id: str, notification: dict):
     data = subscription_checker.check_subscription(APP_PACKAGE_NAME, notification['purchaseToken'])
