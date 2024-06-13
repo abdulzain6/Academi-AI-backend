@@ -449,13 +449,13 @@ The placeholders following the schema:"""
         if vectordata := self.query_vectorstore(
             sequence_part.slide_detail,
             presentation_input.collection_name,
-            k=3,
+            k=1,
             metadata=metadata,
         ):
             help_text = f"""
     Take help from the following material to fill the placeholders if its empty use your knowledge:
     =====================
-    {vectordata}
+    {vectordata[:7000]}
     =====================
             """
         else:
