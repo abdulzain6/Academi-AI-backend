@@ -875,7 +875,6 @@ File Content:
             chat_manager_agent_non_retrieval.run_agent(
                 prompt=data.prompt,
                 chat_history=chat_history,
-                language=data.language,
                 llm=model_default,
                 callback=callback,
                 on_end_callback=on_end_callback,

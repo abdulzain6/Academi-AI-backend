@@ -4,12 +4,12 @@ from langchain.schema import Document
 from qdrant_client import QdrantClient
 from qdrant_client.http import models as rest
 from langchain.embeddings.openai import OpenAIEmbeddings
-from ..lib.embeddings import TogetherEmbeddingsParallel
 
 class InMemoryVectorStore:
     def __init__(self, embeddings = None) -> None:
         if not embeddings:
-            self.embeddings = TogetherEmbeddingsParallel(
+            self.embeddings = OpenAIEmbeddings(
+               model="text-embedding-3-small",
                max_retries=2,
                timeout=5
             )

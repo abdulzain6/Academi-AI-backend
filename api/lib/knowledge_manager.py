@@ -1,36 +1,36 @@
 import ipaddress
+import os
 import time
 import logging
 import random
 import re
 import socket
+import PyPDF2
+import requests
+import mimetypes
+
 from PIL import Image
 from pathlib import Path
 from urllib.parse import urlparse
 from uuid import UUID
+from typing import Any, Optional, Union
+from typing import Dict, List, Tuple
+from azure.ai.formrecognizer import DocumentAnalysisClient
+
 from langchain.embeddings.base import Embeddings
 from langchain.chat_models.base import BaseChatModel
 from langchain_community.document_loaders import UnstructuredAPIFileLoader
 from langchain.text_splitter import TokenTextSplitter
-from langchain.vectorstores.qdrant import Qdrant
 from langchain_community.document_loaders import YoutubeLoader
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.schema import Document, LLMResult, SystemMessage
-from langchain.chains import LLMChain
 from langchain.embeddings.base import Embeddings
 from langchain.prompts import (
     ChatPromptTemplate,
-    SystemMessagePromptTemplate,
-    HumanMessagePromptTemplate,
     MessagesPlaceholder
 )
 from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain.chains.combine_documents import create_stuff_documents_chain
-
-
-from typing import Dict, List, Tuple, Union
-from qdrant_client import QdrantClient
-from qdrant_client.http.models import OptimizersConfigDiff
 from langchain.agents import Tool
 from langchain.agents import AgentExecutor
 from langchain.schema import (
@@ -39,30 +39,48 @@ from langchain.schema import (
     AIMessage,
     LLMResult,
 )
-import requests
-from langchain.agents.openai_functions_agent.base import OpenAIFunctionsAgent
-from api.lib.maths_solver.python_exec_client import PythonClient
-from api.lib.ocr import AzureOCR
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.chat_models.base import BaseChatModel
-from typing import Any, Optional, Sequence
 from langchain.agents.agent import AgentExecutor
-from langchain.callbacks.base import BaseCallbackManager
-from langchain.schema.language_model import BaseLanguageModel
-from langchain.tools.base import BaseTool
 from langchain.schema.agent import AgentFinish
 from langchain_community.document_loaders import WebBaseLoader
-from azure.ai.formrecognizer import DocumentAnalysisClient
 from langchain.document_loaders.pdf import DocumentIntelligenceLoader
+from langchain_google_firestore import FirestoreVectorStore
+
+
+from google.cloud.firestore_v1.vector import Vector  # type: ignore
+from api.lib.maths_solver.python_exec_client import PythonClient
+from api.lib.ocr import AzureOCR
 from .database.files import FileDBManager
-import PyPDF2
-import mimetypes
+
+
+class FirestoreVectorStoreModified(FirestoreVectorStore):
+    def _similarity_search(
+        self,
+        query: list[float],
+        k: int = 10,  # Assuming DEFAULT_TOP_K is 10
+        filters = None,
+    ) -> list:
+        _filters = filters or self.filters
+        query_ref = self.collection  # Start with the collection
+
+        if _filters is not None:
+            for field, operation, value in _filters:
+                query_ref = query_ref.where(field, operation, value)
+
+        results = query_ref.find_nearest(
+            vector_field=self.embedding_field,
+            query_vector=Vector(query),
+            distance_measure=self.distance_strategy,
+            limit=k,
+        )
+
+        return results.get()  
 
 
 
 def split_into_chunks(text, chunk_size):
     return [text[i : i + chunk_size] for i in range(0, len(text), chunk_size)]
-
 
 class CustomCallback(BaseCallbackHandler):
     def __init__(self, callback, on_end_callback) -> None:
@@ -84,7 +102,6 @@ class CustomCallback(BaseCallbackHandler):
                 time.sleep(0.05)
         self.callback(None)
         self.on_end_callback(response.generations[0][0].text)
-
 
 class CustomCallbackAgent(BaseCallbackHandler):
     def __init__(self, callback, on_end_callback) -> None:
@@ -142,49 +159,30 @@ class CustomCallbackAgent(BaseCallbackHandler):
 
 
 
-
-
 class KnowledgeManager:
     def __init__(
         self,
         embeddings: Embeddings,
         unstructured_api_key: str,
         unstructured_url: str,
-        qdrant_api_key: str,
-        qdrant_url: str,
         azure_ocr: AzureOCR,
         azure_form_rec_client: DocumentAnalysisClient,
         chunk_size: int = 230,
         advanced_ocr_page_count: int = 30,
-        qdrant_collection_name: str = "academi"
+        collection_name: str = "academi"
     ) -> None:
         self.azure_ocr = azure_ocr
         self.embeddings = embeddings
         self.azure_form_rec_client = azure_form_rec_client
         self.unstructured_api_key = unstructured_api_key
         self.chunk_size = chunk_size
-        self.qdrant_api_key = qdrant_api_key
-        self.qdrant_url = qdrant_url
         self.unstructured_url = unstructured_url
-        self.client = QdrantClient(
-            url=self.qdrant_url, api_key=self.qdrant_api_key, prefer_grpc=True
-        )
         self.advanced_ocr_page_count = advanced_ocr_page_count
-        try:
-            self.qdrant: Qdrant = Qdrant.construct_instance(
-                url=self.qdrant_url,
-                api_key=self.qdrant_api_key,
-                texts=["test"],
-                embedding=self.embeddings,
-                collection_name=qdrant_collection_name,
-                hnsw_config={"on_disk" : False},
-              #  optimizers_config=OptimizersConfigDiff(memmap_threshold=20000),
-                timeout=50,
-                prefer_grpc=True
-            )
-        except Exception as e:
-            print(e)
-            self.qdrant = None
+        print(os.environ["GOOGLE_APPLICATION_CREDENTIALS"])
+        self.vectorstore = FirestoreVectorStoreModified(
+            collection=collection_name,
+            embedding_service=embeddings,
+        )
 
     def split_docs(self, docs: Document) -> List[Document]:
         return TokenTextSplitter(
@@ -290,7 +288,7 @@ class KnowledgeManager:
         content = "".join([doc.page_content for doc in documents])
         if len(content) <= 7:
             raise ValueError("No data in file")
-        return self.qdrant.add_documents(documents)
+        return self.vectorstore.add_documents(documents)
 
     def add_metadata_to_docs(self, metadata: Dict, docs: List[Document]):
         for document in docs:
@@ -433,47 +431,61 @@ class KnowledgeManager:
 
     def delete_ids(self, ids: list[str]):
         if ids:
-            return self.qdrant.delete(ids)
+            return self.vectorstore.delete(ids)
+
+    @staticmethod
+    def create_filters(criteria: Dict[str, Union[str, List[str]]]) -> List[Tuple[str, str, Union[str, List[str]]]]:
+        filters = []
+        for key, value in criteria.items():
+            if isinstance(value, list):
+                filters.append((f'metadata.{key}', 'in', value))
+            else:
+                filters.append((f'metadata.{key}', '==', value))
+        return filters
 
     def query_data(
         self, query: str, k: int, metadata: Dict[str, str] = None
     ):
         try:
-            return self.qdrant.similarity_search(query, k, filter=metadata)
+            return self.vectorstore.similarity_search(query, k, filters=self.create_filters(metadata))
         except Exception as e:
             print(f"error retrieving: {e}")
             return []
-
 
 class ChatManagerRetrieval:
     def __init__(
         self,
         embeddings: Embeddings,
-        qdrant_api_key: str,
-        qdrant_url: str,
         conversation_limit: int,
         docs_limit: int,
         ai_name: str = "AcademiAI",
-        qdrant_collection_name: str = "academi"
+        collection_name: str = "academi"
     ) -> None:
         self.embeddings = embeddings
-        self.qdrant_api_key = qdrant_api_key
-        self.qdrant_url = qdrant_url
         self.conversation_limit = conversation_limit
         self.docs_limit = docs_limit
         self.ai_name = ai_name
-        self.qdrant_collection_name = qdrant_collection_name
-        self.client = QdrantClient(
-            url=self.qdrant_url, api_key=self.qdrant_api_key, prefer_grpc=True, timeout=7
+        self.qdrant_collection_name = collection_name
+        self.vectorstore = FirestoreVectorStoreModified(
+            collection=collection_name,
+            embedding_service=embeddings,
         )
+    
+    @staticmethod
+    def create_filters(criteria: Dict[str, str]) -> List[Tuple[str, str, str]]:
+        filters = []
+        for key, value in criteria.items():
+            filters.append((f'metadata.{key}', '==', value))
+        return filters
 
     def query_data(
         self, query: str, collection_name: str, k: int, metadata: Dict[str, str] = None
     ):
         metadata["collection"] = collection_name
         try:
-            vectorstore = Qdrant(self.client, self.qdrant_collection_name, self.embeddings)
-            return vectorstore.similarity_search(query, k, filter=metadata)
+            filters = self.create_filters(metadata)
+            print(filters)
+            return self.vectorstore.similarity_search(query, k, filters=filters)
         except Exception as e:
             print(f"Error retrieving: {e}")
             return []
@@ -547,15 +559,14 @@ dont forget the above rules""",
        # )
         similar_docs = self.query_data(prompt, collection_name, metadata=metadata, k=k)
         similar_docs = self._reduce_tokens_below_limit(
-            similar_docs, llm=llm, docs_limit=self.docs_limit
+            similar_docs, docs_limit=self.docs_limit
         )
-        print(similar_docs)
-        
+        print(similar_docs)        
         if not similar_docs:
             logging.info("Using random data")
             similar_docs = [Document(page_content=help_data_random)]
             
-        chat_history = self.format_messages_into_messages(chat_history, self.conversation_limit, llm)
+        chat_history = self.format_messages_into_messages(chat_history, self.conversation_limit)
         document_chain = create_stuff_documents_chain(llm, prompt_template)
         return document_chain.invoke(
             {
@@ -571,51 +582,10 @@ dont forget the above rules""",
             config={"verbose" : True}
         )
 
-    def format_messages(
-        self,
-        chat_history: List[Tuple[str, str]],
-        tokens_limit: int,
-        llm: BaseChatModel,
-        human_only: bool = False,
-        ai_name: str = "AcademiAi",
-    ) -> str:
-        cleaned_msgs: List[Union[str, Tuple[str, str]]] = []
-        tokens_used: int = 0
-
-        for human_msg, ai_msg in chat_history:
-            human_msg_formatted = f"Human: {human_msg}"
-            ai_msg_formatted = f"{ai_name}: {ai_msg}"
-
-            human_tokens = len(human_msg_formatted)
-            ai_tokens = len(ai_msg_formatted)
-
-            if not human_only:
-                new_tokens_used = tokens_used + human_tokens + ai_tokens
-            else:
-                new_tokens_used = tokens_used + human_tokens
-
-            if new_tokens_used > tokens_limit:
-                break
-
-            if human_only:
-                cleaned_msgs.append(human_msg_formatted)
-            else:
-                cleaned_msgs.append((human_msg_formatted, ai_msg_formatted))
-
-            tokens_used = new_tokens_used
-
-        if human_only:
-            return "\n\n".join(cleaned_msgs)
-        else:
-            return "\n\n".join(
-                [f"{clean_msg[0]}\n\n{clean_msg[1]}" for clean_msg in cleaned_msgs]
-            )
-
     def format_messages_into_messages(
         self,
         chat_history: List[Tuple[str, str]],
         tokens_limit: int,
-        llm: BaseChatModel,
     ) -> List[BaseMessage]:
         messages: List[BaseMessage] = []
         tokens_used: int = 0
@@ -639,7 +609,7 @@ dont forget the above rules""",
         return list(reversed(messages))
 
     def _reduce_tokens_below_limit(
-        self, docs: list, docs_limit: int, llm: BaseChatModel
+        self, docs: list, docs_limit: int,
     ) -> list[Document]:
         random.shuffle(docs)
         num_docs = len(docs)
@@ -655,13 +625,11 @@ dont forget the above rules""",
 class ChatManagerNonRetrieval(ChatManagerRetrieval):
     def __init__(
         self,
-        embeddings: Embeddings,
         conversation_limit: int,
         python_client: PythonClient,
         ai_name: str = "AcademiAI",
         base_tools: list[Tool] = [],
     ) -> None:
-        self.embeddings = embeddings
         self.conversation_limit = conversation_limit
         self.ai_name = ai_name
         self.python_client = python_client
@@ -725,11 +693,6 @@ Follow all above rules (Important)
         )
 
     def make_code_runner(self) -> list[Tool]:
-        try:
-            libraries = self.python_client.get_available_libraries()["libraries"]
-        except Exception:
-            libraries = []
-
         description = f"""
 Used to execute multiline python code wont persist states so run everything once.
 Do not pass in Markdown just a normal python string (Important)
@@ -766,7 +729,6 @@ You will not run unsafe code or perform harm to the server youre on. Or import p
     def run_agent(
         self,
         prompt: str,
-        language: str,
         llm: BaseChatModel,
         callback: callable = None,
         on_end_callback: callable = None,
@@ -774,7 +736,6 @@ You will not run unsafe code or perform harm to the server youre on. Or import p
         extra_tools: list = None,
         files: str = "",
         sys_template: str = None,
-        prompt_args: dict = None
     ):
         if extra_tools is None:
             extra_tools = []
@@ -783,7 +744,7 @@ You will not run unsafe code or perform harm to the server youre on. Or import p
             chat_history = []
 
         chat_history_messages = self.format_messages_into_messages(
-            chat_history, self.conversation_limit, llm
+            chat_history, self.conversation_limit
         )
         agent = self.make_agent(
             llm=llm,

@@ -19,7 +19,6 @@ from .lib.database.purchases import (
     StaticFeature,
     MonthlyLimitFeature,
 )
-from langchain.chat_models.base import BaseChatModel
 from .lib.database.cache_manager import RedisCacheManager
 from .lib.knowledge_manager import (
     KnowledgeManager,
@@ -34,17 +33,20 @@ from .lib.presentation_maker.database import (
 from .lib.maths_solver.python_exec_client import PythonClient, Urls
 from .lib.maths_solver.ocr import ImageOCR
 from .lib.redis_cache import RedisCache
-from langchain_openai.chat_models import ChatOpenAI
-from langchain_openai import AzureChatOpenAI
 from .lib.purchases_play_store import SubscriptionChecker
+from .lib.email_integrity_checker import EmailIntegrityChecker
+from .lib.mermaid_maker import MermaidClient
 from .ai_model import AIModel
+
 from contextlib import suppress
 from azure.ai.formrecognizer import DocumentAnalysisClient
 from azure.core.credentials import AzureKeyCredential
-from .lib.email_integrity_checker import EmailIntegrityChecker
-from .lib.mermaid_maker import MermaidClient
-from .lib.embeddings import TogetherEmbeddingsParallel
+
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_openai import AzureChatOpenAI
+from langchain_openai.chat_models import ChatOpenAI
+from langchain_openai.embeddings import OpenAIEmbeddings
+from langchain.chat_models.base import BaseChatModel
 
 
 
@@ -217,37 +219,31 @@ log_manager = MongoLogManager(
 # OCR
 text_ocr = AzureOCR(AZURE_OCR_ENDPOINT, AZURE_OCR_KEY)
 knowledge_manager = KnowledgeManager(
-    TogetherEmbeddingsParallel(
+    OpenAIEmbeddings(
+        model="text-embedding-3-small",
         timeout=10,
         max_retries=2
     ),
     chunk_size=700,
     unstructured_api_key=UNSTRUCTURED_API_KEY,
     unstructured_url=UNSTRUCTURED_URL,
-    qdrant_api_key=QDRANT_API_KEY,
-    qdrant_url=QDRANT_URL,
     azure_ocr=text_ocr,
     azure_form_rec_client=DocumentAnalysisClient(
         endpoint=DOC_INTELLIGENCE_ENDPOINT,
         credential=AzureKeyCredential(AZURE_DOC_INTELLIGENCE_KEY),
     ),
-    qdrant_collection_name="academi"
+    collection_name="academi"
 )
 chat_manager = ChatManagerRetrieval(
-    TogetherEmbeddingsParallel(
+    OpenAIEmbeddings(
+        model="text-embedding-3-small",
         timeout=10,
         max_retries=2
     ),
     conversation_limit=2000,
     docs_limit=3700,
-    qdrant_api_key=QDRANT_API_KEY,
-    qdrant_url=QDRANT_URL,
 )
 chat_manager_agent_non_retrieval = ChatManagerNonRetrieval(
-    TogetherEmbeddingsParallel(
-        timeout=10,
-        max_retries=2
-    ),
     conversation_limit=2000,
     python_client=client,
     base_tools=[],

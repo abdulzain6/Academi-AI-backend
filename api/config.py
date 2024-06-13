@@ -13,12 +13,8 @@ def get_dict_from_env_var(env_var_name: str, default: Dict = None) -> Dict:
     return json.loads(env_val) if env_val is not None else default
 
 
-GROQ_API_KEYS = os.getenv("GROQ_API_KEYS", "").split(" ")
 UNSTRUCTURED_API_KEY = os.getenv("UNSTRUCTURED_API_KEY", None)
 UNSTRUCTURED_URL = os.getenv("UNSTRUCTURED_URL", "http://localhost:8080/general/v0/general")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", None)
-QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost")
 MONGODB_URL = os.getenv("MONGODB_URL")
 DATABASE_NAME = os.getenv("DATABASE_NAME", "study-app")
 PEXELS_API_KEY = os.getenv("PEXELS_API_KEY")

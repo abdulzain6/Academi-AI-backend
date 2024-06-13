@@ -1,6 +1,5 @@
 import json
 import os
-from api.lib.embeddings import TogetherEmbeddingsParallel
 from pptx.util import Inches
 from shutil import copy
 from pydantic import BaseModel
@@ -121,7 +120,8 @@ class TemplateDBManager:
 class TemplateKnowledgeManager(TemplateObserver):
     def __init__(self, embeddings = None) -> None:
         if not embeddings:
-            self.embeddings = TogetherEmbeddingsParallel(
+            self.embeddings = OpenAIEmbeddings(
+               model="text-embedding-3-small",
                max_retries=2,
                timeout=5
             )

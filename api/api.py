@@ -1,4 +1,4 @@
-import contextlib
+from .firebase import default_app # Important
 from prometheus_fastapi_instrumentator import Instrumentator
 from .config import *
 from .routers.collections import router as collection_router

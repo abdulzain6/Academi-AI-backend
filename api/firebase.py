@@ -3,6 +3,7 @@ import firebase_admin
 
 current_directory = os.path.dirname(os.path.abspath(__file__))
 credentials_path = os.path.join(current_directory, 'creds', 'academi-ai-firebase-adminsdk-mg8gg-4dde2949d3.json')
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
 
 if not os.path.exists(credentials_path):
     raise FileNotFoundError(f"Credentials file not found at {credentials_path}")
