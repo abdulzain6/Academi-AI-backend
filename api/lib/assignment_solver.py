@@ -148,7 +148,7 @@ FOLLOW ALL ABOVE RULES!
     def markdown_to_docx(content: str) -> bytes:
         # Convert markdown content to a .docx file using a temporary file
         with tempfile.NamedTemporaryFile(delete=False, suffix='.docx') as temp_file:
-            pypandoc.convert_text(content, 'docx', format='md', outputfile=temp_file.name, extra_args=["--no-check-certificate"])
+            pypandoc.convert_text(content.replace("https", "http"), 'docx', format='md', outputfile=temp_file.name)
             temp_file_path = temp_file.name
 
         # Open the temporary .docx file with python-docx
@@ -311,7 +311,7 @@ Only extract the questions/Tasks if they are mentioned explictly (Important)
             # Add the question number and the actual question
             question_header = f"\n\n## {question.question_number}. {question.question_to_solve_markdown}\n\n"
             # Add the solution in markdown format
-            solution_content = f"\n{solution.solution_markdown}\n"
+            solution_content = f"\n{solution.solution_markdown}\n\n"
             # Append each formatted section to the main markdown output
             markdown_output += question_header + solution_content
 
