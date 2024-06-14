@@ -78,8 +78,8 @@ global_chat_model = AIModel(
 global_chat_model_alternative = AIModel(
     regular_model=ChatGoogleGenerativeAI,
     regular_args={"request_timeout": 60, "model" : "gemini-1.5-flash-latest", "max_retries" : 2, "max_output_tokens" : 2500},
-    premium_model=ChatOpenAI,
-    premium_args={"model": "gpt-4o", "request_timeout": 60, "max_retries": 4},
+    premium_model=ChatGoogleGenerativeAI,
+    premium_args={"model": "models/gemini-1.5-pro-latest", "request_timeout": 60, "max_retries": 4, "max_output_tokens" : 2500},
 )
 
 fallback_chat_models = [

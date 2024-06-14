@@ -37,7 +37,7 @@ def solve_assignment(
         raise HTTPException(status_code=400, detail="You must be subscribed to pro or elite to use this feature.")
     
     solver_llm, _ = get_model_and_fallback({"temperature" : 0}, False, True, alt=True)
-    extractor_llm, _ = get_model_and_fallback({"temperature" : 0}, False, True, alt=True)
+    extractor_llm, _ = get_model_and_fallback({"temperature" : 0}, False, True, alt=False)
 
     @tool
     def make_graph(vega_lite_spec: str):
@@ -84,7 +84,7 @@ def solve_assignment(
         return joined_matches or text.strip()
     
     @tool
-    def python(code: str):
+    def run_python_code(code: str):
         """"
 Used to execute multiline python code wont persist states so run everything once.
 Do not pass in Markdown just a normal python string (Important)
@@ -108,7 +108,7 @@ Try to run all the code at once
                 RequestsGetTool(requests_wrapper=TextRequestsWrapper()),
                 make_graph,
                 create_graphviz_graph,
-                python
+                run_python_code
             ]
         )
         _, file_extension = os.path.splitext(file.filename)

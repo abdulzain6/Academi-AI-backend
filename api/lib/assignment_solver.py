@@ -98,6 +98,7 @@ Rules:
     12. DONT ADD CODE TO THE SOLUTION UNLESS ASKED!!, tHIS IS FOR AN ASSIGNMENT. why you so dumb>>?
     14. your response will be directly put into an assignment. We dont want links in there you need to add the links in a way its visible like shown above also dont add useless text ffs
     15. Also if you decide to generate a diagram dont say they are 'generated'.
+    13  MAKE SURE TO call tools in proper json, Remeber json doesnt support single quotes.!!
     
 {instructions_message}
 
@@ -112,7 +113,7 @@ FOLLOW ALL ABOVE RULES!
             ]
         )
         agent = create_tool_calling_agent(self.llm_solver, self.solver_tools, prompt)
-        agent_executor = AgentExecutor(agent=agent, tools=self.solver_tools, verbose=True, handle_parsing_errors=True)
+        agent_executor = AgentExecutor(agent=agent, tools=self.solver_tools, verbose=True)
 
         if question.requires_seeing:
             question_images = [images[page_number - 1] for page_number in question.page_numbers]
