@@ -52,6 +52,7 @@ from google.cloud.firestore_v1.vector import Vector  # type: ignore
 from api.lib.maths_solver.python_exec_client import PythonClient
 from api.lib.ocr import AzureOCR
 from .database.files import FileDBManager
+from api.lib.utils import format_url
 
 
 class FirestoreVectorStoreModified(FirestoreVectorStore):
@@ -364,6 +365,12 @@ class KnowledgeManager:
             raise ValueError(
                 "Either weburl or youtube_link must be specified. Not both."
             )
+        
+        if youtube_link:
+            youtube_link = format_url(youtube_link)
+            
+        if web_url:
+            web_url = format_url(web_url)
 
         if web_url and not self.is_youtube_video(web_url):
             logging.info("Using webbase")
