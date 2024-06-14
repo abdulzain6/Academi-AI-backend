@@ -1,8 +1,11 @@
+import io
 import logging
 import os
 import re
 import tempfile
 from typing import List
+
+from fastapi.responses import StreamingResponse
 from api.config import CACHE_DOCUMENT_URL_TEMPLATE
 from api.dependencies import require_points_for_feature
 from api.lib.assignment_solver import AssignmentSolver
@@ -146,8 +149,13 @@ Try to run all the code at once
         logging.error(f"Error in assignment maker: {e}")
         raise HTTPException(status_code=400, detail="Something went wrong, Try again later")
     
-    return Response(
-        content=docx_bytes,
-        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        headers={"Content-Disposition": "attachment; filename=Solution.docx"}
-    )
+   # return Response(
+   #     content=docx_bytes,
+   #     media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    #    headers={"Content-Disposition": "attachment; filename=Solution.docx"}
+    #)
+    response = StreamingResponse(io.BytesIO(docx_bytes), media_type="application/octet-stream")
+    response.headers[
+        "Content-Disposition"
+    ] = f"attachment; filename=Solution.docx"
+    return response
