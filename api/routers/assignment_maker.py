@@ -39,8 +39,8 @@ def solve_assignment(
     if subscription_manager.get_subscription_type(user_id) in {SubscriptionType.FREE, SubscriptionType.LITE}:
         raise HTTPException(status_code=400, detail="You must be subscribed to pro or elite to use this feature.")
     
-    solver_llm, _ = get_model_and_fallback({"temperature" : 0}, False, True, alt=True)
-    extractor_llm, _ = get_model_and_fallback({"temperature" : 0}, False, True, alt=True)
+    solver_llm, _ = get_model_and_fallback({"temperature" : 0}, False, True, alt=False)
+    extractor_llm, _ = get_model_and_fallback({"temperature" : 0}, False, True, alt=False)
 
     @tool
     def make_graph(vega_lite_spec: str):
