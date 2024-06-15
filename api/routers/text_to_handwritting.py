@@ -44,6 +44,7 @@ def get_available_fonts(
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
 @router.post("/text-to-handwriting-images")
+@require_points_for_feature("TEXT_TO_HANDWRITTING")
 def text_to_handwriting_images(
     request: TextToHandwritingRequest,
     background_tasks: BackgroundTasks,
@@ -89,6 +90,7 @@ def text_to_handwriting_images(
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
 @router.post("/text-to-handwriting-pdf")
+@require_points_for_feature("TEXT_TO_HANDWRITTING")
 def text_to_handwriting_pdf(
     request: TextToHandwritingRequest,
     background_tasks: BackgroundTasks,

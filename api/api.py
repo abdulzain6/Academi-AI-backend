@@ -20,6 +20,7 @@ from .routers.tools import router as tool_router
 from .routers.uml import router as uml_router
 from .routers.info import router as info_router
 from .routers.assignment_maker import router as assignment_router
+from .routers.text_to_handwritting import router as handwriting_router
 
 #gpts
 from api.gpts_routers.resume import router as gpt_resume_router
@@ -179,6 +180,7 @@ app.include_router(tool_router, prefix="/api/v1/tools", tags=["tools"])
 app.include_router(uml_router, prefix="/api/v1/uml", tags=["uml"])
 app.include_router(info_router, prefix="/api/v1/info", tags=["info"])
 app.include_router(assignment_router, prefix="/api/v1/assignment", tags=["assignment"])
+app.include_router(handwriting_router, prefix="/api/v1/handwriting", tags=["handwriting"])
 
 
 app.include_router(gpt_resume_router, prefix="/gpts/resume", tags=["gpts", "resume"])
