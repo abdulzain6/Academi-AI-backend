@@ -16,8 +16,8 @@ class InfographicMaker:
     @staticmethod
     def sanitize_markdown(markdown_content: str) -> str:
         # Define allowed tags and attributes
-        allowed_tags = bleach.sanitizer.ALLOWED_TAGS + [
-            'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'pre', 'code', 'blockquote', 'ul', 'ol', 'li', 'a', 'em', 'strong'
+        allowed_tags = [
+            'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'pre', 'code', 'blockquote', 'ul', 'ol', 'li', 'a', 'em', 'strong', "b", "abbr"
         ]
         allowed_attributes = {
             'a': ['href', 'title'],
