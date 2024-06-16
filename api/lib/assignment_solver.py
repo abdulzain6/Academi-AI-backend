@@ -113,7 +113,7 @@ FOLLOW ALL ABOVE RULES!
             ]
         )
         agent = create_tool_calling_agent(self.llm_solver, self.solver_tools, prompt)
-        agent_executor = AgentExecutor(agent=agent, tools=self.solver_tools, verbose=True)
+        agent_executor = AgentExecutor(agent=agent, tools=self.solver_tools, verbose=True, handle_parsing_errors=True, max_iterations=5)
 
         if question.requires_seeing:
             question_images = [images[page_number - 1] for page_number in question.page_numbers]
