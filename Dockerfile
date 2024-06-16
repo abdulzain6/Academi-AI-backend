@@ -29,6 +29,9 @@ RUN apt-get update && \
     poppler-utils \
     nodejs \
     npm \
+    python3 \
+    python3-pip \
+    python3-venv \
     && apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -42,20 +45,14 @@ RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add
     apt-get update && \
     apt-get install -y google-chrome-stable
 
-# Install Python and pip
-RUN apt-get update && \
-    apt-get install -y python3 python3-pip && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-
-# Copy requirements.txt to the working directory
+# Set up a virtual environment and install Python dependencies
 COPY ./requirements.txt /app/requirements.txt
-
-# Install Python dependencies
-RUN pip3 install --no-cache-dir -r --break-system-packages requirements.txt
+RUN python3 -m venv /app/venv && \
+    . /app/venv/bin/activate && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Download NLTK data
-RUN python3 -m nltk.downloader punkt averaged_perceptron_tagger
+RUN . /app/venv/bin/activate && python -m nltk.downloader punkt averaged_perceptron_tagger
 
 # Copy markdown styles and install npm dependencies
 COPY ./markdown-styles /app/markdown-styles
@@ -67,5 +64,5 @@ COPY . /app
 # Expose port 8000
 EXPOSE 8000
 
-# Run the application
-CMD ["uvicorn", "api.api:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run the application using the virtual environment
+CMD ["/app/venv/bin/uvicorn", "api.api:app", "--host", "0.0.0.0", "--port", "8000"]
