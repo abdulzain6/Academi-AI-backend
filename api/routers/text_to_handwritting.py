@@ -1,14 +1,16 @@
 import os
 import logging
 import tempfile
+import base64
+from PIL import Image
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
+from api.lib.database.purchases import SubscriptionType
 from api.lib.text_to_handwritting.text_to_handwritting import HandwritingRenderer, FONTS
+from io import BytesIO
+from api.globals import subscription_manager
 from ..auth import get_user_id, verify_play_integrity
 from ..dependencies import require_points_for_feature
-from PIL import Image
-import base64
-from io import BytesIO
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -51,6 +53,9 @@ def text_to_handwriting_images(
     user_id=Depends(get_user_id),
     play_integrity_verified=Depends(verify_play_integrity),
 ):
+    if subscription_manager.get_subscription_type(user_id) in {SubscriptionType.FREE}:
+        raise HTTPException(status_code=400, detail="You must be subscribed to use this feature.")
+    
     font_path = FONTS.get(request.font_name)
     if not font_path:
         raise HTTPException(status_code=400, detail="Font not found")
@@ -97,6 +102,9 @@ def text_to_handwriting_pdf(
     user_id=Depends(get_user_id),
     play_integrity_verified=Depends(verify_play_integrity),
 ):
+    if subscription_manager.get_subscription_type(user_id) in {SubscriptionType.FREE}:
+        raise HTTPException(status_code=400, detail="You must be subscribed to use this feature.")
+    
     font_path = FONTS.get(request.font_name)
     if not font_path:
         raise HTTPException(status_code=400, detail="Font not found")

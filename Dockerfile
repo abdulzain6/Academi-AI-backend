@@ -37,14 +37,20 @@ RUN apt-get update
 # Install the latest version of Google Chrome
 RUN apt-get install -y google-chrome-stable
 
-# Clear out the local repository of retrieved package files
-RUN apt-get clean && rm -rf /var/lib/apt/lists/*
+
+RUN apt-get update && \
+    apt-get install -y nodejs npm && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 COPY ./requirements.txt /app/requirements.txt
 
 RUN pip install --no-cache-dir -r requirements.txt
 
 RUN python -m nltk.downloader punkt averaged_perceptron_tagger
+
+COPY ./markdown-styles /app/markdown-styles
+RUN cd /app/markdown-styles && npm install -g
 
 COPY . /app
 

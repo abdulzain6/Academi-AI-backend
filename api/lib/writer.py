@@ -94,7 +94,7 @@ The {to_generate} in markdown (DO NOT RETURN ANY OTHER TEXT):"""
     
     def html_to_docx_bytes(self, content: str) -> bytes:
         with tempfile.NamedTemporaryFile(delete=False, suffix='.docx') as temp_file:
-            pypandoc.convert_text(content, 'docx', format='md', outputfile=temp_file.name)
+            pypandoc.convert_text(content, 'docx', format='md', outputfile=temp_file.name, sandbox=True)
             temp_file_path = temp_file.name
 
         doc = Document(temp_file_path)

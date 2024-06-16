@@ -148,7 +148,7 @@ FOLLOW ALL ABOVE RULES!
     def markdown_to_docx(content: str) -> bytes:
         # Convert markdown content to a .docx file using a temporary file
         with tempfile.NamedTemporaryFile(delete=False, suffix='.docx') as temp_file:
-            pypandoc.convert_text(content.replace("https", "http"), 'docx', format='md', outputfile=temp_file.name)
+            pypandoc.convert_text(content.replace("https", "http"), 'docx', format='md', outputfile=temp_file.name, sandbox=True)
             temp_file_path = temp_file.name
 
         # Open the temporary .docx file with python-docx

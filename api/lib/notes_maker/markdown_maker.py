@@ -66,7 +66,7 @@ The notes in markdown (RETURN NO OTHER TEXT):"""
         
     def make_notes(self, data: MarkdownData, context: None = None):
         with tempfile.NamedTemporaryFile(delete=False, suffix='.docx') as temp_file:
-            pypandoc.convert_text(data.content, 'docx', format='md', outputfile=temp_file.name)
+            pypandoc.convert_text(content, 'docx', format='md', outputfile=temp_file.name, sandbox=True)
             temp_file_path = temp_file.name
 
         # Open the generated DOCX file with python-docx
