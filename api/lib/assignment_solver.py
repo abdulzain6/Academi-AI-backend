@@ -309,9 +309,9 @@ Only extract the questions/Tasks if they are mentioned explictly (Important)
         # Iterate over each question and its corresponding solution
         for question, solution in zip(questions.questions_or_tasks, solutions):
             # Add the question number and the actual question
-            question_header = f"\n\n## {question.question_number}. {question.question_to_solve_markdown}\n\n"
+            question_header = f"\n\n##{question.question_to_solve_markdown}\n\n"
             # Add the solution in markdown format
-            solution_content = f"\n{solution.solution_markdown}\n\n"
+            solution_content = f"\n\nAns. {solution.solution_markdown}\n\n"
             # Append each formatted section to the main markdown output
             markdown_output += question_header + solution_content
 
