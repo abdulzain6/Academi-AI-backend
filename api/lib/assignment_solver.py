@@ -169,13 +169,13 @@ FOLLOW ALL ABOVE RULES!
                 logging.debug(f'Original size: {original_width} x {original_height} inches.')
 
                 # Ensure both dimensions are within the 1 to 3 inches range
-                while shape.width.inches > 3 or shape.height.inches > 3:
+                while shape.width.inches > 3 or shape.height.inches > 5:
                     shape.width = Inches(shape.width.inches / 2)
                     shape.height = Inches(shape.height.inches / 2)
                     logging.debug(f'Resized to: {shape.width.inches} x {shape.height.inches} inches.')
 
                 # Ensure neither dimension falls below 1 inch, if possible without exceeding 3 inches
-                while shape.width.inches < 1 and shape.height.inches * 2 <= 3:
+                while shape.width.inches < 1 and shape.height.inches * 2 <= 5:
                     shape.width = Inches(shape.width.inches * 2)
                     shape.height = Inches(shape.height.inches * 2)
                     logging.debug(f'Adjusted size: {shape.width.inches} x {shape.height.inches} inches.')
@@ -309,7 +309,7 @@ Only extract the questions/Tasks if they are mentioned explictly (Important)
         # Iterate over each question and its corresponding solution
         for question, solution in zip(questions.questions_or_tasks, solutions):
             # Add the question number and the actual question
-            question_header = f"\n\n##{question.question_to_solve_markdown}\n\n"
+            question_header = f"\n\n## {question.question_to_solve_markdown}\n\n"
             # Add the solution in markdown format
             solution_content = f"\n\nAns. {solution.solution_markdown}\n\n"
             # Append each formatted section to the main markdown output
