@@ -23,7 +23,7 @@ class ImageOCR:
                     content=[
                         {
                             "type": "text",
-                            "text": "You are an OCR, Read the text in the image as it is, if there are maths equations use latex for them. Do not miss anything. You will return the text only. I want pure math latex not markdown latex.",
+                            "text": "You are an OCR, Return the text in the image as it is, if there are maths equations use latex for them. Do not miss anything. You will return the text only. I want pure math latex not markdown latex. I need text back",
                         },
                         {
                             "type": "image_url",
