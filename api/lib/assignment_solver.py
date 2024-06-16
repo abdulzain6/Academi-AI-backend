@@ -311,7 +311,7 @@ Only extract the questions/Tasks if they are mentioned explictly (Important)
             # Add the question number and the actual question
             question_header = f"\n\n## {question.question_to_solve_markdown}\n\n"
             # Add the solution in markdown format
-            solution_content = f"\n\nAns. {solution.solution_markdown}\n\n"
+            solution_content = f"\n\nAns. \n{solution.solution_markdown}\n\n"
             # Append each formatted section to the main markdown output
             markdown_output += question_header + solution_content
 
