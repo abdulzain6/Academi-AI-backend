@@ -103,7 +103,7 @@ class MarkdownToDocConverter(BaseTool):
             # Generate a unique ID for the document
             doc_id = f"{str(uuid.uuid4())}.docx"
             with tempfile.NamedTemporaryFile(delete=False, suffix='.docx') as temp_file:
-                pypandoc.convert_text(content, 'docx', format='md', outputfile=temp_file.name)
+                pypandoc.convert_text(content, 'docx', format='md', outputfile=temp_file.name, sandbox=True)
                 temp_file_path = temp_file.name
 
             # Open the generated DOCX file with python-docx
