@@ -18,6 +18,7 @@ from langchain_community.utilities.requests import TextRequestsWrapper
 from langchain_core.tools import tool, StructuredTool
 from api.lib.database.purchases import SubscriptionType
 from fastapi import File
+from pydantic import BaseModel
 
 
 router = APIRouter()
