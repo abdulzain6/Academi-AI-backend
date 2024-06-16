@@ -52,7 +52,7 @@ RUN apt-get update && \
 COPY ./requirements.txt /app/requirements.txt
 
 # Install Python dependencies
-RUN pip3 install --no-cache-dir -r requirements.txt
+RUN pip3 install --no-cache-dir -r --break-system-packages requirements.txt
 
 # Download NLTK data
 RUN python3 -m nltk.downloader punkt averaged_perceptron_tagger
