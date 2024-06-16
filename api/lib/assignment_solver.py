@@ -144,8 +144,15 @@ FOLLOW ALL ABOVE RULES!
             results = [future.result() for future in as_completed(futures)]
         return results
         
-    @staticmethod
+    @staticmethod # handle images manually using docx
     def markdown_to_docx(content: str) -> bytes:
+        link_pattern = re.compile(r'\[([^\]]+)\]\((file://[^\)]+)\)')
+        img_pattern = re.compile(r'!\[([^\]]*)\]\((file://[^\)]+)\)')
+
+        # Replace local file paths in links and images with placeholders
+        content = link_pattern.sub(r'[\1](#)', content)
+        content = img_pattern.sub(r'![\1](#)', content)
+        
         # Convert markdown content to a .docx file using a temporary file
         with tempfile.NamedTemporaryFile(delete=False, suffix='.docx') as temp_file:
             pypandoc.convert_text(content.replace("https", "http"), 'docx', format='md', outputfile=temp_file.name)

@@ -78,7 +78,7 @@ The {to_generate} in markdown (DO NOT RETURN ANY OTHER TEXT):"""
         try:
             # Convert the DOCX to PDF using pypandoc
             pdf_path = temp_docx.name.replace('.docx', '.pdf')
-            pypandoc.convert_file(docx_path, 'pdf', outputfile=pdf_path, extra_args=["--pdf-engine=xelatex"])
+            pypandoc.convert_file(docx_path, 'pdf', outputfile=pdf_path, extra_args=["--pdf-engine=xelatex"], sandbox=True)
             
             # Read the generated PDF file and return its bytes
             with open(pdf_path, 'rb') as pdf_file:
