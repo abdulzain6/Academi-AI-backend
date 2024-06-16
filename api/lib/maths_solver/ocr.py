@@ -1,6 +1,6 @@
 from io import BytesIO
 from typing import Optional
-from langchain_google_genai import ChatGoogleGenerativeAI, HarmBlockThreshold, HarmCategory
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.schema import HumanMessage
 import base64
 from PIL import Image

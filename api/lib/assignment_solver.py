@@ -94,11 +94,10 @@ Rules:
     8. Get straight to the answer, do not add phrases like "To solve the question"
     9. Do not sound like an AI.
     10. Dont add random links to the solution only add those returned by the tools if any
-    11. Dont make links up!!!!
-    12. DONT ADD CODE TO THE SOLUTION UNLESS ASKED!!, tHIS IS FOR AN ASSIGNMENT. why you so dumb>>?
+    11. Dont make links up!
+    12. Do not add code to the assignements unless asked, use the code in your tools instead (important)
     14. your response will be directly put into an assignment. We dont want links in there you need to add the links in a way its visible like shown above also dont add useless text ffs
     15. Also if you decide to generate a diagram dont say they are 'generated'.
-    13  MAKE SURE TO call tools in proper json, Remeber json doesnt support single quotes.!!
     
 {instructions_message}
 
@@ -127,7 +126,7 @@ FOLLOW ALL ABOVE RULES!
 
         message = HumanMessage(
             content=[
-                {"type": "text", "text": f"Solve the following question:\n{question.question_to_solve_markdown}\n Dont make links up only use links from tools\n your response will be directly put into an assignment.\n The answer in markdown, get straight to it no phrases like 'To solve this question':"},
+                {"type": "text", "text": f"Solve the following question:\n{question.question_to_solve_markdown}\n Dont make links up only use links from tools\n your response will be directly put into an assignment.\n Dont put code in you response unless asked. \n The answer in markdown, get straight to it no phrases like 'To solve this question':"},
                 *formatted_images
             ]
         )

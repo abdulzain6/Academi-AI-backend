@@ -17,14 +17,17 @@ app.post('/fetch', async (req, res) => {
         console.log('Request timed out for URL:', url); // Log timeout
         cycleTLS.exit();
         reject(new Error('Request timed out'));
-      }, 30000); // Timeout set to 10000 milliseconds (10 seconds)
+      }, 30000); // Timeout set to 30000 milliseconds (30 seconds)
 
       cycleTLS(url, args, 'get')
         .then(response => {
           clearTimeout(timeout);
           resolve(response);
         })
-        .catch(reject);
+        .catch(error => {
+          clearTimeout(timeout);
+          reject(error);
+        });
     });
 
     cycleTLS.exit();
