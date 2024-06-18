@@ -6,10 +6,10 @@ const port = 3000;
 app.use(express.json()); // Middleware for parsing JSON bodies
 
 app.post('/fetch', async (req, res) => {
-  const { url, args } = req.body;
+  const { url, args, method = 'get' } = req.body; // Default method is 'get'
 
   try {
-    console.log('Received request for URL:', url); // Log the requested URL
+    console.log('Received request for URL:', url, 'with method:', method); // Log the requested URL and method
 
     const cycleTLS = await initCycleTLS();
     const response = await new Promise((resolve, reject) => {
@@ -19,7 +19,7 @@ app.post('/fetch', async (req, res) => {
         reject(new Error('Request timed out'));
       }, 30000); // Timeout set to 30000 milliseconds (30 seconds)
 
-      cycleTLS(url, args, 'get')
+      cycleTLS(url, args, method.toLowerCase())
         .then(response => {
           clearTimeout(timeout);
           resolve(response);

@@ -342,6 +342,10 @@ def download_file(
     if file := file_manager.get_file_by_name(
         collection_name=collection_name, filename=file_name, user_id=user_id, bytes=True
     ):
+        if file.filetype == ".yt" or file.filetype == ".html":
+            raise HTTPException(detail="Cannot download files made using link. If your'e looking to make notes, use the notes maker.", status_code=404)
+
+        
         with tempfile.NamedTemporaryFile(
             delete=False, prefix=file.friendly_filename, suffix=file.filetype
         ) as temp_file:
