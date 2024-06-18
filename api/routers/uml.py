@@ -15,6 +15,9 @@ def make_uml(
     user_id=Depends(get_user_id),
     play_integrity_verified=Depends(verify_play_integrity),
 ):     
+    if len(prompt) > 2000:
+        raise HTTPException(400, detail="Prompt must be of maximum 2000 characters.")
+    
     model_name, premium_model = can_use_premium_model(user_id=user_id)     
     model, _ = get_model_and_fallback({"temperature": 0}, False, premium_model, alt=False)
     diagram_maker = DiagramMaker(mermaid_client, model, plantuml_server)

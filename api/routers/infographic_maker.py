@@ -44,6 +44,8 @@ def make_infographic(
     user_id=Depends(get_user_id),
     play_integrity_verified=Depends(verify_play_integrity),
 ):
+    if len(request.markdown_content) > 5000:
+        raise HTTPException(400, detail="Content must be of maximum of 5000 characters")
     try:
         image = InfographicMaker().make_infographic(
             markdown=request.markdown_content,
