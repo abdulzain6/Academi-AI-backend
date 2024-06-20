@@ -90,6 +90,10 @@ def text_to_handwriting_images(
         images = renderer.render_text_to_handwriting(request.text)
         image_data = [base64.b64encode(BytesIO(image.tobytes()).getvalue()).decode('utf-8') for image in images]
         return {"image_data": image_data}
+    except ValueError as e:
+        logger.error(f"Error generating handwriting images: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+            
     except Exception as e:
         logger.error(f"Error generating handwriting images: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
@@ -140,6 +144,10 @@ def text_to_handwriting_pdf(
         pdf_bytes = renderer.save_images_to_pdf(images)
         pdf_base64 = base64.b64encode(pdf_bytes).decode('utf-8')
         return {"pdf_data": pdf_base64}
+    except ValueError as e:
+        logger.error(f"Error generating handwriting images: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+    
     except Exception as e:
         logger.error(f"Error generating handwriting PDF: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
