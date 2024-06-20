@@ -46,7 +46,6 @@ def get_available_fonts(
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
 @router.post("/text-to-handwriting-images")
-@require_points_for_feature("TEXT_TO_HANDWRITTING")
 def text_to_handwriting_images(
     request: TextToHandwritingRequest,
     background_tasks: BackgroundTasks,
@@ -88,7 +87,11 @@ def text_to_handwriting_images(
 
     try:
         images = renderer.render_text_to_handwriting(request.text)
-        image_data = [base64.b64encode(BytesIO(image.tobytes()).getvalue()).decode('utf-8') for image in images]
+        image_data = []
+        for image in images:
+            with BytesIO() as output:
+                image.save(output, format="PNG")
+                image_data.append(base64.b64encode(output.getvalue()).decode('utf-8'))
         return {"image_data": image_data}
     except ValueError as e:
         logger.error(f"Error generating handwriting images: {str(e)}")
