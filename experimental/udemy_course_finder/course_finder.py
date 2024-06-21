@@ -6,20 +6,10 @@ from cycletls_client import CycleTlsServerClient
 from bs4 import BeautifulSoup
 from lxml import html
 from urllib.parse import urlparse, urlunparse
-
+from database import CourseRepository, Course
 import re
 import requests
 
-
-class Course(BaseModel):
-    name: str
-    category: str
-    image: str | None = None
-    actual_price_usd: float
-    sale_price_usd: float
-    sale_end: datetime
-    description: str | None = None
-    url: str
     
         
 class CourseScraper:
@@ -478,6 +468,11 @@ def remove_duplicates(courses: list[Course]) -> list[Course]:
 
 
 if __name__ == "__main__":
+    database = CourseRepository(
+        "mongodb://root:pdCHU4f7tF@localhost:27017",
+        "study-app",
+        "courses"
+    )
     scrapers: list[CourseScraper] = [
         CouponScorpion(
             cycle_tls_client=CycleTlsServerClient("http://localhost:3000/fetch"),
@@ -505,6 +500,7 @@ if __name__ == "__main__":
         courses.extend(scraper.scrape())
     
     courses = remove_duplicates(courses)
+    database.save_courses(courses)
     
 
     

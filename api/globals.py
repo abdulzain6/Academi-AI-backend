@@ -8,7 +8,8 @@ from .lib.database import (
     MessageDBManager,
     UserPointsManager,
     ReferralManager,
-    MongoLogManager
+    MongoLogManager,
+    CourseRepository
 )
 from .lib.database.purchases import (
     SubscriptionFeatures,
@@ -240,6 +241,13 @@ log_manager = MongoLogManager(
     db_name=DATABASE_NAME,
     collection_name="logs"
 )
+course_manager = CourseRepository(
+    uri=MONGODB_URL,
+    db_name=DATABASE_NAME,
+    collection_name="courses"   
+)
+
+
 
 # OCR
 text_ocr = AzureOCR(AZURE_OCR_ENDPOINT, AZURE_OCR_KEY)

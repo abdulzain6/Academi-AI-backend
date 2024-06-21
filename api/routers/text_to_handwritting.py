@@ -29,6 +29,7 @@ class TextToHandwritingRequest(BaseModel):
     word_spacing: int = 60
     letter_spacing: int = 4
     background_image: str = None  # Base64 encoded image
+    add_noise_effect: bool = True
 
 def cleanup_temp_file(file_path: str):
     if os.path.exists(file_path):
@@ -82,7 +83,8 @@ def text_to_handwriting_images(
         noise_level=request.noise_level,
         word_spacing=request.word_spacing,
         letter_spacing=request.letter_spacing,
-        background_image_path=background_image_path
+        background_image_path=background_image_path,
+        add_noise_effect=request.add_noise_effect
     )
 
     try:
@@ -139,7 +141,8 @@ def text_to_handwriting_pdf(
         noise_level=request.noise_level,
         word_spacing=request.word_spacing,
         letter_spacing=request.letter_spacing,
-        background_image_path=background_image_path
+        background_image_path=background_image_path,
+        add_noise_effect=request.add_noise_effect
     )
 
     try:

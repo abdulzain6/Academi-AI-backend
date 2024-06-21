@@ -22,6 +22,7 @@ from .routers.info import router as info_router
 from .routers.assignment_maker import router as assignment_router
 from .routers.text_to_handwritting import router as handwriting_router
 from .routers.infographic_maker import router as infographic_router
+from .routers.free_courses import router as courses_router
 
 #gpts
 from api.gpts_routers.resume import router as gpt_resume_router
@@ -183,6 +184,7 @@ app.include_router(info_router, prefix="/api/v1/info", tags=["info"])
 app.include_router(assignment_router, prefix="/api/v1/assignment", tags=["assignment"])
 app.include_router(handwriting_router, prefix="/api/v1/handwriting", tags=["handwriting"])
 app.include_router(infographic_router, prefix="/api/v1/infographic", tags=["infographic"])
+app.include_router(courses_router, prefix="/api/v1/courses", tags=["courses"])
 
 
 app.include_router(gpt_resume_router, prefix="/gpts/resume", tags=["gpts", "resume"])

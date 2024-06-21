@@ -1,9 +1,15 @@
 from pymongo import MongoClient, ASCENDING, UpdateOne
 from pymongo.errors import BulkWriteError
 from typing import List, Tuple
-from datetime import datetime, timedelta
-from pydantic import BaseModel
+from datetime import datetime
+from pydantic import BaseModel, Field
 from urllib.parse import urlparse, urlunparse
+
+
+def remove_url_parameters(url: str) -> str:
+    parsed_url = urlparse(url)
+    clean_url = urlunparse(parsed_url._replace(query=""))
+    return clean_url
 
 class Course(BaseModel):
     name: str
@@ -14,12 +20,12 @@ class Course(BaseModel):
     sale_end: datetime
     description: str | None = None
     url: str
+    clean_url: str = Field(default="")
 
-def remove_url_parameters(url: str) -> str:
-    parsed_url = urlparse(url)
-    clean_url = urlunparse(parsed_url._replace(query=""))
-    return clean_url
-
+    def __init__(self, **data):
+        super().__init__(**data)
+        self.clean_url = remove_url_parameters(self.url)
+        
 def remove_duplicates(courses: List[Course]) -> List[Course]:
     unique_courses = {}
     for course in courses:
@@ -27,6 +33,7 @@ def remove_duplicates(courses: List[Course]) -> List[Course]:
         if clean_url not in unique_courses:
             unique_courses[clean_url] = course
     return list(unique_courses.values())
+
 
 class CourseRepository:
     def __init__(self, uri: str, db_name: str, collection_name: str):
@@ -36,7 +43,6 @@ class CourseRepository:
         self._create_ttl_index()
 
     def _create_ttl_index(self):
-        # Create TTL index on 'sale_end' field with expireAfterSeconds set to 0
         self.collection.create_index([("sale_end", ASCENDING)], expireAfterSeconds=0)
 
     def save_courses(self, courses: List[Course]):
@@ -47,7 +53,6 @@ class CourseRepository:
             clean_url = remove_url_parameters(course.url)
             existing_course = self.collection.find_one({"clean_url": clean_url})
             if existing_course:
-                # Update existing course
                 operations.append(
                     UpdateOne(
                         {"clean_url": clean_url},
@@ -55,7 +60,6 @@ class CourseRepository:
                     )
                 )
             else:
-                # Insert new course
                 course_dict["clean_url"] = clean_url
                 operations.append(
                     UpdateOne(
@@ -89,43 +93,8 @@ class CourseRepository:
         total = self.collection.count_documents({})
         return courses, total
 
-# Example usage:
-if __name__ == "__main__":
-    course_repo = CourseRepository(uri="mongodb://root:@localhost:27017", db_name="study-app", collection_name="courses")
-
-    # Adding sample courses
-    sample_courses = [
-        Course(
-            name="Sample Course 1",
-            category="Development",
-            image=None,
-            actual_price_usd=100.0,
-            sale_price_usd=10.0,
-            sale_end=datetime.utcnow() + timedelta(seconds=30),  # Expires in 30 seconds
-            description="This is a sample course 1.",
-            url="https://example.com/sample-course-1"
-        ),
-        Course(
-            name="Sample Course 2",
-            category="Business",
-            image=None,
-            actual_price_usd=200.0,
-            sale_price_usd=20.0,
-            sale_end=datetime(2024, 11, 30, 23, 59, 59),
-            description="This is a sample course 2.",
-            url="https://example.com/sample-course-2"
-        ),
-    ]
-    course_repo.save_courses(sample_courses)
-
-    # Searching for courses
-    courses, total = course_repo.search_courses("sample")
-    print(f"Found {total} courses.")
-    for course in courses:
-        print(course)
-
-    # Getting paginated courses
-    courses, total = course_repo.get_courses(page=1, page_size=5)
-    print(f"Found {total} courses.")
-    for course in courses:
-        print(course)
+    def get_course_by_clean_url(self, clean_url: str) -> Course | None:
+        doc = self.collection.find_one({"clean_url": clean_url})
+        if doc:
+            return Course(**doc)
+        return None

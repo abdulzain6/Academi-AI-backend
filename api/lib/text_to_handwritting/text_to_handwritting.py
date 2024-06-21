@@ -143,7 +143,7 @@ class HandwritingRenderer:
             ImageDraw.Draw(Image.new('RGB', (self.width_in_pixels, self.height_in_pixels), 'white')),
             self.font,
             self.line_spacing_extra
-        ) + 4
+        )
 
         wrapped_text = self.wrap_text(text, max_lines_per_page)
         print(wrapped_text)
