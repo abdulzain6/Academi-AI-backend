@@ -583,11 +583,10 @@ File Content:
         
         try:
             data, _, _ = knowledge_manager.load_web_youtube_link({}, None, web_url=link, injest=False)
-        except ValueError as e:
-            raise HTTPException(400, detail=f"Error: {e}")
         except Exception as e:
             logging.error(f"Error: {e}")
-            raise HTTPException(400, detail=f"There was an issue in getting data from the url, Please try another url")
+            return f"Error: {e}"
+
         
         content = select_random_chunks(data, 1000, 2700)
         
