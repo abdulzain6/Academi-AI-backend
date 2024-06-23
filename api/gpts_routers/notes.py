@@ -34,7 +34,7 @@ def get_vid(
     _=Depends(verify_token),
 ):     
     try:
-        contents, _, _ = knowledge_manager.load_web_youtube_link(metadata={}, youtube_link=get_vid_request.video_link)
+        contents, _, _ = knowledge_manager.load_web_youtube_link(metadata={}, youtube_link=get_vid_request.video_link, injest=False)
         return {"transcript" : contents}
     except Exception as e:
         raise HTTPException(400, detail=str(e))

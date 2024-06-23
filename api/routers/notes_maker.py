@@ -84,7 +84,7 @@ def make_notes(
         data = notes_input.data
     elif notes_input.url:
         try:
-            data, _, _ = knowledge_manager.load_web_youtube_link({}, None, web_url=notes_input.url)
+            data, _, _ = knowledge_manager.load_web_youtube_link({}, None, web_url=notes_input.url, injest=False)
         except ValueError as e:
             raise HTTPException(400, detail=f"Error: {e}")
         except Exception as e:

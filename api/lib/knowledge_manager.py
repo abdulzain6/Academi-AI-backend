@@ -357,6 +357,7 @@ class KnowledgeManager:
         metadata: Dict,
         youtube_link: str = None,
         web_url: str = None,
+        injest: bool = True
     ):
         if not youtube_link and not web_url:
             raise ValueError("Either weburl or youtube_link must be specified")
@@ -433,7 +434,10 @@ class KnowledgeManager:
 
         logging.info(f"Loaded content: {contents}")
         docs = self.add_metadata_to_docs(metadata=metadata, docs=docs)
-        ids = self.injest_data(documents=docs)
+        if injest:
+            ids = self.injest_data(documents=docs)
+        else:
+            ids = []
         return contents, ids, bytes(contents, encoding="utf-8")
 
     def delete_ids(self, ids: list[str]):

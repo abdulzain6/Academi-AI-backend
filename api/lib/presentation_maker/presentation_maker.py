@@ -694,7 +694,7 @@ The placeholders following the schema:"""
                 run.text = run.text.replace(
                     "{{" + placeholder.placeholder_name + "}}",
                     placeholder.placeholder_data,
-                )
+                ).replace("*", '')
 
     def replace_images_in_shape(self, shape, placeholders: List[CombinedPlaceholder], pixel) -> list[tuple]:
         new_shapes = []

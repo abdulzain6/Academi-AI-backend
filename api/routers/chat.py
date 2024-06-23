@@ -582,7 +582,7 @@ File Content:
             return f"Chosen Template not available. Available templates: {available}"
         
         try:
-            data, _, _ = knowledge_manager.load_web_youtube_link({}, None, web_url=link)
+            data, _, _ = knowledge_manager.load_web_youtube_link({}, None, web_url=link, injest=False)
         except ValueError as e:
             raise HTTPException(400, detail=f"Error: {e}")
         except Exception as e:
