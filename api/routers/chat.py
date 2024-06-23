@@ -406,6 +406,7 @@ def chat_general_stream(
             random.choice(get_available_note_makers()),
             description=f"Template to make notes from, Available: {get_available_note_makers()}"
         )
+        link: str = OldField("", description="The link to make notes from. Web or youtube link.")
 
     class ReadDataArgs(OldBaseModel):
         query: str = OldField("all", description="What you want to search")
