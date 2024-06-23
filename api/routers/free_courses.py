@@ -16,10 +16,10 @@ def get_courses(
     play_integrity_verified=Depends(verify_play_integrity),
 ):
     courses, total = course_manager.get_courses(
-        page=page, page_size=max(page_size, 30)
+        page=page, page_size=min(page_size, 30)
     )
     return {
-        "courses" : [{"is_premium" : True if (course.actual_price_usd - course.sale_price_usd) >= 100  else False, **course.model_dump(exclude=["url"])} for course in courses],
+        "courses" : [{"is_premium" : True if (course.actual_price_usd - course.sale_price_usd) >= 50  else False, **course.model_dump(exclude=["url"])} for course in courses],
         "total" : total
     }
     
@@ -32,10 +32,10 @@ def search_courses(
     play_integrity_verified=Depends(verify_play_integrity),
 ):
     courses, total = course_manager.search_courses(
-        page=page, page_size=max(page_size, 30), query_str=query
+        page=page, page_size=min(page_size, 30), query_str=query
     )
     return {
-        "courses" : [course.model_dump(exclude=["url"]) for course in courses],
+        "courses" : [{"is_premium" : True if (course.actual_price_usd - course.sale_price_usd) >= 50  else False, **course.model_dump(exclude=["url"])} for course in courses],
         "total" : total
     }
     
@@ -51,7 +51,7 @@ def get_full_coupon_url(
     if not course:
         raise HTTPException(400, detail="Course not available")
     
-    if (course.actual_price_usd - course.sale_price_usd) >= 100:
+    if (course.actual_price_usd - course.sale_price_usd) >= 50:
         if subscription_manager.get_subscription_type(user_id) in {SubscriptionType.FREE}:
             raise HTTPException(status_code=400, detail="You must be subscribed to to access this course.")    
  

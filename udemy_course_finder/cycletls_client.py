@@ -30,10 +30,12 @@ class CycleTlsServerClient:
         else:
             self.default_args = default_args
 
-    def _send_request(self, method: str, url: str, **kwargs):
+    def _send_request(self, method: str, url: str, use_proxy: bool = False, **kwargs):
         # Merge default arguments with the provided ones
         args = self.default_args.copy()
         args.update(kwargs)
+        if not use_proxy:
+            args.pop("proxy")
         response = requests.post(
             self.server_url, json={"args": args, "url": url, "method": method}
         )
@@ -61,8 +63,11 @@ class CycleTlsServerClient:
         return self._send_request('options', url, **kwargs)
 
 if __name__ == '__main__':
-    client = CycleTlsServerClient(server_url="http://localhost:3000/fetch")
-    response_get = client.get("https://www.udemy.com/course/javascript-and-php-programming-complete-course/?couponCode=FB2C7B9E6EC0F944BBDB")
+    client = CycleTlsServerClient(server_url="http://localhost:3000/fetch", proxy="http://dprulefr-rotate:7obapq1qv8fl@p.webshare.io:80")
+    response_get = client.get(
+        "https://www.udemy.com/course/javascript-and-php-programming-complete-course/?couponCode=FB2C7B9E6EC0F944BBDB",
+        use_proxy=True
+    )
     print("4551820" in response_get.text)
     response_post = client.post("https://www.udemy.com/api-2.0/course-landing-components/5909998/me/?couponCode=325A32EE01840618BC62&utm_source=aff-campaign&utm_medium=udemyads&components=redeem_coupon,price_text")
     print(response_post.text)

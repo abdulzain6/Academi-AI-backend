@@ -401,29 +401,11 @@ def chat_general_stream(
         instructions: Optional[str] = "Be detailed"
     
     class MakeNotesArgs(OldBaseModel):
-        subject_name: Optional[str] = OldField(
-            None,
-            description="The name of the subject the file to make notes from is in"
-        )
-        file_name: Optional[str] = OldField(
-            None,
-            description="The name of the file to make notes from. Leave empty if you want to make from whole subject",
-        )
         instructions: str = OldField("")
         template: str = OldField(
             random.choice(get_available_note_makers()),
             description=f"Template to make notes from, Available: {get_available_note_makers()}"
         )
-        query: str = OldField("Anything", description="The topic of the notes")
-
-    class MakeFileArgs(OldBaseModel):
-        subject_name: str = OldField(description="THe subject to add file to")
-        filename: str = OldField(description="The name of the file to add")
-        url: str = OldField(description="The url to create file from. Must be a working url you can find urls using search. example.com or any wrong url will cause fatal error!")
-        
-    class MakeSubjectArgs(OldBaseModel):
-        name: str = OldField(description="Name of the subject to create")
-        description: str = OldField(description="Description of the subject to create")
 
     class ReadDataArgs(OldBaseModel):
         query: str = OldField("all", description="What you want to search")
@@ -593,97 +575,20 @@ File Content:
             logging.error(f"Error in graph generation {e}")
             return f"Error in graph generation {e}"
 
-    def create_subject(name: str, description: str):
-        try:
-            can_add_more_data(user_id, collection_check=True, file_check=False)
-        except Exception as e:
-            return "User cannot add more subjects, ask them to upgrade to PRO or elite plan. AI can help using its knowledge too"
-        
-        uid = str(uuid.uuid4())
-        try:
-            added_collection = collection_manager.add_collection(
-                CollectionModel(
-                    user_uid=user_id,
-                    name=name,
-                    description=description,
-                    collection_uid=uid,
-                    vectordb_collection_name=f"{user_id}_{uid}",
-                )
-            )
-            return "Subject created successfully, lets proceed with adding files to it. This is optional, AI can use its knowledge to answer too. AI can add using youtube links or urls only. For documents user has to enter manually."
-        except Exception as e:
-            return f"Error creating subject {e}"
-        
-    def create_file(subject_name: str, filename: str, url: str):
-        try:
-            return create_link_file(
-                user_id=user_id,
-                subject_name=subject_name,
-                filename=filename,
-                youtube_link=None,
-                web_link=url
-            )
-        except Exception as e:
-            return f"Error: {e}. Maybe ask the user for another url or give him urls using search to choose from or just use your knowledge?"
-
-    def create_notes(subject_name: str, file_name: str, instructions: str, template: str, query: str):
+    def create_notes(link: str, instructions: str, template: str):
         available = get_available_note_makers()
         if template not in available:
             return f"Chosen Template not available. Available templates: {available}"
         
-        if subject_name:
-            try:
-                all_subjects = [
-                    collection.name
-                    for collection in collection_manager.get_all_by_user(user_id=user_id)
-                ]
-                subject_name = find_most_similar(all_subjects, subject_name, 5)
-
-                if not subject_name:
-                    raise SubjectMissingException()
-
-                collection = collection_manager.get_collection_by_name_and_user(
-                    subject_name, user_id
-                )
-
-                if collection.number_of_files == 0:
-                    raise SubjectMissingException()
-
-                if file_name:
-                    all_file_names = [
-                        file.filename
-                        for file in file_manager.get_all_files(
-                            user_id=user_id, collection_name=subject_name
-                        )
-                    ]
-                    file_name = find_most_similar(all_file_names, file_name, max_distance=5)
-                    if not file_name:
-                        raise SubjectMissingException()
-                    
-                    metadata = {"file" : file_name}
-                else:
-                    metadata = {}
-
-                metadata["collection"] = collection.name
-                metadata["user"] = user_id
-                try:
-                    docs = knowledge_manager.query_data(query, k=3, metadata=metadata)
-                    data = select_random_chunks(
-                        "\n".join([doc.page_content for doc in docs]), 600, 1850
-                    )
-                except Exception as e:
-                    logging.error(f"Error in vectordb {e}")
-                    if file_name:
-                        file_content = file_manager.get_file_by_name(user_id=user_id, collection_name=subject_name, filename=file_name).file_content
-                    else:
-                        files = file_manager.get_all_files(user_id=user_id, collection_name=subject_name)
-                        file_content = "".join([file.file_content for file in files])
-                        
-                    data = select_random_chunks(file_content, 600, 1850)
-            except SubjectMissingException:
-                data = f"Make notes for {query}"
-        else:
-            data = f"Make notes for {query}"
+        try:
+            data, _, _ = knowledge_manager.load_web_youtube_link({}, None, web_url=link)
+        except ValueError as e:
+            raise HTTPException(400, detail=f"Error: {e}")
+        except Exception as e:
+            logging.error(f"Error: {e}")
+            raise HTTPException(400, detail=f"There was an issue in getting data from the url, Please try another url")
+        
+        content = select_random_chunks(data, 1000, 2700)
         
         try:
             model_name, premium_model = use_feature_with_premium_model_check(
@@ -704,7 +609,7 @@ File Content:
                     ),
                     "cache_manager": redis_cache_manager,
                     "url_template": CACHE_DOCUMENT_URL_TEMPLATE,
-                    "data_string" : data,
+                    "data_string" : content,
                     "instructions" : instructions
                 },
                 feature_key="NOTES",
@@ -759,32 +664,14 @@ File Content:
             args_schema=WriterArgs,
         ),
         StructuredTool.from_function(
-            func=lambda subject_name="", file_name="", query="", instructions = "", template = random.choice(get_available_note_makers()), *args, **kwargs: create_notes(
-                subject_name=subject_name,
-                file_name=file_name,
+            func=lambda  link="", instructions = "", template = random.choice(get_available_note_makers()), *args, **kwargs: create_notes(
                 instructions=instructions,
                 template=template,
-                query=query
+                link=link
             ),
-            name="make_notes_from_file",
-            description="Used to make notes from student files, don't use for anything else",
+            name="make_notes_from_link",
+            description="Used to make notes from links. These can be web links or youtube links",
             args_schema=MakeNotesArgs,
-        ),
-        StructuredTool.from_function(
-            func=lambda subject_name, filename, url, *args, **kwargs: create_file(
-                subject_name=subject_name, filename=filename, url=url
-            ),
-            name="create_file",
-            description="Used to create a file for the student from a url, or youtube link. Documents will have to be added manually by the student though. The files can be read by AI and can be used to make notes",
-            args_schema=MakeFileArgs,
-        ),
-        StructuredTool.from_function(
-            func=lambda name, description = "", *args, **kwargs: create_subject(
-                name=name, description=description
-            ),
-            name="create_subject",
-            description="Used to create a subject for the student",
-            args_schema=MakeSubjectArgs,
         ),
         StructuredTool.from_function(
             func=lambda subject_name, file_name=None, query="all", *args, **kwargs: read_vector_db(
