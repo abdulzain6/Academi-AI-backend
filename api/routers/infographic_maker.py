@@ -75,7 +75,7 @@ def generate_with_ai(
 ):
     try:
         model_name, premium_model = can_use_premium_model(user_id=user_id)
-        llm = get_model({"temperature" : 0}, False, premium_model, alt=True)
+        llm = get_model({"temperature" : 0}, False, premium_model, alt=False)
         message = llm.invoke(
             [
                 SystemMessage(content="""You are an AI designed to generate content for infographics in markdown
