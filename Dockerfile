@@ -15,7 +15,7 @@ RUN apt-get update && \
     gnupg2 \
     tesseract-ocr \
     wkhtmltopdf \
-    texlive-xetex \
+    texlive-full \
     fonts-freefont-ttf \
     fonts-dejavu \
     fonts-liberation \

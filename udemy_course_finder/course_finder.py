@@ -87,7 +87,8 @@ class CourseScraper:
             sale_price = price_data["price"]["amount"]
             actual_price = price_data["list_price"]["amount"]
             end_date = price_data["campaign"]["end_time"]
-            
+            assert sale_price == 0, f"Sale price not 0, but {sale_price}"
+
             return True, sale_price, actual_price, end_date, image
 
         except Exception as e:
