@@ -33,6 +33,5 @@ class SubscriptionChecker:
 
 if __name__ == "__main__":
     c = SubscriptionChecker("/home/zain/Akalmand.ai/api/creds/academi-ai-6173d917c2a1.json")
-    data = c.check_subscription("com.ainnovate.academiaii", "omdgjnaekifnijnfclobnhej.AO-J1OytfIjL9Unf7QOGGpWQX-OzoTP1PtrYZ8xJec5FLoPSp562JOm0Px-tdBrYWn3bWFJ8BrnPwMcTSwdCLPt8nBE6DY6AwF41vZzgccO5FcsW3T4X7qw")
-    product_ids = [item['productId'] for item in data.get('lineItems', [])]
-    print(product_ids)
+    data = c.check_subscription("com.ainnovate.academiaii", "oppkbcfplkaacgjcpakoohhk.AO-J1OzoOjbwJvJuDocvwshdYp_lJrUA1qI-CP8hdeo0BlysPDsCA2x9bzPS1ff0mhFr9ZAiS7as_SoM0q2J3VzXMjYOM764cipVgLvAMgMKCYZ6A2kIjTE")
+    print(data)

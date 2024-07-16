@@ -202,7 +202,6 @@ def calculate_multiplier(data: dict) -> int:
         return 12
     return 1
 
-
 def handle_voided_subscription(voided_notification: dict):
     user_id = subscription_manager.retrieve_user_id_by_sub_token(voided_notification['purchaseToken'])
     if user_id:
@@ -257,6 +256,7 @@ def receive_notification(notification: dict, token_verified=Depends(verify_googl
     logging.info(f"Received notification: {notification}")
     sub_notification = notification.get("subscriptionNotification")
     voided_notification = notification.get("voidedPurchaseNotification")
+    onetime_notification = notification.get("oneTimeProductNotification")
     if sub_notification:
         notification_type = SubscriptionStatus(sub_notification['notificationType'])
         if notification_type in {SubscriptionStatus.SUBSCRIPTION_EXPIRED, SubscriptionStatus.SUBSCRIPTION_REVOKED}:
@@ -276,6 +276,19 @@ def receive_notification(notification: dict, token_verified=Depends(verify_googl
                     raise HTTPException("Error")
     elif voided_notification:
         handle_voided_notification(voided_notification)
+    elif onetime_notification:
+        # Purchase
+        if onetime_notification["notificationType"] == 1:
+            if "externalAccountIdentifiers" in sub_doc:
+                user_id = sub_doc["externalAccountIdentifiers"]["obfuscatedExternalAccountId"]
+                data = subscription_checker.check_one_time_purchase(
+                    APP_PACKAGE_NAME,
+                    onetime_notification["purchaseToken"],
+                    product_id=onetime_notification["sku"]
+                )
+                subscription_manager.add_onetime_token(user_id=user_id, token=onetime_notification["purchaseToken"], product_purchased=onetime_notification["sku"])
+                user_points_manager.increment_user_points(user_id, points=PRODUCT_ID_COIN_MAP[onetime_notification["sku"]])
+                logging.info(f"Coins purchase attempt by {user_id}. Coins granted.")
     else:
         logging.warning(f"No relavent Notification found. Notification: {notification}")
         
