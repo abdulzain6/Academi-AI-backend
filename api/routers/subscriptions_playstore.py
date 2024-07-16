@@ -285,11 +285,12 @@ def receive_notification(notification: dict, token_verified=Depends(verify_googl
                 product_id=onetime_notification["sku"]
             )
             print(data)
-            if "externalAccountIdentifiers" in data:
-                user_id = sub_doc["externalAccountIdentifiers"]["obfuscatedExternalAccountId"]
-                subscription_manager.add_onetime_token(user_id=user_id, token=onetime_notification["purchaseToken"], product_purchased=onetime_notification["sku"])
-                user_points_manager.increment_user_points(user_id, points=PRODUCT_ID_COIN_MAP[onetime_notification["sku"]])
-                logging.info(f"Coins purchase attempt by {user_id}. Coins granted.")
+            if "obfuscatedExternalAccountId" in data:
+                user_id = sub_doc["obfuscatedExternalAccountId"]
+                if user_id:
+                    subscription_manager.add_onetime_token(user_id=user_id, token=onetime_notification["purchaseToken"], product_purchased=onetime_notification["sku"])
+                    user_points_manager.increment_user_points(user_id, points=PRODUCT_ID_COIN_MAP[onetime_notification["sku"]])
+                    logging.info(f"Coins purchase attempt by {user_id}. Coins granted.")
     else:
         logging.warning(f"No relavent Notification found. Notification: {notification}")
         
