@@ -284,6 +284,7 @@ def receive_notification(notification: dict, token_verified=Depends(verify_googl
                 onetime_notification["purchaseToken"],
                 product_id=onetime_notification["sku"]
             )
+            print(data)
             if "externalAccountIdentifiers" in data:
                 user_id = sub_doc["externalAccountIdentifiers"]["obfuscatedExternalAccountId"]
                 subscription_manager.add_onetime_token(user_id=user_id, token=onetime_notification["purchaseToken"], product_purchased=onetime_notification["sku"])
