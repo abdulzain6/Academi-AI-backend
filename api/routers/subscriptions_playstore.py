@@ -156,6 +156,41 @@ def handle_renewed(sub_notification: dict):
     else:
         logging.error(f"User not found! Notififcation: {sub_notification}. Couldn't Renew Subscription")
         raise HTTPException(status_code=404, detail="Subscription document not found.")
+    
+def handle_purchase(user_id: str, purchase_token: str, data: dict):
+    subscription_manager.add_subscription_token(user_id, purchase_token)
+    logging.info(f"Subscription purchase attempt by {user_id}")
+    subscription_state = data.get('subscriptionState', '')
+    if subscription_state == 'SUBSCRIPTION_STATE_ACTIVE':
+        if line_items := data.get('lineItems', []):
+            if product_id := line_items[0].get('productId'):
+                if "6_monthly" in product_id:
+                    muliplier = 6
+                elif "monthly" in product_id:
+                    muliplier = 1
+                elif "yearly" in product_id:
+                    muliplier = 12
+                else:
+                    muliplier = 1
+                
+                if product_id not in PRODUCT_ID_MAP:
+                    logging.error(f"Product not found, User: {user_id}")
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST, detail="Product Not found"
+                    )
+                    
+                subscription_type = PRODUCT_ID_MAP[product_id]
+                subscription_manager.apply_or_default_subscription(
+                    user_id=user_id,
+                    purchase_token=purchase_token,
+                    subscription_type=subscription_type,
+                    update=True,
+                    mulitplier=muliplier
+                )
+                subscription_manager.reset_monthly_limits(user_id, muliplier)
+                logging.info(f"{user_id} Just subscribed {purchase_token}")
+                return True
+    return False
 
 def calculate_multiplier(data: dict) -> int:
     product_id = data.get('lineItems')[0].get('productId')
@@ -229,7 +264,16 @@ def receive_notification(notification: dict, token_verified=Depends(verify_googl
         elif notification_type == SubscriptionStatus.SUBSCRIPTION_RENEWED:
             handle_renewed(sub_notification)
         elif notification_type == SubscriptionStatus.SUBSCRIPTION_PURCHASED:
-            print(subscription_checker.check_subscription(APP_PACKAGE_NAME, sub_notification['purchaseToken']))
+            sub_doc = subscription_checker.check_subscription(
+                APP_PACKAGE_NAME,
+                sub_notification['purchaseToken']
+            )
+            if "externalAccountIdentifiers" in sub_doc:
+                user_id = sub_doc["externalAccountIdentifiers"]["obfuscatedExternalAccountId"]
+                if handle_purchase(user_id, sub_notification['purchaseToken'], sub_doc):
+                    return {"status": "success"}
+                else:
+                    raise HTTPException("Error")
     elif voided_notification:
         handle_voided_notification(voided_notification)
     else:
