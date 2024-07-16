@@ -279,7 +279,7 @@ def receive_notification(notification: dict, token_verified=Depends(verify_googl
     elif onetime_notification:
         # Purchase
         if onetime_notification["notificationType"] == 1:
-            if "externalAccountIdentifiers" in sub_doc:
+            if "externalAccountIdentifiers" in onetime_notification:
                 user_id = sub_doc["externalAccountIdentifiers"]["obfuscatedExternalAccountId"]
                 data = subscription_checker.check_one_time_purchase(
                     APP_PACKAGE_NAME,
