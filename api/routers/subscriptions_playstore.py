@@ -279,13 +279,13 @@ def receive_notification(notification: dict, token_verified=Depends(verify_googl
     elif onetime_notification:
         # Purchase
         if onetime_notification["notificationType"] == 1:
-            if "externalAccountIdentifiers" in onetime_notification:
+            data = subscription_checker.check_one_time_purchase(
+                APP_PACKAGE_NAME,
+                onetime_notification["purchaseToken"],
+                product_id=onetime_notification["sku"]
+            )
+            if "externalAccountIdentifiers" in data:
                 user_id = sub_doc["externalAccountIdentifiers"]["obfuscatedExternalAccountId"]
-                data = subscription_checker.check_one_time_purchase(
-                    APP_PACKAGE_NAME,
-                    onetime_notification["purchaseToken"],
-                    product_id=onetime_notification["sku"]
-                )
                 subscription_manager.add_onetime_token(user_id=user_id, token=onetime_notification["purchaseToken"], product_purchased=onetime_notification["sku"])
                 user_points_manager.increment_user_points(user_id, points=PRODUCT_ID_COIN_MAP[onetime_notification["sku"]])
                 logging.info(f"Coins purchase attempt by {user_id}. Coins granted.")
