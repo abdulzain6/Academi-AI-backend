@@ -29,6 +29,9 @@ from api.gpts_routers.resume import router as gpt_resume_router
 from api.gpts_routers.uml import router as gpts_uml_router
 from api.gpts_routers.notes import router as notes_router_gpt
 
+#course radar
+from api.course_radar.courses import router as course_radar_search_router
+
 from fastapi import FastAPI, Request, HTTPException, status, Depends
 from fastapi.responses import JSONResponse
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
@@ -190,6 +193,9 @@ app.include_router(courses_router, prefix="/api/v1/courses", tags=["courses"])
 app.include_router(gpt_resume_router, prefix="/gpts/resume", tags=["gpts", "resume"])
 app.include_router(gpts_uml_router, prefix="/gpts/uml", tags=["gpts", "uml"])
 app.include_router(notes_router_gpt, prefix="/gpts/notes", tags=["gpts", "notes"])
+
+app.include_router(course_radar_search_router, prefix="/course_radar/courses", tags=["course_radar"])
+
 
 @app.middleware('http')
 async def timeout_middleware(request: Request, call_next):

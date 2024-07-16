@@ -228,6 +228,8 @@ def receive_notification(notification: dict, token_verified=Depends(verify_googl
             handle_expired_or_revoked(sub_notification)
         elif notification_type == SubscriptionStatus.SUBSCRIPTION_RENEWED:
             handle_renewed(sub_notification)
+        elif notification_type == SubscriptionStatus.SUBSCRIPTION_PURCHASED:
+            print(subscription_checker.check_subscription(APP_PACKAGE_NAME, sub_notification['purchaseToken']))
     elif voided_notification:
         handle_voided_notification(voided_notification)
     else:
