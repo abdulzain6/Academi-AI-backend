@@ -1,14 +1,12 @@
-from fastapi import HTTPException, Depends
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from ..globals import RAPID_API_KEY
+from fastapi import HTTPException, Request
+from ..globals import RAPID_API_PROXY_SECRET
 
-security = HTTPBearer()
 
-def verify_rapidapi_key(header: HTTPAuthorizationCredentials = Depends(security)):
+def verify_rapidapi_key(request: Request):
     try:
-        if header.credentials == RAPID_API_KEY:
+        if request.headers.get("X-RapidAPI-Proxy-Secret") == RAPID_API_PROXY_SECRET:
             return
         else:
-            raise ValueError("Wrong key")
+            raise ValueError("Invalid RapidAPI Proxy Secret")
     except Exception as e:
         raise HTTPException(status_code=401, detail=str(e)) from e
