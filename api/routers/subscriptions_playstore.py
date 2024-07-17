@@ -286,7 +286,7 @@ def receive_notification(notification: dict, token_verified=Depends(verify_googl
             )
             print(data)
             if "obfuscatedExternalAccountId" in data:
-                user_id = onetime_notification["obfuscatedExternalAccountId"]
+                user_id = data["obfuscatedExternalAccountId"]
                 if user_id:
                     subscription_manager.add_onetime_token(user_id=user_id, token=onetime_notification["purchaseToken"], product_purchased=onetime_notification["sku"])
                     user_points_manager.increment_user_points(user_id, points=PRODUCT_ID_COIN_MAP[onetime_notification["sku"]])
