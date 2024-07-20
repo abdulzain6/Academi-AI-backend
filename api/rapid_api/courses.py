@@ -4,9 +4,7 @@ from .auth import verify_rapidapi_key
 import logging
 
 
-
 router = APIRouter()
-
 
 @router.get("/")
 def get_courses(
