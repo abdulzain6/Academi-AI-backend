@@ -1,4 +1,5 @@
 import base64
+import json
 import os
 import time
 import uuid
@@ -9,6 +10,7 @@ from fastapi.encoders import jsonable_encoder
 from .auth import verify_rapidapi_key
 from ..globals import CACHE_DOCUMENT_URL_TEMPLATE, redis_cache_manager
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, Header
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, model_validator
 from typing import Optional
 from enum import Enum
@@ -61,14 +63,31 @@ class FasterWhisperRequest(BaseModel):
         return values
     
 
-@router.post("/faster_whisper/")
+ALLOWED_MODELS = {
+    "BASIC" : [WhisperModel.tiny, WhisperModel.base, WhisperModel.small],
+    "PRO" : [WhisperModel.tiny, WhisperModel.base, WhisperModel.small, WhisperModel.medium],
+    "ULTRA" : [WhisperModel.tiny, WhisperModel.base, WhisperModel.small, WhisperModel.medium],
+    "MEGA" : [WhisperModel.tiny, WhisperModel.base, WhisperModel.small, WhisperModel.medium, WhisperModel.large_v3]
+}
+
+
+@router.post("/faster_whisper/", description="""Used to process audio using faster whisper.
+Takes in an audio link and configuration and returns the transcript.""")
 def process_audio(
     request: FasterWhisperRequest,
     plan: str = Header(...),
-    _ = Depends(verify_rapidapi_key)
+    rapid_key = Depends(verify_rapidapi_key)
 ):
-
     logging.info(f"Recieved request for faster whisper. {request.model_dump()} Plan {plan}")
+    
+    allowed_models = ALLOWED_MODELS.get(plan)
+    if not allowed_models:
+        return JSONResponse(status_code=400, content={"error": f"Invalid plan: {plan}"})
+
+    if request.model not in allowed_models:
+        request.model = allowed_models[-1]
+    
+    
     headers = {
         'Authorization': f'Bearer {os.getenv("RUNPOD_API_KEY")}',
         'Content-Type': 'application/json',
@@ -86,18 +105,28 @@ def process_audio(
     except Exception as e:
         logging.error(f"Error in whisper processing: {e}")
         try:
-            logging.error(f"Returned error response {response.text}")
+            logging.error(f"Returned error response {response.text}, Error: {response.json()['error']}")
+            error = json.loads(response.json()['error'])
+            
+            logging.info(f"ERROR MESSAGE: {error} {type(error)}")
+            if 'No such file or' in error['error_message']:
+                error_message = "Invalid Link"
+            else:
+                error_message = error
+            return JSONResponse(status_code=500, content={"error" : error_message})
         except Exception as e:
-            pass
-        raise HTTPException(500, "Error in processing please try again later")
-    
+            logging.error(f"Error: {e}")
+            
+        raise HTTPException(500, f"Error in processing. Please check your link and configuration params")
+
     return {"message": "Processing complete", "output": output}
 
 
-@router.post("/faster_whisper-simple/")
+@router.post("/faster_whisper-simple/", description="""Used to process audio using faster whisper.
+Takes in an audio file and returns the transcript.""")
 def process_audio(
     file: UploadFile = File(...),
-    _ = Depends(verify_rapidapi_key),
+    rapid_key = Depends(verify_rapidapi_key),
     plan: str = Header(...),
 ):
     logging.info(f"Recieved request for faster whisper simple Plan {plan}")
@@ -142,9 +171,17 @@ def process_audio(
     except Exception as e:
         logging.error(f"Error in whisper processing: {e}")
         try:
-            logging.error(f"Returned error response: {response.text}")
+            logging.error(f"Returned error response {response.text}, Error: {response.json()['error']}")
+            error = json.loads(response.json()['error'])
+            
+            logging.info(f"ERROR MESSAGE: {error} {type(error)}")
+            if 'No such file or' in error['error_message']:
+                error_message = "Invalid Link"
+            else:
+                error_message = error
+            return JSONResponse(status_code=500, content={"error" : error_message})
         except Exception as e:
-            pass
-        raise HTTPException(status_code=500, detail="Error in processing, please try again later")
+            logging.error(f"Error: {e}")
+        raise HTTPException(500, f"Error in processing.")
     
     return {"message": "Processing complete", "output": output}

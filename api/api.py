@@ -169,6 +169,14 @@ def get_openapi_schema():
     openapi_schema["servers"] = [{"url": APP_DOMAIN}]
     return openapi_schema
 
+@app.get("/rapidapi/whisper/")
+def get_openapi_schema():
+    app_for_schema_generation = FastAPI()
+    app_for_schema_generation.include_router(rapid_api_whisper, prefix="/rapidapi/whisper", tags=["whisper"])
+    openapi_schema = app_for_schema_generation.openapi()
+    openapi_schema["servers"] = [{"url": APP_DOMAIN}]
+    return openapi_schema
+
 
 app.include_router(users_router, prefix="/api/v1/users", tags=["user"])
 app.include_router(files_router, prefix="/api/v1/files", tags=["files"])
