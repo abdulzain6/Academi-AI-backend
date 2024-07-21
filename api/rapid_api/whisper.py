@@ -9,7 +9,7 @@ import logging
 from fastapi.encoders import jsonable_encoder
 from .auth import verify_rapidapi_key
 from ..globals import CACHE_DOCUMENT_URL_TEMPLATE, redis_cache_manager
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, Header
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, Header
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, model_validator
 from typing import Optional
@@ -70,12 +70,17 @@ ALLOWED_MODELS = {
     "MEGA" : [WhisperModel.tiny, WhisperModel.base, WhisperModel.small, WhisperModel.medium, WhisperModel.large_v3]
 }
 
+def get_subscription_tier(request: Request):
+    tier = request.headers.get("X-RapidAPI-Subscription-Tier")
+    if not tier:
+        raise HTTPException(status_code=403, detail="RapidAPI subscription tier not found")
+    return tier
 
 @router.post("/faster_whisper/", description="""Used to process audio using faster whisper.
 Takes in an audio link and configuration and returns the transcript.""")
 def process_audio(
     request: FasterWhisperRequest,
-    plan: str = Header(...),
+    plan: str = Depends(get_subscription_tier),
     rapid_key = Depends(verify_rapidapi_key)
 ):
     logging.info(f"Recieved request for faster whisper. {request.model_dump()} Plan {plan}")
@@ -127,7 +132,7 @@ Takes in an audio file and returns the transcript.""")
 def process_audio(
     file: UploadFile = File(...),
     rapid_key = Depends(verify_rapidapi_key),
-    plan: str = Header(...),
+    plan: str = Depends(get_subscription_tier),
 ):
     logging.info(f"Recieved request for faster whisper simple Plan {plan}")
     
