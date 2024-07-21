@@ -71,7 +71,7 @@ ALLOWED_MODELS = {
 }
 
 def get_subscription_tier(request: Request):
-    tier = request.headers.get("X-RapidAPI-Subscription-Tier")
+    tier = request.headers.get("X-RapidAPI-Subscription")
     if not tier:
         raise HTTPException(status_code=403, detail="RapidAPI subscription tier not found")
     return tier
