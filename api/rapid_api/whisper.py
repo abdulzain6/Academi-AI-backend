@@ -7,7 +7,7 @@ import requests
 import logging
 
 from fastapi.encoders import jsonable_encoder
-from .auth import verify_rapidapi_key
+from .auth import verify_rapidapi_key_whisper
 from ..globals import CACHE_DOCUMENT_URL_TEMPLATE, redis_cache_manager
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, Header
 from fastapi.responses import JSONResponse
@@ -81,7 +81,7 @@ Takes in an audio link and configuration and returns the transcript.""")
 def process_audio(
     request: FasterWhisperRequest,
     plan: str = Depends(get_subscription_tier),
-    rapid_key = Depends(verify_rapidapi_key)
+    rapid_key = Depends(verify_rapidapi_key_whisper)
 ):
     logging.info(f"Recieved request for faster whisper. {request.model_dump()} Plan {plan}")
     
@@ -131,7 +131,7 @@ def process_audio(
 Takes in an audio file and returns the transcript.""")
 def process_audio(
     file: UploadFile = File(...),
-    rapid_key = Depends(verify_rapidapi_key),
+    rapid_key = Depends(verify_rapidapi_key_whisper),
     plan: str = Depends(get_subscription_tier),
 ):
     logging.info(f"Recieved request for faster whisper simple Plan {plan}")
