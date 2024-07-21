@@ -84,11 +84,12 @@ def process_audio(
     rapid_key = Depends(verify_rapidapi_key_whisper)
 ):
     logging.info(f"Recieved request for faster whisper. {request.model_dump()} Plan {plan}")
-    
+
     allowed_models = ALLOWED_MODELS.get(plan)
     if not allowed_models:
         return JSONResponse(status_code=400, content={"error": f"Invalid plan: {plan}"})
 
+    request.temperature_increment_on_fallback = max(request.temperature_increment_on_fallback, 0.2)
     if request.model not in allowed_models:
         request.model = allowed_models[-1]
     
