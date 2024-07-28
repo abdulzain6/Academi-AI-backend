@@ -35,6 +35,7 @@ from api.course_radar.courses import router as course_radar_search_router
 #rapid api
 from api.rapid_api.courses import router as rapid_api_courses_router
 from api.rapid_api.whisper import router as rapid_api_whisper
+from api.rapid_api.universal_data_loader import router as universal_data_loader_router
 
 from fastapi import FastAPI, Request, HTTPException, status, Depends
 from fastapi.responses import JSONResponse
@@ -209,6 +210,7 @@ app.include_router(notes_router_gpt, prefix="/gpts/notes", tags=["gpts", "notes"
 app.include_router(course_radar_search_router, prefix="/course_radar/courses", tags=["course_radar"])
 app.include_router(rapid_api_courses_router, prefix="/rapidapi/courses", tags=["rapid_api"])
 app.include_router(rapid_api_whisper, prefix="/rapidapi/whisper", tags=["rapid_api"])
+app.include_router(universal_data_loader_router, prefix="/rapidapi/univeral_loader", tags=["univeral_loader"])
 
 
 @app.middleware('http')
