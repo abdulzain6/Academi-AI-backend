@@ -119,7 +119,7 @@ def process_audio(
                 error_message = "Invalid Link"
             else:
                 error_message = error
-            return JSONResponse(status_code=500, content={"error" : error_message})
+            return JSONResponse(status_code=400, content={"error" : error_message})
         except Exception as e:
             logging.error(f"Error: {e}")
             
@@ -185,7 +185,7 @@ def process_audio(
                 error_message = "Invalid Link"
             else:
                 error_message = error
-            return JSONResponse(status_code=500, content={"error" : error_message})
+            return JSONResponse(status_code=400, content={"error" : error_message})
         except Exception as e:
             logging.error(f"Error: {e}")
         raise HTTPException(500, f"Error in processing.")
