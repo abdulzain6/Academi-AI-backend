@@ -12,6 +12,7 @@ import uuid
 class MessagePair(BaseModel):
     human_message: str
     bot_response: str
+    
 class ChatType(Enum):
     COLLECTION = "COLLECTION"
     FILE = "FILE"

@@ -100,13 +100,13 @@ fallback_chat_models = [
     AIModel(
         regular_model=AzureChatOpenAI,
         regular_args={
-            "openai_api_version": "2023-05-15",
+            "openai_api_version": "2024-05-01-preview",
             "model": "gpt-35-turbo",
             "azure_deployment": "academi",
         },
         premium_model=AzureChatOpenAI,
         premium_args={
-            "openai_api_version": "2023-05-15",
+            "openai_api_version": "2024-05-01-preview",
             "model": "gpt-35-turbo",
             "azure_deployment": "academi",
         },
