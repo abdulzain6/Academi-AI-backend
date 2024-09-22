@@ -22,6 +22,7 @@ from langchain.chat_models.base import BaseChatModel
 from langchain_community.document_loaders import UnstructuredAPIFileLoader
 from langchain.text_splitter import TokenTextSplitter
 from langchain_community.document_loaders import YoutubeLoader
+from .youtube_loader import YoutubeLoader as YoutubeLoaderNew
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.schema import Document, LLMResult, SystemMessage
 from langchain.embeddings.base import Embeddings
@@ -386,40 +387,10 @@ class KnowledgeManager:
             logging.info("Using yt")
             if self.is_youtube_video(web_url):
                 youtube_link = web_url
-            loader = YoutubeLoader.from_youtube_url(
-                youtube_link,
-                language=[
-                    "en",
-                    "es",
-                    "zh",
-                    "hi",
-                    "ar",
-                    "bn",
-                    "pt",
-                    "ru",
-                    "ja",
-                    "de",
-                    "jv",
-                    "ko",
-                    "fr",
-                    "tr",
-                    "mr",
-                    "vi",
-                    "ta",
-                    "ur",
-                    "it",
-                    "th",
-                    "gu",
-                    "pl",
-                    "uk",
-                    "ro",
-                    "nl",
-                    "hu",
-                    "el",
-                    "sv",
-                    "da",
-                    "fi",
-                ],
+            loader = YoutubeLoaderNew(
+                serverless_url=os.getenv("YOUTUBE_LOADER_URL"),
+                auth_key=os.getenv("YOUTUBE_LOADER_KEY"),
+                video_url=youtube_link
             )
 
         docs = loader.load()

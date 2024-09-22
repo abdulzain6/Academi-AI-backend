@@ -1,0 +1,7 @@
+youtube_transcript_api
+requests
+yt_dlp
+deepgram-sdk==3.5.2
+pydantic
+python-dotenv
+functions_framework
