@@ -163,6 +163,16 @@ class RealDiscount(CourseScraper):
                                 sale_end=end_date
                             )
                         )
+                        print("Added" + Course(
+                            name=result.get('name'),
+                            category=result.get('category'),
+                            image=image if image else result.get('image'),
+                            actual_price_usd=float(re.sub(r'[^\d.]', '', str(result.get('price')))),
+                            sale_price_usd=float(re.sub(r'[^\d.]', '', str(result.get('sale_price')))),
+                            description=result.get('shoer_description'),
+                            url=result.get('url'),
+                            sale_end=end_date
+                        ))
 
                         if len(courses) >= self.max_limit:
                             break  # Exit if max limit is reached
@@ -236,25 +246,26 @@ class OnlineCourses(CourseScraper):
                     actual_price = 0
                 
                 valid, _, _, end_date, image_link = self.validate_link_and_get_price(url)
-                if not valid and actual_price != 0:
+                if not valid:
                     raise ValueError("Invalid Result")   
             
-                     
+                course = Course(
+                    name=name,
+                    image=image_link if image_link else image,
+                    category=tags[0],
+                    actual_price_usd=actual_price,
+                    sale_price_usd=current_price,
+                    description=description,
+                    url=url,
+                    sale_end=end_date
+                )
+                print(f"Adding course {course}")
                 courses.append(
-                    Course(
-                        name=name,
-                        image=image_link if image_link else image,
-                        category=tags[0],
-                        actual_price_usd=actual_price,
-                        sale_price_usd=current_price,
-                        description=description,
-                        url=url,
-                        sale_end=end_date
-                    )
+                    course
                 )
             except Exception as e:
                 import traceback
-                print(f"Error extracting course information: {traceback.format_exception(e)} { name}")
+                print(f"Error extracting course information: {traceback.format_exception(e)}")
         
         return courses
 
@@ -323,20 +334,23 @@ class CouponEagle(CourseScraper):
                 
                 link, tags = self.extract_course_link_and_tags(response["body"])
                 valid, sale_price, actual_price, end_date, image_link = self.validate_link_and_get_price(link)
-                if not valid and actual_price != 0:
+                if not valid:
+                    print("INvalid result")
                     raise ValueError("Invalid Result") 
-                        
+                
+                course = Course(
+                    name=name,
+                    category=tags[0],
+                    image=image_link if image_link else image,
+                    actual_price_usd=actual_price,
+                    sale_price_usd=sale_price,
+                    sale_end=end_date,
+                    description=description,
+                    url=link
+                )
+                print(f"Adding course {course}")
                 courses.append(
-                    Course(
-                        name=name,
-                        category=tags[0],
-                        image=image_link if image_link else image,
-                        actual_price_usd=actual_price,
-                        sale_price_usd=sale_price,
-                        sale_end=end_date,
-                        description=description,
-                        url=link
-                    )
+                    course
                 )
             except Exception as e:
                 print(f"Error extracting information for one of the courses: {e}")
@@ -433,22 +447,24 @@ class CouponScorpion(CourseScraper):
                 
                 description, course_link = self.extract_course_details(response["body"])
                 print(course_link)
-                course_link = self.get_udemy_link(course_link)
                 valid, sale_price, actual_price, end_date, image_link = self.validate_link_and_get_price(course_link)
-                if not valid and actual_price != 0:
+                if not valid:
+                    print("Invalid result found")
                     raise ValueError("Invalid Result") 
                 
+                course = Course(
+                    name=name,
+                    category=tag,
+                    image=image_link if image_link else image,
+                    actual_price_usd=actual_price,
+                    sale_price_usd=sale_price,
+                    sale_end=end_date,
+                    description=description,
+                    url=course_link
+                )
+                print(f"Adding {course}")
                 courses.append(
-                    Course(
-                        name=name,
-                        category=tag,
-                        image=image_link if image_link else image,
-                        actual_price_usd=actual_price,
-                        sale_price_usd=sale_price,
-                        sale_end=end_date,
-                        description=description,
-                        url=course_link
-                    )
+                    course
                 )
             except Exception as e:
                 print(f"Error extracting information for one of the courses: {e}")

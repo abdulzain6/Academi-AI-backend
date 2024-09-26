@@ -18,7 +18,7 @@ class YoutubeLoader(BaseLoader):
         }
 
         response = requests.post(
-            'https://faas-blr1-8177d592.doserverless.co/api/v1/web/fn-e4125fdf-f695-4a9e-9bc4-75db4a5994db/academi/yt_transcript',
+            self.serverless_url,
             headers=headers,
             json=json_data
         )

@@ -6,5 +6,6 @@ kubectl port-forward deploy/prometheus-server 9090 &
 kubectl port-forward grafana-5c944f4c5-dnhdn 3000 &
 kubectl port-forward service/plantuml-service 9080:9080  &
 kubectl port-forward service/searxng-1702120706 8090:8080 &
+kubectl port-forward svc/kubectl port-forward svc/code-runner-service 3000:3000 &
 kubectl get secret --namespace default grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
 
