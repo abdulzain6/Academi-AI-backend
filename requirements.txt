@@ -209,4 +209,4 @@ reportlab
 langchain-google-firestore
 langchain-google-vertexai
 Bleach
-appstoreserverlibrary
+app-store-server-library
