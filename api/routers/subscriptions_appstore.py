@@ -42,9 +42,7 @@ def load_root_certificates():
         try:
             response = requests.get(url)
             response.raise_for_status()
-            cert = x509.load_der_x509_certificate(response.content)
-            pem_cert = cert.public_bytes(encoding=serialization.Encoding.PEM)
-            certificates.append(pem_cert)
+            certificates.append(response.content)
         except requests.RequestException as e:
             print(f"Failed to download certificate from {url}: {e}")
         except Exception as e:
