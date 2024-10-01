@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import os
 import traceback
@@ -246,10 +247,11 @@ async def receive_notification(request: Request):
 
         # Get the raw body of the request
         body = await request.body()
+        logging.info(f"Body: {body}")
         signed_payload = body.decode()
 
         # Verify and decode the notification
-        payload = verifier.verify_and_decode_notification(signed_payload)
+        payload = verifier.verify_and_decode_notification(json.loads(signed_payload)["signedPayload"])
         logging.info("Received App Store Notification:")
         logging.info(payload)
 
