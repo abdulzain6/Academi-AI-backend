@@ -1,17 +1,22 @@
 import asyncio
 import logging
 import os
-from pydantic import BaseModel
 import requests
+from pydantic import BaseModel
 from fastapi import APIRouter, Depends, Request, HTTPException, status
 from appstoreserverlibrary.signed_data_verifier import SignedDataVerifier, VerificationException
 from appstoreserverlibrary.models.Environment import Environment
-from ..config import APP_PACKAGE_NAME, PRODUCT_ID_COIN_MAP
-from ..globals import user_points_manager, subscription_manager
+from ..config import APP_PACKAGE_NAME, PRODUCT_ID_COIN_MAP, SUB_COIN_MAP
+from ..globals import user_points_manager, subscription_manager, PRODUCT_ID_MAP
 from ..auth import get_user_id
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 from appstoreserverlibrary.api_client import AppStoreServerAPIClient, APIException
+from appstoreserverlibrary.models.NotificationTypeV2 import NotificationTypeV2
+from appstoreserverlibrary.models.Status import Status
+from appstoreserverlibrary.models.Subtype import Subtype
+from ..lib.database.purchases import SubscriptionProvider, SubscriptionType
+
 
 router = APIRouter()
 
@@ -53,6 +58,49 @@ app_store_client = AppStoreServerAPIClient(
 class OneTimeData(BaseModel):
     transaction_id: str
     product_id: str
+    
+   
+def calculate_multiplier(product_id: str) -> int:
+    if "6_monthly" in product_id:
+        return 6
+    elif "monthly" in product_id:
+        return 1
+    elif "yearly" in product_id:
+        return 12
+    return 1
+
+def handle_purchase(user_id: str, transaction_id: str, product_id: str):
+    subscription_manager.add_subscription_token(user_id, transaction_id)
+    logging.info(f"Subscription purchase attempt by {user_id}")
+    multiplier = calculate_multiplier(product_id)
+    if product_id not in PRODUCT_ID_MAP:
+        logging.error(f"Product not found, User: {user_id}, Product: {product_id}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Product Not found"
+        )
+        
+    subscription_type = PRODUCT_ID_MAP[product_id]
+    subscription_manager.apply_or_default_subscription(
+        user_id=user_id,
+        purchase_token=transaction_id,
+        subscription_type=subscription_type,
+        update=True,
+        mulitplier=multiplier,
+        subscription_provider=SubscriptionProvider.APPSTORE
+    )
+    subscription_manager.reset_monthly_limits(user_id, multiplier)
+    logging.info(f"{user_id} Just subscribed {transaction_id}")
+
+def handle_renewed(user_id: str, product_id: str):
+    multiplier = calculate_multiplier(product_id=product_id)
+    subscription_manager.allocate_coins(user_id, multiplier=multiplier)
+    subscription_manager.reset_monthly_limits(user_id, multiplier)
+    
+def decrement_user_coins(user_id: str, product_id: str):
+    multiplier = calculate_multiplier(product_id=product_id)
+    coins_to_decrement = SUB_COIN_MAP.get(product_id, 0) * multiplier
+    user_points_manager.decrement_user_points(user_id, coins_to_decrement)
+    logging.info(f"Decrementing {coins_to_decrement} coins for {user_id}")
    
    
 @router.post("/verify-onetime-apple")
@@ -104,7 +152,7 @@ def verify_onetime_apple(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Transaction verification failed."
         )
          
-@router.post("/app-store-notifications")
+@router.post("/app-store-notifications/v2")
 def receive_notification(request: Request):
     try:
         # Get the raw body of the request
@@ -113,10 +161,81 @@ def receive_notification(request: Request):
 
         # Verify and decode the notification
         payload = verifier.verify_and_decode_notification(signed_payload)
-
-        # Print the decoded payload
-        print("Received App Store Notification:")
-        print(payload)
+        logging.info("Received App Store Notification:")
+        logging.info(payload)
+        
+        if payload.notificationType == NotificationTypeV2.SUBSCRIBED:
+            logging.info("Subscription Notification Received")
+            if payload.data.status == Status.ACTIVE and payload.subtype == Subtype.INITIAL_BUY:
+                signed_trans_info = payload.data.signedTransactionInfo
+                transaction_info = verifier.verify_and_decode_signed_transaction(signed_trans_info)
+                logging.info(f"UserID of user is: {transaction_info.appAccountToken}")
+                handle_purchase(transaction_info.appAccountToken, transaction_info.transactionId, transaction_info.productId)
+            else:
+                logging.info(f"Status of Subscription is not ACTIVE, It is {payload.data.status}. Subtype: {payload.subtype} Skipping...")
+        
+        elif payload.notificationType == NotificationTypeV2.DID_RENEW:
+            logging.info("Renewal Notification Received")
+            if payload.data.status == Status.ACTIVE and not payload.subtype:
+                signed_trans_info = payload.data.signedTransactionInfo
+                transaction_info = verifier.verify_and_decode_signed_transaction(signed_trans_info)
+                logging.info(f"UserID of user is: {transaction_info.appAccountToken}")
+                handle_renewed(transaction_info.appAccountToken, transaction_info.productId)    
+            else:
+                logging.info(f"Status of Subscription is not ACTIVE, It is {payload.data.status}. Subtype: {payload.subtype} Skipping...")  
+        
+        elif payload.notificationType in [NotificationTypeV2.EXPIRED, NotificationTypeV2.REVOKE]:
+            logging.info("Expiration/Revocation Notification Received")
+            signed_trans_info = payload.data.signedTransactionInfo
+            transaction_info = verifier.verify_and_decode_signed_transaction(signed_trans_info)
+            logging.info(f"UserID of user is: {transaction_info.appAccountToken}")
+            user_id = transaction_info.appAccountToken
+            subscription_manager.apply_or_default_subscription(
+                user_id=user_id,
+                purchase_token="",
+                subscription_type=SubscriptionType.FREE,
+                subscription_provider=SubscriptionProvider.APPSTORE,
+                update=True
+            )
+            logging.info(f"{user_id} subscription updated to free tier")
+            
+        elif payload.notificationType == NotificationTypeV2.REFUND:
+            logging.info("Refund Notification Received")
+            signed_trans_info = payload.data.signedTransactionInfo
+            transaction_info = verifier.verify_and_decode_signed_transaction(signed_trans_info)
+            logging.info(f"UserID of user is: {transaction_info.appAccountToken}")
+            if transaction_info.productId in PRODUCT_ID_MAP:
+                # IF SUBSCRIPTION IS REFUNDED
+                subscription_manager.apply_or_default_subscription(
+                    user_id=transaction_info.appAccountToken,
+                    purchase_token="",
+                    subscription_type=SubscriptionType.FREE,
+                    subscription_provider=SubscriptionProvider.APPSTORE,
+                    update=True
+                )
+                logging.info(f"Subscription voided and user {user_id} changed to free tier.")
+                decrement_user_coins(transaction_info.appAccountToken, transaction_info.productId)
+            elif transaction_info.productId in PRODUCT_ID_COIN_MAP:
+                #if coins refunded
+                user_points_manager.decrement_user_points(
+                    transaction_info.appAccountToken,
+                    PRODUCT_ID_COIN_MAP[transaction_info.productId]
+                )
+                logging.info(f"{PRODUCT_ID_COIN_MAP[transaction_info.productId]} Coins decremented!")
+            else:
+                logging.info(f"Invalid product ID: {transaction_info.productId}")
+                raise HTTPException(status_code=400, detail="Invalid product ID")
+            
+        elif payload.notificationType == NotificationTypeV2.REFUND_REVERSED:
+            logging.info("Refund reversal Notification Received")
+            signed_trans_info = payload.data.signedTransactionInfo
+            transaction_info = verifier.verify_and_decode_signed_transaction(signed_trans_info)
+            logging.info(f"UserID of user is: {transaction_info.appAccountToken}")
+            if transaction_info.productId in PRODUCT_ID_MAP:
+                handle_purchase(transaction_info.appAccountToken, transaction_info.transactionId, transaction_info.productId)
+            else:
+                logging.info(f"Adding {PRODUCT_ID_COIN_MAP[transaction_info.productId]} coins to user: {transaction_info.appAccountToken}")
+                user_points_manager.increment_user_points(transaction_info.appAccountToken, PRODUCT_ID_COIN_MAP[transaction_info.productId])
 
         return {"status": "success", "message": "Notification received and processed"}
 
