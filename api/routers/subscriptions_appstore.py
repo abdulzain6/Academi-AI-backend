@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import traceback
 import requests
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, Request, HTTPException, status
@@ -15,8 +16,15 @@ from appstoreserverlibrary.api_client import AppStoreServerAPIClient, APIExcepti
 from appstoreserverlibrary.models.NotificationTypeV2 import NotificationTypeV2
 from appstoreserverlibrary.models.Status import Status
 from appstoreserverlibrary.models.Subtype import Subtype
+from appstoreserverlibrary.models.ResponseBodyV2DecodedPayload import ResponseBodyV2DecodedPayload
 from ..lib.database.purchases import SubscriptionProvider, SubscriptionType
+from fastapi import Request, HTTPException
+from concurrent.futures import ThreadPoolExecutor
+import logging
+import asyncio
+import traceback
 
+executor = ThreadPoolExecutor()
 
 router = APIRouter()
 
@@ -102,7 +110,6 @@ def decrement_user_coins(user_id: str, product_id: str):
     user_points_manager.decrement_user_points(user_id, coins_to_decrement)
     logging.info(f"Decrementing {coins_to_decrement} coins for {user_id}")
    
-   
 @router.post("/verify-onetime-apple")
 def verify_onetime_apple(
     onetime_data: OneTimeData,
@@ -152,18 +159,10 @@ def verify_onetime_apple(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Transaction verification failed."
         )
          
-@router.post("/app-store-notifications/v2")
-def receive_notification(request: Request):
-    try:
-        # Get the raw body of the request
-        body = asyncio.run(request.body())
-        signed_payload = body.decode()
 
-        # Verify and decode the notification
-        payload = verifier.verify_and_decode_notification(signed_payload)
-        logging.info("Received App Store Notification:")
-        logging.info(payload)
-        
+
+async def process_notification(payload: ResponseBodyV2DecodedPayload, verifier: SignedDataVerifier, subscription_manager, user_points_manager):
+    try:
         if payload.notificationType == NotificationTypeV2.SUBSCRIBED:
             logging.info("Subscription Notification Received")
             if payload.data.status == Status.ACTIVE and payload.subtype == Subtype.INITIAL_BUY:
@@ -205,7 +204,6 @@ def receive_notification(request: Request):
             transaction_info = verifier.verify_and_decode_signed_transaction(signed_trans_info)
             logging.info(f"UserID of user is: {transaction_info.appAccountToken}")
             if transaction_info.productId in PRODUCT_ID_MAP:
-                # IF SUBSCRIPTION IS REFUNDED
                 subscription_manager.apply_or_default_subscription(
                     user_id=transaction_info.appAccountToken,
                     purchase_token="",
@@ -213,10 +211,9 @@ def receive_notification(request: Request):
                     subscription_provider=SubscriptionProvider.APPSTORE,
                     update=True
                 )
-                logging.info(f"Subscription voided and user {user_id} changed to free tier.")
+                logging.info(f"Subscription voided and user {transaction_info.appAccountToken} changed to free tier.")
                 decrement_user_coins(transaction_info.appAccountToken, transaction_info.productId)
             elif transaction_info.productId in PRODUCT_ID_COIN_MAP:
-                #if coins refunded
                 user_points_manager.decrement_user_points(
                     transaction_info.appAccountToken,
                     PRODUCT_ID_COIN_MAP[transaction_info.productId]
@@ -237,11 +234,40 @@ def receive_notification(request: Request):
                 logging.info(f"Adding {PRODUCT_ID_COIN_MAP[transaction_info.productId]} coins to user: {transaction_info.appAccountToken}")
                 user_points_manager.increment_user_points(transaction_info.appAccountToken, PRODUCT_ID_COIN_MAP[transaction_info.productId])
 
+    except Exception as e:
+        logging.error(f"Error processing notification: {str(e)}")
+        raise
+
+@router.post("/app-store-notifications/v2")
+async def receive_notification(request: Request):
+    try:
+        # Log the headers
+        logging.info(f"Received headers: {request.headers}")
+
+        # Get the raw body of the request
+        body = await request.body()
+        signed_payload = body.decode()
+
+        # Verify and decode the notification
+        payload = verifier.verify_and_decode_notification(signed_payload)
+        logging.info("Received App Store Notification:")
+        logging.info(payload)
+
+        # Process the notification in the executor
+        await asyncio.get_event_loop().run_in_executor(
+            executor, 
+            process_notification, 
+            payload, 
+            verifier, 
+            subscription_manager, 
+            user_points_manager
+        )
+
         return {"status": "success", "message": "Notification received and processed"}
 
     except VerificationException as e:
-        print(f"Verification failed: {e}")
+        logging.error(f"Verification failed: {e}")
         raise HTTPException(status_code=400, detail="Invalid notification")
     except Exception as e:
-        print(f"Error processing notification: {e}")
+        logging.error(f"Error processing notification: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail="Internal server error")
