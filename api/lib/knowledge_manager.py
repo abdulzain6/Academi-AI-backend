@@ -390,7 +390,8 @@ class KnowledgeManager:
             loader = YoutubeLoaderNew(
                 serverless_url=os.getenv("YOUTUBE_LOADER_URL"),
                 auth_key=os.getenv("YOUTUBE_LOADER_KEY"),
-                video_url=youtube_link
+                video_url=youtube_link,
+                get_result_url=os.getenv("GET_RESULT_URL")
             )
 
         docs = loader.load()
