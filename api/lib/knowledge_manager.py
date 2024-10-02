@@ -282,7 +282,7 @@ class KnowledgeManager:
         except Exception:
             return False
     
-    def ingest_data(self, documents: List[Document]) -> List[str]:
+    def injest_data(self, documents: List[Document]) -> List[str]:
         if not documents:
             raise ValueError("No documents provided")
 
