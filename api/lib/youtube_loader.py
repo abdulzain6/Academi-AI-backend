@@ -1,8 +1,8 @@
 import logging
 import time
+import requests
 from langchain.document_loaders.base import BaseLoader
 from langchain.schema import Document
-import requests
 
 logging.basicConfig(level=logging.DEBUG)
 

@@ -9,11 +9,10 @@ import base64
 
 
 class ImageOCR:        
-    def gemini_ocr(self, image_path: str) -> str:
+    def gpt_ocr(self, image_path: str) -> str:
         llm = ChatOpenAI(model="gpt-4o-mini")
 
         with Image.open(image_path) as img:
-        # Convert the image to PNG format
             buffered = BytesIO()
             img.save(buffered, format="PNG")
             encoded_image = base64.b64encode(buffered.getvalue()).decode('utf-8')
@@ -35,8 +34,7 @@ class ImageOCR:
                 )
             ]
         )
-        print(response)
         return response.content
 
     def ocr_image(self, image_input: str) -> Optional[str]:
-        return self.gemini_ocr(image_input)
+        return self.gpt_ocr(image_input)

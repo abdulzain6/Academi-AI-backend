@@ -22,6 +22,8 @@ from langchain.chat_models.base import BaseChatModel
 from langchain_community.document_loaders import UnstructuredAPIFileLoader
 from langchain.text_splitter import TokenTextSplitter
 from langchain_community.document_loaders import YoutubeLoader
+
+from .gpt_pdf_loader import PDFLoader
 from .youtube_loader import YoutubeLoader as YoutubeLoaderNew
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.schema import Document, LLMResult, SystemMessage
@@ -234,10 +236,8 @@ class KnowledgeManager:
             return False
 
     def load_using_advanced_extraction(self, filepath: str) -> list[Document]:
-        loader = DocumentIntelligenceLoader(
-            filepath, client=self.azure_form_rec_client, model="prebuilt-read"
-        )
-        return loader.load()
+        loader = PDFLoader()
+        return loader.load(filepath)
 
     def load_using_unstructured(self, filepath: str) -> list[Document]:
         loader = UnstructuredAPIFileLoader(
@@ -259,17 +259,15 @@ class KnowledgeManager:
             logging.info("Using azure ocr")
             docs = [Document(page_content=self.azure_ocr.perform_ocr(file_path))]
         else:
-            if advanced_pdf_extraction:
-                if self.is_pdf_file(file_path=file_path) and self.get_pdf_page_count(file_path) <= self.advanced_ocr_page_count:
-                    logging.info("Using advanced ocr")
-                    docs = self.load_using_advanced_extraction(file_path)
-                else:
-                    logging.info("Using unstructured")
-                    docs = self.load_using_unstructured(file_path)         
+            if self.is_pdf_file(file_path=file_path) and self.get_pdf_page_count(file_path) <= self.advanced_ocr_page_count:
+                logging.info("Using advanced ocr")
+                docs = self.load_using_advanced_extraction(file_path)
             else:
                 logging.info("Using unstructured")
-                docs = self.load_using_unstructured(file_path)
+                docs = self.load_using_unstructured(file_path)         
+
         docs = self.split_docs(docs)
+        logging.info(f"Loaded {len(docs)} Documents.")
         contents = "\n\n".join([doc.page_content for doc in docs])
 
         with open(file_path, "rb") as f:
