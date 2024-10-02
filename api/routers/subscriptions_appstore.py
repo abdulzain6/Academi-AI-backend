@@ -11,8 +11,6 @@ from appstoreserverlibrary.models.Environment import Environment
 from ..config import APP_PACKAGE_NAME, PRODUCT_ID_COIN_MAP, SUB_COIN_MAP
 from ..globals import user_points_manager, subscription_manager, PRODUCT_ID_MAP
 from ..auth import get_user_id
-from cryptography import x509
-from cryptography.hazmat.primitives import serialization
 from appstoreserverlibrary.api_client import AppStoreServerAPIClient, APIException
 from appstoreserverlibrary.models.NotificationTypeV2 import NotificationTypeV2
 from appstoreserverlibrary.models.Status import Status
@@ -160,7 +158,7 @@ def verify_onetime_apple(
          
 
 
-async def process_notification(payload: ResponseBodyV2DecodedPayload, verifier: SignedDataVerifier, subscription_manager, user_points_manager):
+def process_notification(payload: ResponseBodyV2DecodedPayload, verifier: SignedDataVerifier, subscription_manager, user_points_manager):
     try:
         if payload.notificationType == NotificationTypeV2.SUBSCRIBED:
             logging.info("Subscription Notification Received")
