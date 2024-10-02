@@ -1,4 +1,5 @@
 import ipaddress
+from itertools import islice
 import os
 import time
 import logging
@@ -280,15 +281,34 @@ class KnowledgeManager:
             return bool(self.client.get_collection(collection_name))
         except Exception:
             return False
+    
+    def ingest_data(self, documents: List[Document]) -> List[str]:
+        if not documents:
+            raise ValueError("No documents provided")
 
-    def injest_data(
-        self,
-        documents: List[Document],
-    ) -> List[str]:
-        content = "".join([doc.page_content for doc in documents])
+        content = "".join(doc.page_content for doc in documents if doc.page_content)
         if len(content) <= 7:
-            raise ValueError("No data in file")
-        return self.vectorstore.add_documents(documents)
+            raise ValueError("Insufficient data in documents")
+        
+        batch_size = 7
+        ids = []
+        
+        iterator = iter(documents)
+        while True:
+            batch = list(islice(iterator, batch_size))
+            if not batch:
+                break
+            
+            try:
+                batch_ids = self.vectorstore.add_documents(batch)
+                ids.extend(batch_ids)
+            except Exception as e:
+                print(f"Error adding batch: {str(e)}")
+        
+        if not ids:
+            raise ValueError("No documents were successfully added to the vectorstore")
+        
+        return ids
 
     def add_metadata_to_docs(self, metadata: Dict, docs: List[Document]):
         for document in docs:
