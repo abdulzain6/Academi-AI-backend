@@ -3,13 +3,14 @@ import json
 import logging
 import os
 import traceback
+import uuid
 import requests
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, Request, HTTPException, status
 from appstoreserverlibrary.signed_data_verifier import SignedDataVerifier, VerificationException
 from appstoreserverlibrary.models.Environment import Environment
 from ..config import APP_PACKAGE_NAME, PRODUCT_ID_COIN_MAP, SUB_COIN_MAP
-from ..globals import user_points_manager, subscription_manager, PRODUCT_ID_MAP
+from ..globals import user_points_manager, subscription_manager, PRODUCT_ID_MAP, redis_cache_manager
 from ..auth import get_user_id
 from appstoreserverlibrary.api_client import AppStoreServerAPIClient, APIException
 from appstoreserverlibrary.models.NotificationTypeV2 import NotificationTypeV2
@@ -160,32 +161,30 @@ def verify_onetime_apple(
 
 def process_notification(payload: ResponseBodyV2DecodedPayload, verifier: SignedDataVerifier, subscription_manager, user_points_manager):
     try:
+        signed_trans_info = payload.data.signedTransactionInfo
+        transaction_info = verifier.verify_and_decode_signed_transaction(signed_trans_info)
+        user_id = redis_cache_manager.get(transaction_info.appAccountToken)
+        logging.info(f"UserID of user is: {user_id}")
+        
+        if not user_id:
+            raise HTTPException(status_code=400, detail="User not found")
+        
         if payload.notificationType == NotificationTypeV2.SUBSCRIBED:
             logging.info("Subscription Notification Received")
             if payload.data.status == Status.ACTIVE and payload.subtype == Subtype.INITIAL_BUY:
-                signed_trans_info = payload.data.signedTransactionInfo
-                transaction_info = verifier.verify_and_decode_signed_transaction(signed_trans_info)
-                logging.info(f"UserID of user is: {transaction_info.appAccountToken}")
-                handle_purchase(transaction_info.appAccountToken, transaction_info.transactionId, transaction_info.productId)
+                handle_purchase(user_id, transaction_info.transactionId, transaction_info.productId)
             else:
                 logging.info(f"Status of Subscription is not ACTIVE, It is {payload.data.status}. Subtype: {payload.subtype} Skipping...")
         
         elif payload.notificationType == NotificationTypeV2.DID_RENEW:
             logging.info("Renewal Notification Received")
             if payload.data.status == Status.ACTIVE and not payload.subtype:
-                signed_trans_info = payload.data.signedTransactionInfo
-                transaction_info = verifier.verify_and_decode_signed_transaction(signed_trans_info)
-                logging.info(f"UserID of user is: {transaction_info.appAccountToken}")
-                handle_renewed(transaction_info.appAccountToken, transaction_info.productId)    
+                handle_renewed(user_id, transaction_info.productId)    
             else:
                 logging.info(f"Status of Subscription is not ACTIVE, It is {payload.data.status}. Subtype: {payload.subtype} Skipping...")  
         
         elif payload.notificationType in [NotificationTypeV2.EXPIRED, NotificationTypeV2.REVOKE]:
             logging.info("Expiration/Revocation Notification Received")
-            signed_trans_info = payload.data.signedTransactionInfo
-            transaction_info = verifier.verify_and_decode_signed_transaction(signed_trans_info)
-            logging.info(f"UserID of user is: {transaction_info.appAccountToken}")
-            user_id = transaction_info.appAccountToken
             subscription_manager.apply_or_default_subscription(
                 user_id=user_id,
                 purchase_token="",
@@ -197,22 +196,19 @@ def process_notification(payload: ResponseBodyV2DecodedPayload, verifier: Signed
             
         elif payload.notificationType == NotificationTypeV2.REFUND:
             logging.info("Refund Notification Received")
-            signed_trans_info = payload.data.signedTransactionInfo
-            transaction_info = verifier.verify_and_decode_signed_transaction(signed_trans_info)
-            logging.info(f"UserID of user is: {transaction_info.appAccountToken}")
             if transaction_info.productId in PRODUCT_ID_MAP:
                 subscription_manager.apply_or_default_subscription(
-                    user_id=transaction_info.appAccountToken,
+                    user_id=user_id,
                     purchase_token="",
                     subscription_type=SubscriptionType.FREE,
                     subscription_provider=SubscriptionProvider.APPSTORE,
                     update=True
                 )
-                logging.info(f"Subscription voided and user {transaction_info.appAccountToken} changed to free tier.")
-                decrement_user_coins(transaction_info.appAccountToken, transaction_info.productId)
+                logging.info(f"Subscription voided and user {user_id} changed to free tier.")
+                decrement_user_coins(user_id, transaction_info.productId)
             elif transaction_info.productId in PRODUCT_ID_COIN_MAP:
                 user_points_manager.decrement_user_points(
-                    transaction_info.appAccountToken,
+                    user_id,
                     PRODUCT_ID_COIN_MAP[transaction_info.productId]
                 )
                 logging.info(f"{PRODUCT_ID_COIN_MAP[transaction_info.productId]} Coins decremented!")
@@ -222,14 +218,11 @@ def process_notification(payload: ResponseBodyV2DecodedPayload, verifier: Signed
             
         elif payload.notificationType == NotificationTypeV2.REFUND_REVERSED:
             logging.info("Refund reversal Notification Received")
-            signed_trans_info = payload.data.signedTransactionInfo
-            transaction_info = verifier.verify_and_decode_signed_transaction(signed_trans_info)
-            logging.info(f"UserID of user is: {transaction_info.appAccountToken}")
             if transaction_info.productId in PRODUCT_ID_MAP:
-                handle_purchase(transaction_info.appAccountToken, transaction_info.transactionId, transaction_info.productId)
+                handle_purchase(user_id, transaction_info.transactionId, transaction_info.productId)
             else:
-                logging.info(f"Adding {PRODUCT_ID_COIN_MAP[transaction_info.productId]} coins to user: {transaction_info.appAccountToken}")
-                user_points_manager.increment_user_points(transaction_info.appAccountToken, PRODUCT_ID_COIN_MAP[transaction_info.productId])
+                logging.info(f"Adding {PRODUCT_ID_COIN_MAP[transaction_info.productId]} coins to user: {user_id}")
+                user_points_manager.increment_user_points(user_id, PRODUCT_ID_COIN_MAP[transaction_info.productId])
 
     except Exception as e:
         logging.error(f"Error processing notification: {str(e)}")
@@ -269,3 +262,9 @@ async def receive_notification(request: Request):
     except Exception as e:
         logging.error(f"Error processing notification: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail="Internal server error")
+    
+@router.get("/generate-uuid")
+def generate_uuid(user_id: str = Depends(get_user_id)):
+    uuid_key = uuid.uuid4()
+    redis_cache_manager.set(str(uuid_key), user_id)
+    return {"uuid_key" : uuid_key}
