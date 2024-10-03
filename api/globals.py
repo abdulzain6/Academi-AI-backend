@@ -21,6 +21,7 @@ from .lib.database.purchases import (
     MonthlyLimitFeature,
 )
 from .lib.database.cache_manager import RedisCacheManager
+from .lib.database.uuid_mapping import UUIDMapping
 from .lib.knowledge_manager import (
     KnowledgeManager,
     ChatManagerRetrieval,
@@ -233,6 +234,11 @@ course_manager = CourseRepository(
     uri=MONGODB_URL,
     db_name=DATABASE_NAME,
     collection_name="courses"   
+)
+uuid_mapping_manager = UUIDMapping(
+    MONGODB_URL,
+    DATABASE_NAME,
+    collection_name="uuid-uids"
 )
 
 

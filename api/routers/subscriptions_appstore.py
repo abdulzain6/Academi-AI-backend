@@ -3,26 +3,23 @@ import json
 import logging
 import os
 import traceback
-import uuid
 import requests
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, Request, HTTPException, status
 from appstoreserverlibrary.signed_data_verifier import SignedDataVerifier, VerificationException
 from appstoreserverlibrary.models.Environment import Environment
-from ..config import APP_PACKAGE_NAME, PRODUCT_ID_COIN_MAP, SUB_COIN_MAP
-from ..globals import user_points_manager, subscription_manager, PRODUCT_ID_MAP, redis_cache_manager
-from ..auth import get_user_id
 from appstoreserverlibrary.api_client import AppStoreServerAPIClient, APIException
 from appstoreserverlibrary.models.NotificationTypeV2 import NotificationTypeV2
 from appstoreserverlibrary.models.Status import Status
 from appstoreserverlibrary.models.Subtype import Subtype
 from appstoreserverlibrary.models.ResponseBodyV2DecodedPayload import ResponseBodyV2DecodedPayload
-from ..lib.database.purchases import SubscriptionProvider, SubscriptionType
 from fastapi import Request, HTTPException
 from concurrent.futures import ThreadPoolExecutor
-import logging
-import asyncio
-import traceback
+from ..lib.database.purchases import SubscriptionProvider, SubscriptionType
+from ..config import APP_PACKAGE_NAME, PRODUCT_ID_COIN_MAP, SUB_COIN_MAP
+from ..globals import user_points_manager, subscription_manager, PRODUCT_ID_MAP, uuid_mapping_manager
+from ..auth import get_user_id
+
 
 executor = ThreadPoolExecutor()
 
@@ -163,7 +160,7 @@ def process_notification(payload: ResponseBodyV2DecodedPayload, verifier: Signed
     try:
         signed_trans_info = payload.data.signedTransactionInfo
         transaction_info = verifier.verify_and_decode_signed_transaction(signed_trans_info)
-        user_id = redis_cache_manager.get(transaction_info.appAccountToken)
+        user_id = uuid_mapping_manager.get_uid(transaction_info.appAccountToken)
         logging.info(f"UserID of user is: {user_id}")
         
         if not user_id:
@@ -265,6 +262,5 @@ async def receive_notification(request: Request):
     
 @router.get("/generate-uuid")
 def generate_uuid(user_id: str = Depends(get_user_id)):
-    uuid_key = uuid.uuid4()
-    redis_cache_manager.set(str(uuid_key), user_id)
+    uuid_key = uuid_mapping_manager.create_mapping(user_id)
     return {"uuid_key" : uuid_key}
