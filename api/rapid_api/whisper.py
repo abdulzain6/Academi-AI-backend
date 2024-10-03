@@ -162,7 +162,6 @@ def process_audio(
     json_data = {
         'input': {
             'audio': document_url,
-            'model': 'base',
             'transcription': 'plain_text'
         },
     }
