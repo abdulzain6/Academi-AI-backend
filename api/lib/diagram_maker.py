@@ -54,7 +54,7 @@ class DiagramMaker:
             return data
         
         
-        tools = [make_graphviz_graph, make_vegalite_graph, make_mermaid_diagram, make_uml_diagram]
+        tools = [make_graphviz_graph, make_vegalite_graph, make_uml_diagram]
         tool_map = {tool.name: tool for tool in tools}
         llm_with_tools = self.llm.bind_tools(tools, tool_choice="required")
         instructions = f"\nFollow the following instructions: {instructions}" if instructions else  ""
