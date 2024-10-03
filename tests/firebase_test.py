@@ -3,7 +3,7 @@ from firebase_admin import credentials, auth
 import requests
 
 
-cred = credentials.Certificate("/home/zain/Akalmand.ai/api/creds/academi-ai-firebase-adminsdk-mg8gg-4dde2949d3.json")
+cred = credentials.Certificate("akalmand-c6ec2-firebase-adminsdk-foxc7-2d8740a83e.json")
 firebase_admin.initialize_app(cred)
 
 def login_with_email_and_password(email: str, password: str, api_key: str) -> str:

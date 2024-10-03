@@ -709,7 +709,7 @@ File Content:
     optional_tools = [
         RequestsGetTool(requests_wrapper=TextRequestsWrapper()),
         YouTubeSearchTool(),
-        ScholarlySearchRun(), 
+        #ScholarlySearchRun(), 
         StructuredTool.from_function(
             func=lambda vega_lite_spec, *args, **kwargs: make_graph(
                 vega_lite_spec=vega_lite_spec
