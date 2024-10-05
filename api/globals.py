@@ -1,6 +1,5 @@
 from api.lib.uml_diagram_maker import PlantUML
 from .config import *
-from .lib.ocr import AzureOCR
 from .lib.database import (
     FileDBManager,
     CollectionDBManager,
@@ -33,17 +32,14 @@ from .lib.presentation_maker.database import (
     DEFAULT_TEMPLATES_JSON,
 )
 from .lib.maths_solver.python_exec_client import PythonClient, Urls
-from .lib.maths_solver.ocr import ImageOCR
 from .lib.redis_cache import RedisCache
 from .lib.purchases_play_store import SubscriptionChecker
 from .lib.email_integrity_checker import EmailIntegrityChecker
 from .lib.mermaid_maker import MermaidClient
+from .lib.ocr import ImageOCR
 from .ai_model import AIModel
 
 from contextlib import suppress
-from azure.ai.formrecognizer import DocumentAnalysisClient
-from azure.core.credentials import AzureKeyCredential
-
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import AzureChatOpenAI
 from langchain_openai.chat_models import ChatOpenAI
@@ -244,21 +240,16 @@ uuid_mapping_manager = UUIDMapping(
 
 
 # OCR
-text_ocr = AzureOCR(AZURE_OCR_ENDPOINT, AZURE_OCR_KEY)
 knowledge_manager = KnowledgeManager(
     OpenAIEmbeddings(
         model="text-embedding-3-small",
         timeout=10,
         max_retries=2
     ),
-    chunk_size=700,
+    chunk_size=1000,
     unstructured_api_key=UNSTRUCTURED_API_KEY,
     unstructured_url=UNSTRUCTURED_URL,
-    azure_ocr=text_ocr,
-    azure_form_rec_client=DocumentAnalysisClient(
-        endpoint=DOC_INTELLIGENCE_ENDPOINT,
-        credential=AzureKeyCredential(AZURE_DOC_INTELLIGENCE_KEY),
-    ),
+    ocr=ImageOCR(),
     collection_name="academi"
 )
 chat_manager = ChatManagerRetrieval(
@@ -333,7 +324,6 @@ template_manager, temp_knowledge_manager = initialize_managers(
 )
 
 
-image_ocr = ImageOCR()
 plantuml_server = PlantUML(url=PLANTUML_URL)
 mermaid_client = MermaidClient(server_url=MERMAID_SERVER_URL)
 

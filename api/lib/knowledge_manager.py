@@ -48,13 +48,12 @@ from langchain.chat_models.base import BaseChatModel
 from langchain.agents.agent import AgentExecutor
 from langchain.schema.agent import AgentFinish
 from langchain_community.document_loaders import WebBaseLoader
-from langchain.document_loaders.pdf import DocumentIntelligenceLoader
 from langchain_google_firestore import FirestoreVectorStore
 
 
 from google.cloud.firestore_v1.vector import Vector  # type: ignore
 from api.lib.maths_solver.python_exec_client import PythonClient
-from api.lib.ocr import AzureOCR
+from api.lib.ocr import VisionOCR
 from .database.files import FileDBManager
 from api.lib.utils import format_url
 
@@ -170,15 +169,13 @@ class KnowledgeManager:
         embeddings: Embeddings,
         unstructured_api_key: str,
         unstructured_url: str,
-        azure_ocr: AzureOCR,
-        azure_form_rec_client: DocumentAnalysisClient,
+        ocr: VisionOCR,
         chunk_size: int = 230,
-        advanced_ocr_page_count: int = 10,
+        advanced_ocr_page_count: int = 15,
         collection_name: str = "academi"
     ) -> None:
-        self.azure_ocr = azure_ocr
+        self.azure_ocr = ocr
         self.embeddings = embeddings
-        self.azure_form_rec_client = azure_form_rec_client
         self.unstructured_api_key = unstructured_api_key
         self.chunk_size = chunk_size
         self.unstructured_url = unstructured_url

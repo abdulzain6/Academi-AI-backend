@@ -3,9 +3,10 @@ import tempfile
 
 from fastapi.responses import StreamingResponse
 from ..auth import get_user_id, verify_play_integrity
-from ..dependencies import require_points_for_feature, use_feature, can_use_premium_model
-from ..lib.notes_maker import make_notes_maker, get_available_note_makers, MarkdownNotesMaker
-from ..globals import get_model, text_ocr, collection_manager, file_manager, knowledge_manager
+from ..dependencies import require_points_for_feature, can_use_premium_model
+from ..lib.notes_maker import make_notes_maker, get_available_note_makers
+from ..globals import get_model, collection_manager, file_manager, knowledge_manager
+from ..lib.ocr import ImageOCR
 from typing import Optional
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi import Depends, HTTPException
@@ -36,7 +37,7 @@ def ocr_image_route(
         with tempfile.NamedTemporaryFile(delete=True) as temp_file:
             temp_file.write(file.file.read())
             temp_file_path = temp_file.name
-            ocr_result = text_ocr.perform_ocr(temp_file_path)
+            ocr_result = ImageOCR().perform_ocr(temp_file_path)
         logging.info(f"Successfully ocred {user_id}")
         return ocr_result.replace("\n", " ")
 

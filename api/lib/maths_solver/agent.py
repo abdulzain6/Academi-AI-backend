@@ -1,8 +1,7 @@
 import logging
 import re
-from typing import List, Optional, Sequence, Tuple
-from langchain import hub
-from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder, BaseChatPromptTemplate, HumanMessagePromptTemplate, StringPromptTemplate
+from typing import List, Optional, Tuple
+from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 from uuid import UUID
 from langchain.agents import Tool
 from langchain.agents import AgentExecutor

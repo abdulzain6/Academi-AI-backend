@@ -2,17 +2,73 @@ from abc import ABC, abstractmethod
 from azure.cognitiveservices.vision.computervision import ComputerVisionClient
 from azure.cognitiveservices.vision.computervision.models import OperationStatusCodes
 from msrest.authentication import CognitiveServicesCredentials
-from typing import List
+from io import BytesIO
+from typing import Optional
+from langchain_google_genai import ChatGoogleGenerativeAI
+from google.generativeai.types.safety_types import HarmBlockThreshold, HarmCategory
+from langchain.schema import HumanMessage
+from PIL import Image
 import time
+import base64
 
 class VisionOCR(ABC):
     @abstractmethod
-    def perform_ocr(self, path: str) -> List[str]:
+    def perform_ocr(self, path: str) -> str:
         pass
 
 
-class AzureOCR(VisionOCR):
+class ImageOCR(VisionOCR):        
+    def gpt_ocr(self, image_path: str, model_name: str = "gemini-1.5-flash-8b") -> str:
+        llm = ChatGoogleGenerativeAI(
+            **{
+                "model": model_name,
+                "request_timeout": 60,
+                "max_retries": 4,
+                "safety_settings" : {
+                    HarmCategory.HARM_CATEGORY_UNSPECIFIED: HarmBlockThreshold.BLOCK_NONE,
+                    HarmCategory.HARM_CATEGORY_DEROGATORY: HarmBlockThreshold.BLOCK_NONE,
+                    HarmCategory.HARM_CATEGORY_TOXICITY: HarmBlockThreshold.BLOCK_NONE,
+                    HarmCategory.HARM_CATEGORY_VIOLENCE: HarmBlockThreshold.BLOCK_NONE,
+                    HarmCategory.HARM_CATEGORY_SEXUAL: HarmBlockThreshold.BLOCK_NONE,
+                    HarmCategory.HARM_CATEGORY_MEDICAL: HarmBlockThreshold.BLOCK_NONE,
+                    HarmCategory.HARM_CATEGORY_DANGEROUS: HarmBlockThreshold.BLOCK_NONE,
+                    HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+                    HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+                    HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+                    HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+                }
+            }       
+        )
 
+        with Image.open(image_path) as img:
+            buffered = BytesIO()
+            img.save(buffered, format="PNG")
+            encoded_image = base64.b64encode(buffered.getvalue()).decode('utf-8')
+        
+        response = llm.invoke(
+            [
+                HumanMessage(
+                    content=[
+                        {
+                            "type": "text",
+                            "text" :"You are an OCR. Return the text in the image as it is, if there are math equations use LaTeX for them. Do not miss anything. You will return the text only. I want pure math LaTeX, not markdown LaTeX. I need text back. Do not miss anything. If there are images, add a description of the images or text from them as is. Do not miss any text get everything!"
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/png;base64,{encoded_image}"                            }
+                        }
+                    ]
+                )
+            ]
+        )
+        return response.content
+
+    def perform_ocr(self, image_input: str) -> Optional[str]:
+        return self.gpt_ocr(image_input)
+
+
+class AzureOCR(VisionOCR):
     def __init__(self, endpoint: str, subscription_key: str):
         self.client = ComputerVisionClient(endpoint, CognitiveServicesCredentials(subscription_key))
 

@@ -13,9 +13,10 @@ from ..dependencies import get_model_and_fallback, require_points_for_feature
 from ..lib.database.messages import MessagePair
 from ..lib.maths_solver.agent import MathSolver
 from ..lib.utils import split_into_chunks
-from ..globals import image_ocr, conversation_manager, client
+from ..globals import conversation_manager, client
 from ..auth import get_user_id, verify_play_integrity
 from ..dependencies import use_feature, can_use_premium_model
+from ..lib.ocr import ImageOCR
 
 
 
@@ -126,7 +127,7 @@ def ocr_image_route(
         with tempfile.NamedTemporaryFile(delete=True) as temp_file:
             temp_file.write(file.file.read())
             temp_file_path = temp_file.name
-            ocr_result = image_ocr.ocr_image(temp_file_path)
+            ocr_result = ImageOCR().perform_ocr(temp_file_path)
         logging.info(f"Successfully ocred {user_id}")
         return ocr_result
 
