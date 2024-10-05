@@ -123,7 +123,7 @@ def make_presentation(
         template_name = None
 
     try:
-        file_path = presentation_maker.make_presentation(
+        file_path, content = presentation_maker.make_presentation(
             PresentationInput(
                 topic=presentation_input.topic,
                 instructions=presentation_input.instructions,

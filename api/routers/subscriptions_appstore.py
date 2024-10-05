@@ -95,6 +95,7 @@ def handle_purchase(user_id: str, transaction_id: str, product_id: str):
     logging.info(f"{user_id} Just subscribed {transaction_id}")
 
 def handle_renewed(user_id: str, product_id: str):
+    logging.info(f"Userid {user_id}, Product ID: {product_id}")
     multiplier = calculate_multiplier(product_id=product_id)
     subscription_manager.allocate_coins(user_id, multiplier=multiplier)
     subscription_manager.reset_monthly_limits(user_id, multiplier)
@@ -161,14 +162,14 @@ def process_notification(payload: ResponseBodyV2DecodedPayload, verifier: Signed
         signed_trans_info = payload.data.signedTransactionInfo
         transaction_info = verifier.verify_and_decode_signed_transaction(signed_trans_info)
         user_id = uuid_mapping_manager.get_uid(transaction_info.appAccountToken)
-        logging.info(f"UserID of user is: {user_id}")
+        logging.info(f"UserID of user is: {user_id} {transaction_info}")
         
         if not user_id:
             raise HTTPException(status_code=400, detail="User not found")
         
         if payload.notificationType == NotificationTypeV2.SUBSCRIBED:
             logging.info("Subscription Notification Received")
-            if payload.data.status == Status.ACTIVE and payload.subtype == Subtype.INITIAL_BUY:
+            if payload.data.status == Status.ACTIVE and payload.subtype in [Subtype.INITIAL_BUY, Subtype.RESUBSCRIBE]:
                 handle_purchase(user_id, transaction_info.transactionId, transaction_info.productId)
             else:
                 logging.info(f"Status of Subscription is not ACTIVE, It is {payload.data.status}. Subtype: {payload.subtype} Skipping...")
@@ -228,12 +229,8 @@ def process_notification(payload: ResponseBodyV2DecodedPayload, verifier: Signed
 @router.post("/app-store-notifications/v2")
 async def receive_notification(request: Request):
     try:
-        # Log the headers
-        logging.info(f"Received headers: {request.headers}")
-
         # Get the raw body of the request
         body = await request.body()
-        logging.info(f"Body: {body}")
         signed_payload = body.decode()
 
         # Verify and decode the notification

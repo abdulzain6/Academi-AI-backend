@@ -100,7 +100,7 @@ def create_link_file(
     except Exception as e:
         import traceback
         logging.error(f"File not supported, Error: {traceback.format_exception(e)}")
-        raise HTTPException(400, "Link has no data/ Invalid link") from e
+        raise HTTPException(400, "Invalid link/ Language not supported or file too large.") from e
 
     try:
         file_model = file_manager.add_file(

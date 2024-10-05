@@ -329,7 +329,7 @@ def make_ppt(
     cache_manager,
     url_template: str,
 ):
-    ppt_path = ppt_maker.make_presentation(
+    ppt_path, content = ppt_maker.make_presentation(
         template_name=ppt_input.template_name,
         presentation_input=PresentationInput(**ppt_input.model_dump()),
     )

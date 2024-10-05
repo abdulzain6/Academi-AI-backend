@@ -1,7 +1,6 @@
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from .pptx.enum.shapes import MSO_SHAPE_TYPE
 from .pptx import Presentation
-from threading import Thread
 from typing import Any, Dict, Optional, List, Tuple
 from .exceptions import NoValidSequenceException
 from langchain.prompts import (
@@ -41,6 +40,7 @@ class PlaceholderData(BaseModel):
         description="The name of the placeholder. Make sure name is exactly same"
     )
     placeholder_data: str = Field(
+        default="",
         description="The data to display in the placeholder. Make sure it fits in a presentaion slide."
     )
 
@@ -549,7 +549,7 @@ Do not leave a placeholder empty. Failure to do so, will cuase fatal error!!"""
 
         return prs
 
-    def fill_single_slide(self, i: int, slide_part: Any, prs: Presentation, template_slides: List[Any], presentation_input: Any, sequence: Any, word_limit_para: int, word_limit_points: int, word_limit_hybrid: int) -> None:
+    def fill_single_slide(self, i: int, slide_part: Any, prs: Presentation, template_slides: List[Any], presentation_input: Any, sequence: Any, word_limit_para: int, word_limit_points: int, word_limit_hybrid: int) -> tuple[Placeholders, int]:
         slide_content_obtained = False  # Flag to check if slide content was successfully obtained
 
         try:
@@ -572,6 +572,7 @@ Do not leave a placeholder empty. Failure to do so, will cuase fatal error!!"""
 
             presentation_slide = prs.slides[i]
             self.replace_placeholders_in_single_slide(presentation_slide, slide_content)
+            return slide_content, i
         except Exception as e:
             logging.error(f"Error in presentation (fill_single_slide){e}")
 
@@ -581,16 +582,28 @@ Do not leave a placeholder empty. Failure to do so, will cuase fatal error!!"""
         sequence: PresentationSequence,
         presentation_input: PresentationInput,
         template: TemplateModel
-    ) -> None:
-        threads = []
-        for i, slide_part in enumerate(sequence.slide_sequence):
-            thread = Thread(target=self.fill_single_slide, args=(i, slide_part, prs, template.slides, presentation_input, sequence, template.word_limit_para, template.word_limit_points, template.word_limit_hybrid))
-            threads.append(thread)
-            thread.start()
+    ) -> List[CombinedPlaceholders]:
+        results = []
+        
+        def wrapper_fill_single_slide(index: int, *args) -> Placeholders:
+            return self.fill_single_slide(*args)  # Return the result
 
-        for thread in threads:
-            thread.join()
+        with ThreadPoolExecutor() as executor:
+            futures = [
+                executor.submit(
+                    wrapper_fill_single_slide,
+                    i, i, slide_part, prs, template.slides, presentation_input, sequence, 
+                    template.word_limit_para, template.word_limit_points, template.word_limit_hybrid
+                )
+                for i, slide_part in enumerate(sequence.slide_sequence)
+            ]
 
+            for future in as_completed(futures):
+                results.append(future.result())  # Collect the results as they complete
+                
+        sorted_results = sorted(results, key=lambda x: x[1])
+        return [content for content, _ in sorted_results]
+    
     @retry(stop_max_attempt_number=3)
     def make_presentation(self, presentation_input: PresentationInput, template_name: str = None) -> str:
         logging.info("Fetching best template...")
@@ -635,7 +648,7 @@ Do not leave a placeholder empty. Failure to do so, will cuase fatal error!!"""
             sequence, slide_path, template.slides
         )
 
-        self.fill_presentation_with_content(
+        content = self.fill_presentation_with_content(
             prs, sequence, presentation_input, template
         )
         with tempfile.NamedTemporaryFile(suffix='.pptx', delete=False) as temp_file:
@@ -644,7 +657,7 @@ Do not leave a placeholder empty. Failure to do so, will cuase fatal error!!"""
         
         logging.info(f"Presentation saved successfully. Time taken: , {time.time() - start_time}")
         
-        return temp_file_path
+        return temp_file_path, [{**placeholders.dict(), **sequence.dict()} for placeholders, sequence in zip(content, sequence.slide_sequence)]
 
     def replace_text_in_run(self, run, placeholders: List[CombinedPlaceholder]) -> None:
         for placeholder in placeholders:

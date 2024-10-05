@@ -183,7 +183,6 @@ class KnowledgeManager:
         self.chunk_size = chunk_size
         self.unstructured_url = unstructured_url
         self.advanced_ocr_page_count = advanced_ocr_page_count
-        print(os.environ["GOOGLE_APPLICATION_CREDENTIALS"])
         self.vectorstore = FirestoreVectorStoreModified(
             collection=collection_name,
             embedding_service=embeddings,
