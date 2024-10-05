@@ -331,7 +331,7 @@ def make_ppt(
 ):
     ppt_path, content = ppt_maker.make_presentation(
         template_name=ppt_input.template_name,
-        presentation_input=PresentationInput(**ppt_input.model_dump()),
+        presentation_input=PresentationInput(**ppt_input.dict()),
     )
     doc_id = str(uuid.uuid4()) + ".pptx"
 

@@ -173,7 +173,7 @@ class KnowledgeManager:
         azure_ocr: AzureOCR,
         azure_form_rec_client: DocumentAnalysisClient,
         chunk_size: int = 230,
-        advanced_ocr_page_count: int = 30,
+        advanced_ocr_page_count: int = 10,
         collection_name: str = "academi"
     ) -> None:
         self.azure_ocr = azure_ocr
