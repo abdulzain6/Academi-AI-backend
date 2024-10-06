@@ -725,8 +725,8 @@ File Content:
                 number_of_pages,
                 negative_prompt,
             ),
-            name="make_ppt",
-            description="Used to make ppt/ppowerpoint presentation using AI",
+            name="make_presentation",
+            description="Used to make ppt/powerpoint presentation.",
             args_schema=MakePptArgs,
         ),
     ]

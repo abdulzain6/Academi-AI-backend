@@ -20,6 +20,7 @@ import io
 import os
 import subprocess
 import logging
+import multiprocessing
 
 
 class Slide(BaseModel):
@@ -104,7 +105,7 @@ Slide Text:
         structured_llm = self.llm.with_structured_output(schema=LectureScript)
         return structured_llm.invoke(messages)
     
-    def generate_speech(self, input_text: str, model: str = "tts-1", voice: str = "alloy") -> io.BytesIO:
+    def generate_speech(self, input_text: str, model: str = "tts-1", voice: str = "onyx") -> io.BytesIO:
         """
         Generate speech audio using OpenAI's TTS model and return the audio as an in-memory file.
 
@@ -137,8 +138,8 @@ Slide Text:
         except Exception as e:
             raise RuntimeError(f"Failed to generate speech: {str(e)}")
 
-    def create_slideshow(self, images: List[io.BytesIO], audios: List[Tuple[int, io.BytesIO]],
-                         output_path: str, extra_duration: float = 3, transition_duration: float = 2):
+    def create_slideshow(self, images: List[io.BytesIO], audios: List[Tuple[int, io.BytesIO]], 
+                         output_path: str, extra_duration: float = 2.5, transition_duration: float = 2):
         """
         Create a slideshow video with synchronized audio and transitions.
 
@@ -165,7 +166,7 @@ Slide Text:
 
             # Load audio
             audio = AudioFileClip(temp_audio_file_path)
-
+            
             # Calculate slide duration
             slide_duration = audio.duration + extra_duration
 
@@ -207,7 +208,9 @@ Slide Text:
         final_clip = final_clip.set_duration(total_duration)
 
         # Write the result to a file
-        final_clip.write_videofile(output_path, fps=24, codec="libx264", audio_codec="aac")
+        final_clip.write_videofile(output_path, fps=7, codec="libx264", audio_codec="aac", threads=multiprocessing.cpu_count())
+
+
 
     def run(self, lecture_input: LectureMakerInput) -> str:
         script = self.generate_lecture(lecture_input)
@@ -301,27 +304,47 @@ Slide Text:
 
 
 
-if __name__ == "__main__":
-    placeholders = [
-        {'placeholders': [{'placeholder_name': 'TOPIC', 'placeholder_data': 'Thermodynamics.', 'description': 'The topic of the presentation', 'is_image': False, 'image_width': None, 'image_height': None}, {'placeholder_name': 'PRESENTOR_NAME', 'placeholder_data': 'John Doe.', 'description': 'The name of the presentor', 'is_image': False, 'image_width': None, 'image_height': None}],
-         'page_number': 1,
-         'slide_detail': 'Thermodynamics',
-         'slide_type': 'TITLE_SLIDE'
-        }, {'placeholders': [{'placeholder_name': 'SECTION', 'placeholder_data': 'Introduction to Thermodynamics.', 'description': 'The name of the section', 'is_image': False, 'image_width': None, 'image_height': None}, {'placeholder_name': 'SECTION_CONTENT', 'placeholder_data': '- Study of energy and heat transfer\n- Focuses on energy conversion\n- Key principles include systems and surroundings\n- Involves laws governing energy interactions\n- Essential for understanding physical phenomena\n- Applications in engineering, chemistry, and physics', 'description': 'The content for the section.', 'is_image': False, 'image_width': None, 'image_height': None}], 'page_number': 2, 'slide_detail': 'Introduction to Thermodynamics', 'slide_type': 'CONTENT_SLIDE'}, {'placeholders': [{'placeholder_name': 'SECTION', 'placeholder_data': 'Laws of Thermodynamics.', 'description': 'The name of the section', 'is_image': False, 'image_width': None, 'image_height': None}, {'placeholder_name': 'SUBSECTION_ONE', 'placeholder_data': 'First Law of Thermodynamics.', 'description': 'The name of the subsection number one', 'is_image': False, 'image_width': None, 'image_height': None}, {'placeholder_name': 'SUBSECTION_ONE_CONTENT', 'placeholder_data': '- Energy cannot be created or destroyed\n- Total energy of an isolated system is constant\n- Internal energy change equals heat added minus work done', 'description': 'The content for subsection numner one', 'is_image': False, 'image_width': None, 'image_height': None}, {'placeholder_name': 'SUBSECTION_TWO', 'placeholder_data': 'Second Law of Thermodynamics.', 'description': 'The name for subsection number two', 'is_image': False, 'image_width': None, 'image_height': None}, {'placeholder_name': 'SUBSECTION_TWO_CONTENT', 'placeholder_data': '- Entropy of an isolated system always increases\n- Heat cannot spontaneously flow from cold to hot\n- Energy transformations are not 100% efficient', 'description': 'The content for subsection number two', 'is_image': False, 'image_width': None, 'image_height': None}], 'page_number': 3, 'slide_detail': 'Laws of Thermodynamics', 'slide_type': 'MULTI_COLUMN'}, {'placeholders': [{'placeholder_name': 'SECTION', 'placeholder_data': 'Laws of Thermodynamics (contd.).', 'description': 'The name of the section', 'is_image': False, 'image_width': None, 'image_height': None}, {'placeholder_name': 'SUBSECTION_ONE', 'placeholder_data': 'Second Law of Thermodynamics.', 'description': 'The name of the subsection number one', 'is_image': False, 'image_width': None, 'image_height': None}, {'placeholder_name': 'SUBSECTION_ONE_CONTENT', 'placeholder_data': '- Energy transfer creates entropy\n- Heat flows from hot to cold\n- Efficiency limits in energy conversion', 'description': 'The content for subsection numner one', 'is_image': False, 'image_width': None, 'image_height': None}, {'placeholder_name': 'SUBSECTION_TWO_CONTENT', 'placeholder_data': '- Absolute zero as a limit\n- Entropy approaches constant value\n- No energy can be extracted at absolute zero', 'description': 'The content for subsection number two', 'is_image': False, 'image_width': None, 'image_height': None}], 'page_number': 4, 'slide_detail': 'Laws of Thermodynamics (contd.)', 'slide_type': 'MULTI_COLUMN'}, {'placeholders': [{'placeholder_name': 'SECTION', 'placeholder_data': 'Thermodynamic Processes.', 'description': 'The name of the section', 'is_image': False, 'image_width': None, 'image_height': None}, {'placeholder_name': 'SECTION_CONTENT', 'placeholder_data': '- Definition: Transformation of energy\n- Importance: Foundations of thermodynamics\n- Types: Isobaric, Isochoric, Isothermal, Adiabatic\n- Characteristics: Heat transfer, Work done, System behavior\n- Applications: Engineering, Physics, Chemistry', 'description': 'The content for the section.', 'is_image': False, 'image_width': None, 'image_height': None}], 'page_number': 5, 'slide_detail': 'Thermodynamic Processes', 'slide_type': 'CONTENT_SLIDE'}, {'placeholders': [{'placeholder_name': 'SECTION', 'placeholder_data': 'Types of Thermodynamic Processes.', 'description': 'The name of the section', 'is_image': False, 'image_width': None, 'image_height': None}, {'placeholder_name': 'SUBSECTION_ONE', 'placeholder_data': 'Isothermal Processes.', 'description': 'The name of the subsection number one', 'is_image': False, 'image_width': None, 'image_height': None}, {'placeholder_name': 'SUBSECTION_ONE_CONTENT', 'placeholder_data': '- Constant temperature\n- Heat is exchanged\n- Common in gas expansion', 'description': 'The content for subsection numner one', 'is_image': False, 'image_width': None, 'image_height': None}, {'placeholder_name': 'SUBSECTION_TWO', 'placeholder_data': 'Adiabatic Processes.', 'description': 'The name for subsection number two', 'is_image': False, 'image_width': None, 'image_height': None}, {'placeholder_name': 'SUBSECTION_TWO_CONTENT', 'placeholder_data': '- No heat exchange\n- Temperature changes\n- Rapid processes', 'description': 'The content for subsection number two', 'is_image': False, 'image_width': None, 'image_height': None}], 'page_number': 6, 'slide_detail': 'Types of Thermodynamic Processes', 'slide_type': 'MULTI_COLUMN'}, {'placeholders': [{'placeholder_name': 'SECTION', 'placeholder_data': 'Types of Thermodynamic Processes (contd.).', 'description': 'The name of the section', 'is_image': False, 'image_width': None, 'image_height': None}, {'placeholder_name': 'SUBSECTION_ONE', 'placeholder_data': 'Isothermal Process.', 'description': 'The name of the subsection number one', 'is_image': False, 'image_width': None, 'image_height': None}, {'placeholder_name': 'SUBSECTION_ONE_CONTENT', 'placeholder_data': '- Constant temperature\n- Heat exchange occurs\n- Example: Melting of ice', 'description': 'The content for subsection numner one', 'is_image': False, 'image_width': None, 'image_height': None}, {'placeholder_name': 'SUBSECTION_TWO', 'placeholder_data': 'Adiabatic Process.', 'description': 'The name for subsection number two', 'is_image': False, 'image_width': None, 'image_height': None}, {'placeholder_name': 'SUBSECTION_TWO_CONTENT', 'placeholder_data': '- No heat exchange\n- Temperature changes due to work done\n- Example: Rapid compression of gas', 'description': 'The content for subsection number two', 'is_image': False, 'image_width': None, 'image_height': None}], 'page_number': 7, 'slide_detail': 'Types of Thermodynamic Processes (contd.)', 'slide_type': 'MULTI_COLUMN'}, {'placeholders': [{'placeholder_name': 'SECTION', 'placeholder_data': 'Thermodynamic Cycles.', 'description': 'The name of the section', 'is_image': False, 'image_width': None, 'image_height': None}, {'placeholder_name': 'SECTION_CONTENT', 'placeholder_data': '- Defined as a series of processes\n- Return to initial state\n- Key types: Carnot, Otto, Diesel\n- Efficiency calculated using work and heat\n- Applications in engines and refrigeration\n- Important for energy conversion studies\n- Involves heat addition and rejection', 'description': 'The content for the section.', 'is_image': False, 'image_width': None, 'image_height': None}], 'page_number': 8, 'slide_detail': 'Thermodynamic Cycles', 'slide_type': 'CONTENT_SLIDE'}, {'placeholders': [{'placeholder_name': 'SECTION', 'placeholder_data': 'Examples of Thermodynamic Cycles.', 'description': 'The name of the section', 'is_image': False, 'image_width': None, 'image_height': None}, {'placeholder_name': 'SUBSECTION_ONE', 'placeholder_data': 'Carnot Cycle.', 'description': 'The name of the subsection number one', 'is_image': False, 'image_width': None, 'image_height': None}, {'placeholder_name': 'SUBSECTION_ONE_CONTENT', 'placeholder_data': '- Idealized thermodynamic cycle\n- Consists of two isothermal and two adiabatic processes\n- Maximum efficiency between two temperature reservoirs\n- Used as a standard for real cycles', 'description': 'The content for subsection numner one', 'is_image': False, 'image_width': None, 'image_height': None}, {'placeholder_name': 'SUBSECTION_TWO', 'placeholder_data': 'Otto Cycle.', 'description': 'The name for subsection number two', 'is_image': False, 'image_width': None, 'image_height': None}, {'placeholder_name': 'SUBSECTION_TWO_CONTENT', 'placeholder_data': '- Used in gasoline engines\n- Consists of two adiabatic and two isochoric processes\n- Converts heat into work\n- Efficiency depends on compression ratio', 'description': 'The content for subsection number two', 'is_image': False, 'image_width': None, 'image_height': None}], 'page_number': 9, 'slide_detail': 'Examples of Thermodynamic Cycles', 'slide_type': 'MULTI_COLUMN'}, {'placeholders': [{'placeholder_name': 'SECTION', 'placeholder_data': 'Applications of Thermodynamics.', 'description': 'The name of the section', 'is_image': False, 'image_width': None, 'image_height': None}, {'placeholder_name': 'SECTION_CONTENT', 'placeholder_data': '- Energy conversion systems\n- Refrigeration and air conditioning\n- Heat engines and power plants\n- Chemical reactions and process engineering\n- Material science and phase transitions\n- Environmental impact assessments\n- Biomedical applications\n- Renewable energy technologies', 'description': 'The content for the section.', 'is_image': False, 'image_width': None, 'image_height': None}], 'page_number': 10, 'slide_detail': 'Applications of Thermodynamics', 'slide_type': 'CONTENT_SLIDE'}, {'placeholders': [{'placeholder_name': 'SECTION', 'placeholder_data': 'Real-World Applications.', 'description': 'The name of the section', 'is_image': False, 'image_width': None, 'image_height': None}, {'placeholder_name': 'SUBSECTION_ONE', 'placeholder_data': 'Energy Generation.', 'description': 'The name of the subsection number one', 'is_image': False, 'image_width': None, 'image_height': None}, {'placeholder_name': 'SUBSECTION_ONE_CONTENT', 'placeholder_data': '- Power plants utilize thermodynamics for electricity\n- Steam turbines convert heat energy into work\n- Solar panels harness solar energy efficiently', 'description': 'The content for subsection numner one', 'is_image': False, 'image_width': None, 'image_height': None}, {'placeholder_name': 'SUBSECTION_TWO', 'placeholder_data': 'Refrigeration and Air Conditioning.', 'description': 'The name for subsection number two', 'is_image': False, 'image_width': None, 'image_height': None}, {'placeholder_name': 'SUBSECTION_TWO_CONTENT', 'placeholder_data': '- Refrigerators use thermodynamic cycles to cool\n- Air conditioning systems regulate indoor temperature\n- Heat pumps transfer thermal energy effectively', 'description': 'The content for subsection number two', 'is_image': False, 'image_width': None, 'image_height': None}], 'page_number': 11, 'slide_detail': 'Real-World Applications', 'slide_type': 'MULTI_COLUMN'}, {'placeholders': [], 'page_number': 12, 'slide_detail': 'Thank You!', 'slide_type': 'THANKYOU_SLIDE'}]
-    
-    
-    input = LectureMakerInput(
-        topic="Thermodynamics",
-        instructions="Explain all subtopics",
-        presentation_path="/home/zain/Downloads/tmpt8bzvd2t.pptx",
-        slides_text=[
-            Slide(
-                slide_type=slide["slide_type"],
-                slide_subtopic=slide["slide_detail"],
-                slide_text="\n".join([f'{data["placeholder_name"]} : {data["placeholder_data"]}' for data in slide["placeholders"]])
-            ) for slide in placeholders]
+from ..firebase import *
+from ..globals import temp_knowledge_manager, template_manager, knowledge_manager
+from .presentation_maker.presentation_maker import PresentationMaker, PresentationInput
+from .presentation_maker.image_gen import PexelsImageSearch
+from langchain_openai import ChatOpenAI
+
+llm = ChatOpenAI(model="gpt-4o-mini")
+topic = "Thermodynamics"
+instructions = "Explain all subtopics"
+presentation_maker = PresentationMaker(
+    template_manager,
+    temp_knowledge_manager,
+    llm,
+    pexel_image_gen_cls=PexelsImageSearch,
+    image_gen_args={"image_cache_dir": "/tmp/.image_cache"},
+    vectorstore=knowledge_manager,
+)
+presentation_path, placeholders = presentation_maker.make_presentation(
+    PresentationInput(
+        topic=topic,
+        instructions=instructions,
+        number_of_pages=12,
+        negative_prompt="",
+        collection_name=None,
+        files=None,
+        user_id=None
     )
-    from langchain_openai import ChatOpenAI
-    generator = LectureGenerator(ChatOpenAI(model="gpt-4o-mini"))
-    lecture = generator.run(lecture_input=input)
-    print(" ".join([slide.script for slide in lecture.slide_scripts]))
+)
+
+input = LectureMakerInput(
+    topic=topic,
+    instructions=instructions,
+    presentation_path=presentation_path,
+    language="Hinglish",
+    slides_text=[
+        Slide(
+            slide_type=slide["slide_type"],
+            slide_subtopic=slide["slide_detail"],
+            slide_text="\n".join([f'{data["placeholder_name"]} : {data["placeholder_data"]}' for data in slide["placeholders"]])
+        ) for slide in placeholders]
+)
+generator = LectureGenerator(llm)
+lecture = generator.run(lecture_input=input)
+print(lecture)

@@ -36,7 +36,7 @@ def get_cv_templates():
     cv_maker = CVMaker(
         templates=template_loader(),
         chrome_path="/usr/bin/google-chrome",
-        chat_model=ChatOpenAI(temperature=0)
+        chat_model=ChatOpenAI(temperature=0, model="gpt-4o-mini")
 
     )
     return {"templates" : cv_maker.get_all_templates()}
@@ -72,7 +72,7 @@ def make_cv(cv_input: MakeCV, _ = Depends(verify_token)):
     cv_maker = CVMaker(
         templates=template_loader(),
         chrome_path="/usr/bin/google-chrome",
-        chat_model=ChatOpenAI(temperature=0, model="gpt-3.5-turbo-1106").bind(response_format = {"type": "json_object"})
+        chat_model=ChatOpenAI(temperature=0, model="gpt-4o-mini").bind(response_format = {"type": "json_object"})
     )
 
     try:

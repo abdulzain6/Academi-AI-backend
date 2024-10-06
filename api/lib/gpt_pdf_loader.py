@@ -6,7 +6,6 @@ from typing import List
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from PyPDF2 import PdfReader
 from pdf2image import convert_from_path
-from langchain_openai import ChatOpenAI
 from langchain.schema import HumanMessage, Document, SystemMessage
 from PIL import Image
 from langchain_google_genai import ChatGoogleGenerativeAI

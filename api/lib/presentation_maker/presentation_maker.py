@@ -605,7 +605,7 @@ Do not leave a placeholder empty. Failure to do so, will cuase fatal error!!"""
         return [content for content, _ in sorted_results]
     
     @retry(stop_max_attempt_number=3)
-    def make_presentation(self, presentation_input: PresentationInput, template_name: str = None) -> str:
+    def make_presentation(self, presentation_input: PresentationInput, template_name: str = None) -> tuple[str, list[dict]]:
         logging.info("Fetching best template...")
         start_time = time.time()
         if not template_name:

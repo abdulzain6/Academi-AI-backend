@@ -52,7 +52,9 @@ from google.generativeai.types.safety_types import HarmBlockThreshold, HarmCateg
 import langchain
 import redis
 import logging
+import dotenv
 
+dotenv.load_dotenv()
 
 
 langchain.verbose = False
