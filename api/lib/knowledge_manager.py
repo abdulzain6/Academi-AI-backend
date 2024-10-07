@@ -512,7 +512,7 @@ class ChatManagerRetrieval:
         llm: BaseChatModel,
         callback_func: callable = None,
         on_end_callback: callable = None,
-        k: int = 1,
+        k: int = 6,
         metadata: dict[str, str] = None,
         filename: str = None,
         help_data_random: str = "Ask user to reupload file!"
@@ -659,6 +659,7 @@ Rules:
     Talk like a teacher! Start the conversation with "Hello, I'm your AI teacher, ready to explore the world of knowledge together. Let's start this journey of learning and discovery!"
     use tools to better explain things, Never underestimate the power of visual aids. Use them even if not asked.
     Ask the users time to time to leave a positive review for our app ask it nicely but don't overdo it
+    Use your tools to make prsesntations, notes if asked to.
 
 Student has also made subjects in the app and added files to them also.
 They are:
