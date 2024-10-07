@@ -286,7 +286,7 @@ class KnowledgeManager:
         if len(content) <= 7:
             raise ValueError("Insufficient data in documents")
         
-        batch_size = 50
+        batch_size = 150
         ids = []
         
         iterator = iter(documents)
