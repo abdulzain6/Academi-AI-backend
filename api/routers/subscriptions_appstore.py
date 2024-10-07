@@ -165,7 +165,7 @@ def process_notification(payload: ResponseBodyV2DecodedPayload, verifier: Signed
         logging.info(f"UserID of user is: {user_id} {transaction_info}")
         
         if not user_id:
-            raise HTTPException(status_code=400, detail="User not found")
+            return 
         
         if payload.notificationType == NotificationTypeV2.SUBSCRIBED:
             logging.info("Subscription Notification Received")
