@@ -208,7 +208,7 @@ Slide Text:
         final_clip = final_clip.set_duration(total_duration)
 
         # Write the result to a file
-        final_clip.write_videofile(output_path, fps=7, codec="libx264", audio_codec="aac", threads=multiprocessing.cpu_count())
+        final_clip.write_videofile(output_path, fps=20, threads=multiprocessing.cpu_count())
 
 
 

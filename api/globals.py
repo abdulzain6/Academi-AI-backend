@@ -248,7 +248,7 @@ knowledge_manager = KnowledgeManager(
         timeout=10,
         max_retries=2
     ),
-    chunk_size=1000,
+    chunk_size=520,
     unstructured_api_key=UNSTRUCTURED_API_KEY,
     unstructured_url=UNSTRUCTURED_URL,
     ocr=ImageOCR(),
