@@ -512,7 +512,7 @@ class ChatManagerRetrieval:
         llm: BaseChatModel,
         callback_func: callable = None,
         on_end_callback: callable = None,
-        k: int = 6,
+        k: int = 4,
         metadata: dict[str, str] = None,
         filename: str = None,
         help_data_random: str = "Ask user to reupload file!"
@@ -556,10 +556,10 @@ dont forget the above rules""",
        #     combined, collection_name, metadata=metadata, k=k // 2
        # )
         similar_docs = self.query_data(prompt, collection_name, metadata=metadata, k=k)
-        similar_docs = self._reduce_tokens_below_limit(
-            similar_docs, docs_limit=self.docs_limit
-        )
-        print(similar_docs)        
+       # similar_docs = self._reduce_tokens_below_limit(
+       #     similar_docs, docs_limit=self.docs_limit
+       # )
+        print(len(similar_docs), "Docs")        
         if not similar_docs:
             logging.info("Using random data")
             similar_docs = [Document(page_content=help_data_random)]
