@@ -112,6 +112,8 @@ def verify_onetime_apple(
     user_id=Depends(get_user_id),
 ):
     logging.info(f"Coins purchase attempt by {user_id} Data: {onetime_data}")
+    if onetime_data.product_id not in PRODUCT_ID_COIN_MAP:
+        raise HTTPException(400, "Invalid product id")
     
     if onetime_data.transaction_id in subscription_manager.retrieve_onetime_tokens(user_id):
         logging.error(f"Coins purchase attempt by {user_id}. Tokens already used.")

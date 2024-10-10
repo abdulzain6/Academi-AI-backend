@@ -1,7 +1,10 @@
 import io
 import os
-from fastapi import APIRouter, HTTPException, Response
+import uuid
+from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile
 from fastapi.responses import StreamingResponse
+
+from api.auth import verify_cronjob_request
 from ..globals import (
     redis_cache_manager,
 )
@@ -20,6 +23,7 @@ MEDIA_TYPE_MAPPING_IMG = {
     ".tiff": "image/tiff"
 }
 MEDIA_TYPE_MAPPING = {".mp4": "video/mp4"}
+MAX_FILE_SIZE_MB = 500  # Maximum file size allowed (in MB)
 
 
 @router.get("/document/{doc_id}")
@@ -71,3 +75,29 @@ def retrieve_video(video_id: str):
         iter([video_data]),  # Stream the video data
         media_type=MEDIA_TYPE_MAPPING[".mp4"]
     )
+
+@router.post("/upload_video/")
+def upload_video(file: UploadFile = File(...), _ = Depends(verify_cronjob_request)):
+    extension = os.path.splitext(file.filename)[-1].lower()
+    
+    if extension not in MEDIA_TYPE_MAPPING:
+        raise HTTPException(status_code=415, detail="Unsupported video format")
+
+    # Check the file size
+    file.file.seek(0, os.SEEK_END)  # Move pointer to end to get size
+    file_size = file.file.tell()  # Get size in bytes
+    if file_size > MAX_FILE_SIZE_MB * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="File too large. Max size is 500MB.")
+    file.file.seek(0)  # Reset file pointer to start after size check
+
+    # Read file content
+    video_bytes = file.file.read()
+
+    # Generate a unique ID for the video
+    video_id = str(uuid.uuid4()) + extension
+
+    # Store video in Redis with a TTL (optional, e.g., 1 hour)
+    redis_cache_manager.setex(video_id, 3600, video_bytes)  # 3600 seconds = 1 hour
+
+    # Return the video ID
+    return {"video_id": video_id}

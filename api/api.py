@@ -24,6 +24,7 @@ from .routers.text_to_handwritting import router as handwriting_router
 from .routers.infographic_maker import router as infographic_router
 from .routers.free_courses import router as courses_router
 from .routers.subscriptions_appstore import router as app_store_subs_router
+from .routers.lecture_generator import router as lecture_router
 
 #rapid api
 from api.rapid_api.courses import router as rapid_api_courses_router
@@ -147,6 +148,7 @@ app.include_router(handwriting_router, prefix="/api/v1/handwriting", tags=["hand
 app.include_router(infographic_router, prefix="/api/v1/infographic", tags=["infographic"])
 app.include_router(courses_router, prefix="/api/v1/courses", tags=["courses"])
 app.include_router(app_store_subs_router, prefix="/api/v1/app-store", tags=["appstore"])
+app.include_router(lecture_router, prefix="/api/v1/lecture-generator", tags=["lecture"])
 
 app.include_router(rapid_api_courses_router, prefix="/rapidapi/courses", tags=["rapid_api"])
 app.include_router(rapid_api_whisper, prefix="/rapidapi/whisper", tags=["rapid_api"])

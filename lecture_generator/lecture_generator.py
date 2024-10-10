@@ -1,7 +1,4 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import shutil
-import tempfile
-import uuid
 from langchain.pydantic_v1 import BaseModel, Field
 from langchain_core.language_models import BaseChatModel
 from langchain.prompts import (
@@ -9,19 +6,25 @@ from langchain.prompts import (
     SystemMessagePromptTemplate,
     HumanMessagePromptTemplate,
 )
-import numpy as np
 from openai import OpenAI
 from pdf2image import convert_from_path
 from io import BytesIO
-from typing import List, Tuple
+from typing import Dict, List, Tuple, Union
 from moviepy.editor import *
 from PIL import Image
+from langchain_openai import ChatOpenAI
+
+import base64
+import numpy as np
 import io
 import os
+import shutil
+import tempfile
+import uuid
 import subprocess
 import logging
 import multiprocessing
-
+import runpod
 
 class Slide(BaseModel):
     slide_text: str
@@ -32,7 +35,7 @@ class LectureMakerInput(BaseModel):
     topic: str
     instructions: str
     presentation_path: str
-    slides_text: list[Slide]
+    slides_text: List[Slide]
     minutes: int = 10
     language: str = "English"
     
@@ -42,11 +45,13 @@ class SlideScript(BaseModel):
     slide_number: int
     
 class LectureScript(BaseModel):
-    slide_scripts: list[SlideScript]
+    slide_scripts: List[SlideScript]
     
 class LectureGenerator:
-    def __init__(self, llm: BaseChatModel) -> None:
+    def __init__(self, llm: BaseChatModel, fps: int, voice: str = "onyx") -> None:
         self.llm = llm
+        self.voice = voice
+        self.fps = fps
     
     def generate_lecture(self, lecture_input: LectureMakerInput) -> LectureScript:
         prompt = ChatPromptTemplate(
@@ -207,17 +212,15 @@ Slide Text:
         # Set the duration of the final clip
         final_clip = final_clip.set_duration(total_duration)
 
-        # Write the result to a file
-        final_clip.write_videofile(output_path, fps=20, threads=multiprocessing.cpu_count())
-
-
+    
+        final_clip.write_videofile(output_path, fps=self.fps, threads=multiprocessing.cpu_count(), codec="libx264", preset='ultrafast')
 
     def run(self, lecture_input: LectureMakerInput) -> str:
         script = self.generate_lecture(lecture_input)
         images = self.convert_all_slides_to_images(lecture_input.presentation_path)
         audios = self.generate_lecture_speech(script)
 
-        output_path = "lecture_slideshow.mp4"
+        output_path = f"/tmp/{uuid.uuid4()}_lecture_slideshow.mp4"
         self.create_slideshow(images, audios, output_path)
 
         return output_path
@@ -274,7 +277,7 @@ Slide Text:
             logging.error(f"Error during slide to image conversion: {traceback.format_exception(e)}")
             return []
         
-    def generate_lecture_speech(self, lecture_script: LectureScript, max_workers: int = 5) -> List[tuple[int, io.BytesIO]]:
+    def generate_lecture_speech(self, lecture_script: LectureScript, max_workers: int = 5) -> List[Tuple[int, io.BytesIO]]:
         """
         Generate speech for all slides in the lecture script in parallel.
 
@@ -283,11 +286,11 @@ Slide Text:
             max_workers (int): The maximum number of worker threads to use. Default is 5.
 
         Returns:
-            List[tuple[int, io.BytesIO]]: A list of tuples containing the slide number and its corresponding audio buffer.
+            List[Tuple[int, io.BytesIO]]: A list of tuples containing the slide number and its corresponding audio buffer.
         """
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             future_to_slide = {
-                executor.submit(self.generate_speech, slide.script): slide.slide_number
+                executor.submit(self.generate_speech, slide.script, "tts-1", self.voice): slide.slide_number
                 for slide in lecture_script.slide_scripts
             }
 
@@ -303,48 +306,51 @@ Slide Text:
         return sorted(results, key=lambda x: x[0])  # Sort by slide number
 
 
+class JobInput(BaseModel):
+    topic: str
+    instructions: str
+    language: str
+    placeholders: Union[Dict, List]
+    ppt_base64: str
+    voice: str
+    fps: int
+    
 
-from ..firebase import *
-from ..globals import temp_knowledge_manager, template_manager, knowledge_manager
-from .presentation_maker.presentation_maker import PresentationMaker, PresentationInput
-from .presentation_maker.image_gen import PexelsImageSearch
-from langchain_openai import ChatOpenAI
+def handler(job):
+    try:
+        job_input = job["input"]  
+        job = JobInput.parse_obj(job_input)
+        llm = ChatOpenAI(model="gpt-4o-mini")
+        ppt_path = f"{uuid.uuid4()}.pptx"
+        
+        with open(ppt_path, "wb") as f:
+            f.write(base64.b64decode(job.ppt_base64))
+            
+        input = LectureMakerInput(
+            topic=job.topic,
+            instructions=job.instructions,
+            presentation_path=ppt_path,
+            language=job.language,
+            slides_text=[
+                Slide(
+                    slide_type=slide["slide_type"],
+                    slide_subtopic=slide["slide_detail"],
+                    slide_text="\n".join([f'{data["placeholder_name"]} : {data["placeholder_data"]}' for data in slide["placeholders"]])
+                ) for slide in job.placeholders]
+        )
+        generator = LectureGenerator(llm, fps=job.fps, voice=job.voice)
+        lecture_path = generator.run(lecture_input=input)
 
-llm = ChatOpenAI(model="gpt-4o-mini")
-topic = "Thermodynamics"
-instructions = "Explain all subtopics"
-presentation_maker = PresentationMaker(
-    template_manager,
-    temp_knowledge_manager,
-    llm,
-    pexel_image_gen_cls=PexelsImageSearch,
-    image_gen_args={"image_cache_dir": "/tmp/.image_cache"},
-    vectorstore=knowledge_manager,
-)
-presentation_path, placeholders = presentation_maker.make_presentation(
-    PresentationInput(
-        topic=topic,
-        instructions=instructions,
-        number_of_pages=12,
-        negative_prompt="",
-        collection_name=None,
-        files=None,
-        user_id=None
-    )
-)
+        print("Reading base64")
+        with open(lecture_path, "rb") as f:
+            lecture_base64 = base64.b64encode(f.read()).decode('utf-8')
+        print("Read base64")
+        
+        return {
+            "lecture_base64": lecture_base64,
+            "ext": "mp4"
+        }
+    except Exception as e:
+        return {"error" : str(e)}
 
-input = LectureMakerInput(
-    topic=topic,
-    instructions=instructions,
-    presentation_path=presentation_path,
-    language="Hinglish",
-    slides_text=[
-        Slide(
-            slide_type=slide["slide_type"],
-            slide_subtopic=slide["slide_detail"],
-            slide_text="\n".join([f'{data["placeholder_name"]} : {data["placeholder_data"]}' for data in slide["placeholders"]])
-        ) for slide in placeholders]
-)
-generator = LectureGenerator(llm)
-lecture = generator.run(lecture_input=input)
-print(lecture)
+runpod.serverless.start({"handler": handler})
