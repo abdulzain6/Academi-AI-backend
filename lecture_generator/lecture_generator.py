@@ -14,7 +14,7 @@ from moviepy.editor import *
 from PIL import Image
 from langchain_openai import ChatOpenAI
 
-import base64
+import base64, requests
 import numpy as np
 import io
 import os
@@ -341,13 +341,23 @@ def handler(job):
         generator = LectureGenerator(llm, fps=job.fps, voice=job.voice)
         lecture_path = generator.run(lecture_input=input)
 
-        print("Reading base64")
-        with open(lecture_path, "rb") as f:
-            lecture_base64 = base64.b64encode(f.read()).decode('utf-8')
-        print("Read base64")
+        url = "https://api.academiai.org/api/v1/tools/upload_video/"
+        token = "ABRACADABRA_KAZAMM_HEHE_@#$"  # Bearer token
+
+        # Open the file in binary mode
+        with open(lecture_path, "rb") as video_file:
+            headers = {
+                "Authorization": f"Bearer {token}"
+            }
+            files = {
+                "file": (lecture_path, video_file, "video/mp4")
+            }
+            response = requests.post(url, headers=headers, files=files)
+
+        resp = response.json()
         
         return {
-            "lecture_base64": lecture_base64,
+            "response": resp,
             "ext": "mp4"
         }
     except Exception as e:

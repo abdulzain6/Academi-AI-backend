@@ -97,7 +97,7 @@ def upload_video(file: UploadFile = File(...), _ = Depends(verify_cronjob_reques
     video_id = str(uuid.uuid4()) + extension
 
     # Store video in Redis with a TTL (optional, e.g., 1 hour)
-    redis_cache_manager.setex(video_id, 3600, video_bytes)  # 3600 seconds = 1 hour
+    redis_cache_manager.set(video_id, video_bytes, 3600)  # 3600 seconds = 1 hour
 
     # Return the video ID
     return {"video_id": video_id}
