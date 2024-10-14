@@ -44,7 +44,8 @@ FEATURE_PRICING = get_dict_from_env_var(
         "GRAPH" : 1,
         "ASSIGNMENT" : 25,
         "INFOGRAPHIC" : 2,
-        "COURSE" : 0
+        "COURSE" : 0,
+        "LECTURE" : 30
     }
 )
 

@@ -42,14 +42,8 @@ class RunpodCaller:
                 if status_data.get('status') == 'COMPLETED':
                     return status_data["output"]
                 elif status_data.get('status') not in ['IN_QUEUE', 'IN_PROGRESS']:
-                    break
+                    raise ValueError(f"Error, Try again later.")
                 time.sleep(1)  
 
         else:
-            error_detail = None
-            try:
-                error_detail = status_data['error']
-                print(f"Error detail, {status_data['error']}")
-            except:
-                pass
-            raise ValueError(f"Error, Try again later. Detail: {error_detail}")
+            raise ValueError(f"Error, Try again later. Detail: {data}")

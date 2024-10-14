@@ -258,7 +258,10 @@ class KnowledgeManager:
         else:
             if self.is_pdf_file(file_path=file_path) and self.get_pdf_page_count(file_path) <= self.advanced_ocr_page_count:
                 logging.info("Using advanced ocr")
-                docs = self.load_using_advanced_extraction(file_path)
+                try:
+                    docs = self.load_using_advanced_extraction(file_path)
+                except:
+                    docs = self.load_using_unstructured(file_path)                         
             else:
                 logging.info("Using unstructured")
                 docs = self.load_using_unstructured(file_path)         

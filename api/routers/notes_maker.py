@@ -121,7 +121,7 @@ def make_notes(
     
         
 
-    content = select_random_chunks(data, 1000, 2700)
+    content = select_random_chunks(data, 1350, 2700)
     data = notes_maker.make_notes_from_string(content, notes_input.instructions)
     data.seek(0)
 

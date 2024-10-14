@@ -7,3 +7,4 @@ from .users import UserDBManager
 from .referrals import ReferralManager
 from .log_manager import MongoLogManager
 from .mongo_course_store import CourseRepository
+from .lectures import *

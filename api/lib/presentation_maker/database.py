@@ -188,6 +188,7 @@ class PresentationTemplateWizard:
         slide = self.ppt.slides[slide_number - 1]  # Adjust for 1-based indexing
 
         for shape in slide.shapes:
+            print(shape.name)
             if shape.name == placeholder_name and shape.shape_type == 13:
                 width_px = int(shape.width / Inches(1) * 96)  # Conversion to pixels
                 height_px = int(shape.height / Inches(1) * 96)  # Conversion to pixels
@@ -228,7 +229,7 @@ class PresentationTemplateWizard:
                 is_image = input("Is this an image placeholder? (y/n): ").lower() == "y"
 
                 description = (
-                    "Write a Google search query for this image that is relevant to the topic."
+                    "Describe the image to be shown in this placeholder, it can be a mindmap, graph an image or whatever you think better helps understand the topic"
                     if is_image
                     else input("Enter a description (optional, press Enter to skip): ")
                     or None
@@ -277,3 +278,7 @@ class PresentationTemplateWizard:
         )
 
     
+if __name__ == "__main__":
+    wiz = PresentationTemplateWizard("/home/zain/Academi-AI-backend/api/lib/presentation_maker/template_dir/Simplistic_Elegance.pptx")
+    obj = wiz.wizard_cli()
+    print(obj.model_dump())

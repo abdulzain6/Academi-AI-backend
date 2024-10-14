@@ -4,6 +4,8 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from fastapi import Depends, HTTPException
+
+from api.lib.diagram_maker import DiagramMaker
 from ..auth import get_user_id, verify_play_integrity
 from ..globals import (
     collection_manager,
@@ -89,9 +91,8 @@ def make_presentation(
         template_manager,
         temp_knowledge_manager,
         llm,
-        pexel_image_gen_cls=PexelsImageSearch,
-        image_gen_args={"image_cache_dir": "/tmp/.image_cache"},
         vectorstore=knowledge_manager,
+        diagram_maker=DiagramMaker(None, llm, None)
     )
     
     logging.info(f"Got ppt generation request, {user_id}... Input: {presentation_input}")

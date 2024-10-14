@@ -12,6 +12,7 @@ from .database import TemplateDBManager, TemplateKnowledgeManager, TemplateModel
 from langchain.pydantic_v1 import BaseModel, Field
 from .image_gen import PexelsImageSearch
 from ..knowledge_manager import KnowledgeManager
+from ..diagram_maker import DiagramMaker
 from retrying import retry
 from langchain.chat_models.base import BaseChatModel
 
@@ -87,16 +88,14 @@ class PresentationMaker:
         template_manager: TemplateDBManager,
         template_knowledge_manager: TemplateKnowledgeManager,
         llm: BaseChatModel,
-        pexel_image_gen_cls: PexelsImageSearch,
         vectorstore: KnowledgeManager,
-        image_gen_args: dict,
+        diagram_maker: DiagramMaker
     ) -> None:
         self.template_manager = template_manager
         self.template_knowledge_manager = template_knowledge_manager
         self.llm = llm
-        self.pexel_image_gen_cls = pexel_image_gen_cls
-        self.image_gen_args = image_gen_args
         self.vectorstore = vectorstore
+        self.diagram_maker = diagram_maker
         
     def query_vectorstore(self, query: str, collection_name: str, k: int, metadata: Dict[str, str] = None, **kwargs) -> str:
         if not collection_name:
@@ -389,7 +388,7 @@ You must follow the instructions above failure to do so will cause fatal error!
 Lets think step by step, Looking at the placeholders and their descriptions to fill them for the slide topic {slide_detail}. Follow all rules above! Ensure it fits in a slide
 Follow the damn rules, you gave 150 words for a placeholder last time that caused error so keep it within slide limits.
 Lets think step by step to accomplish this.
-Do not leave a placeholder empty. Failure to do so, will cuase fatal error!!"""
+Do not leave a placeholder empty. Failure to do so, will cause fatal error!!"""
                 ),
             ],
             input_variables=[
@@ -667,25 +666,27 @@ Do not leave a placeholder empty. Failure to do so, will cuase fatal error!!"""
                     placeholder.placeholder_data,
                 ).replace("*", '')
 
-    def replace_images_in_shape(self, shape, placeholders: List[CombinedPlaceholder], pixel) -> list[tuple]:
+    def replace_images_in_shape(self, shape, placeholders: List[CombinedPlaceholder]) -> List[Tuple[str, int, int, int, int]]:
         new_shapes = []
         for placeholder in placeholders:
             if placeholder.is_image:
-
-                if image_path := pixel.search_download_and_resize(
+                image_bytes = self.diagram_maker.make_diagram_with_dimensions(
                     placeholder.placeholder_data,
                     placeholder.image_width,
                     placeholder.image_height,
-                ):
-                    ...
-                else:
-                    return
+                )
+
+                # Create a temporary file
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
+                    temp_file.write(image_bytes)
+                    temp_file_path = temp_file.name
+
                 left = shape.left
                 top = shape.top
                 width = shape.width
                 height = shape.height
 
-            new_shapes.append((image_path, left, top, width, height))
+                new_shapes.append((temp_file_path, left, top, width, height))
 
         return new_shapes
 
@@ -703,8 +704,6 @@ Do not leave a placeholder empty. Failure to do so, will cuase fatal error!!"""
     def replace_placeholders_in_single_slide(self, slide, placeholders: CombinedPlaceholders) -> None:
         shapes_to_remove = []
         shapes_to_add = []
-        #pixel = self.pexel_image_gen_cls(**self.image_gen_args)
-
         
         def process_shape(shape):
             try:
@@ -715,19 +714,19 @@ Do not leave a placeholder empty. Failure to do so, will cuase fatal error!!"""
                 elif shape.has_table:
                     self.process_table(shape.table, placeholders.placeholders)
 
-            #    if shape.shape_type == 13:
-             #       image_placeholders = [
-             #           placeholder for placeholder in placeholders.placeholders 
-              #          if placeholder.is_image and shape.name == placeholder.placeholder_name
-              #      ]
+                if shape.shape_type == 13:
+                    image_placeholders = [
+                        placeholder for placeholder in placeholders.placeholders 
+                        if placeholder.is_image and shape.name == placeholder.placeholder_name
+                    ]
 
-               #     def download_image(placeholder):
-                #        nonlocal shapes_to_add
-                 #       images = self.replace_images_in_shape(shape, [placeholder], pixel)
-                  #      shapes_to_add.extend(images)
+                    def download_image(placeholder):
+                        nonlocal shapes_to_add
+                        images = self.replace_images_in_shape(shape, [placeholder])
+                        shapes_to_add.extend(images)
 
-                  #  with ThreadPoolExecutor() as executor:
-                   #     executor.map(download_image, image_placeholders)
+                    with ThreadPoolExecutor() as executor:
+                        executor.map(download_image, image_placeholders)
 
                     shapes_to_remove.append(shape)
             except Exception as e:

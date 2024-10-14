@@ -211,3 +211,4 @@ langchain-google-vertexai
 Bleach
 app-store-server-library
 together
+cairosvg

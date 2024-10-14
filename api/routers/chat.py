@@ -4,6 +4,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 
 from api.lib.database.collections import CollectionModel
+from api.lib.diagram_maker import DiagramMaker
 from api.lib.presentation_maker.image_gen import PexelsImageSearch
 from ..lib.cv_maker.cv_maker import CVMaker
 from ..lib.cv_maker.template_loader import template_loader
@@ -520,9 +521,8 @@ File Content:
             template_manager,
             temp_knowledge_manager,
             llm,
-            pexel_image_gen_cls=PexelsImageSearch,
-            image_gen_args={"image_cache_dir": "/tmp/.image_cache"},
             vectorstore=knowledge_manager,
+            diagram_maker=DiagramMaker(None, llm, None)
         )
         try:
             return deduct_points_for_feature(
