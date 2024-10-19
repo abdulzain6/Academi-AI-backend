@@ -2,5 +2,3 @@ venv
 credentials-velero
 .vscode/
 keys
-*.pyc
-__pycache__/
