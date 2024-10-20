@@ -47,15 +47,23 @@ def load_root_certificates():
 
 root_certificates = load_root_certificates()
 enable_online_checks = True
-environment = Environment.SANDBOX
 app_apple_id = None 
-verifier = SignedDataVerifier(root_certificates, enable_online_checks, environment, APP_PACKAGE_NAME, app_apple_id)
+
+verifier = SignedDataVerifier(root_certificates, enable_online_checks, Environment.PRODUCTION, APP_PACKAGE_NAME, app_apple_id)
+test_verifier = SignedDataVerifier(root_certificates, enable_online_checks, Environment.SANDBOX, APP_PACKAGE_NAME, app_apple_id)
 app_store_client = AppStoreServerAPIClient(
     open(str(os.getenv("PRIVATE_KEY_PATH")), "rb").read(),
     os.getenv("APPSTORE_KEYID"),
     os.getenv("APPSTORE_ISSUER_ID"),
     APP_PACKAGE_NAME,
-    environment
+    Environment.PRODUCTION
+)
+app_store_client_test = AppStoreServerAPIClient(
+    open(str(os.getenv("PRIVATE_KEY_PATH")), "rb").read(),
+    os.getenv("APPSTORE_KEYID"),
+    os.getenv("APPSTORE_ISSUER_ID"),
+    APP_PACKAGE_NAME,
+    Environment.SANDBOX
 )
 
 class OneTimeData(BaseModel):
@@ -123,9 +131,18 @@ def verify_onetime_apple(
     
     try:
         # Verify the transaction with Apple
-        transaction_info = app_store_client.get_transaction_info(onetime_data.transaction_id)
         try:
-            transaction_info = verifier.verify_and_decode_signed_transaction(transaction_info.signedTransactionInfo)
+            transaction_info = app_store_client.get_transaction_info(onetime_data.transaction_id)
+        except Exception as e:
+            transaction_info = app_store_client_test.get_transaction_info(onetime_data.transaction_id)
+
+        try:
+       
+            try:
+                transaction_info = verifier.verify_and_decode_signed_transaction(transaction_info.signedTransactionInfo)
+            except Exception as e:
+                transaction_info = test_verifier.verify_and_decode_signed_transaction(transaction_info.signedTransactionInfo)
+       
         except VerificationException as ve:
             logging.error(f"Transaction verification failed: {ve}")
             raise HTTPException(
@@ -159,10 +176,20 @@ def verify_onetime_apple(
          
 
 
-def process_notification(payload: ResponseBodyV2DecodedPayload, verifier: SignedDataVerifier, subscription_manager, user_points_manager):
+def process_notification(
+    payload: ResponseBodyV2DecodedPayload,
+    verifier: SignedDataVerifier,
+    verifier_test: SignedDataVerifier,
+    subscription_manager,
+    user_points_manager
+):
     try:
         signed_trans_info = payload.data.signedTransactionInfo
-        transaction_info = verifier.verify_and_decode_signed_transaction(signed_trans_info)
+        try:
+            transaction_info = verifier.verify_and_decode_signed_transaction(signed_trans_info)
+        except Exception:
+            transaction_info = verifier_test.verify_and_decode_signed_transaction(signed_trans_info)
+
         user_id = uuid_mapping_manager.get_uid(transaction_info.appAccountToken)
         logging.info(f"UserID of user is: {user_id} {transaction_info}")
         
@@ -236,7 +263,11 @@ async def receive_notification(request: Request):
         signed_payload = body.decode()
 
         # Verify and decode the notification
-        payload = verifier.verify_and_decode_notification(json.loads(signed_payload)["signedPayload"])
+        try:
+            payload = verifier.verify_and_decode_notification(json.loads(signed_payload)["signedPayload"])
+        except Exception as e:
+            payload = test_verifier.verify_and_decode_notification(json.loads(signed_payload)["signedPayload"])
+
         logging.info("Received App Store Notification:")
         logging.info(payload)
 
@@ -246,6 +277,7 @@ async def receive_notification(request: Request):
             process_notification, 
             payload, 
             verifier, 
+            test_verifier,
             subscription_manager, 
             user_points_manager
         )
