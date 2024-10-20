@@ -47,7 +47,7 @@ def load_root_certificates():
 
 root_certificates = load_root_certificates()
 enable_online_checks = True
-app_apple_id = None 
+app_apple_id = "6714484208" 
 
 verifier = SignedDataVerifier(root_certificates, enable_online_checks, Environment.PRODUCTION, APP_PACKAGE_NAME, app_apple_id)
 test_verifier = SignedDataVerifier(root_certificates, enable_online_checks, Environment.SANDBOX, APP_PACKAGE_NAME, app_apple_id)

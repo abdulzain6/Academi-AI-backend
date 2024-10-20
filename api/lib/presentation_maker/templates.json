@@ -355,7 +355,7 @@
             "placeholders": [
               {
                 "name": "AGENDA_POINTS",
-                "description": "Points covering the agenda of the presentation.",
+                "description": "Points covering the agenda of the presentation. This slide is usually second slide in ppt",
                 "is_image": false,
                 "image_width": null,
                 "image_height": null
@@ -428,7 +428,7 @@
               },
               {
                 "name": "main_image",
-                "description": "Describe the image to be shown in this placeholder, it can be a mindmap, graph an image or whatever you think better helps understand the topic",
+                "description": "Describe the image to be shown in this placeholder, it can be a mindmap, graph an image or whatever you think better helps understand the topic. Ensure the Image is large in size (Small images cause an error)",
                 "is_image": true,
                 "image_width": 859,
                 "image_height": 504
