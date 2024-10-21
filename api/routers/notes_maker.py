@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import tempfile
 
@@ -7,14 +8,17 @@ from ..dependencies import require_points_for_feature, can_use_premium_model
 from ..lib.notes_maker import make_notes_maker, get_available_note_makers
 from ..globals import get_model, collection_manager, file_manager, knowledge_manager
 from ..lib.ocr import ImageOCR
+from .utils import select_random_chunks
 from typing import Optional
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi import Depends, HTTPException
 from pydantic import BaseModel
-from .utils import select_random_chunks
+from deepgram import DeepgramClient, PrerecordedOptions, BufferSource
+from concurrent.futures import ThreadPoolExecutor
 
 
 router = APIRouter()
+executor = ThreadPoolExecutor(max_workers=5)
 
 
 class MakeNotesInput(BaseModel):
@@ -26,11 +30,51 @@ class MakeNotesInput(BaseModel):
     template_name: str
 
 
+def transcribe_audio_with_deepgram(audio_data: bytes) -> str:
+    """Transcribe the audio data using Deepgram API."""
+    try:
+        deepgram = DeepgramClient()
+        options = PrerecordedOptions(
+            model="nova-2",
+            smart_format=True,
+        )
+        
+        response = deepgram.listen.prerecorded.v("1").transcribe_file(
+            BufferSource(buffer=audio_data), options
+        )
+        
+        transcript_text = response['results']['channels'][0]['alternatives'][0]['transcript']
+        logging.info("Transcription completed successfully.")
+        return transcript_text
+    except Exception as e:
+        logging.error(f"Error during transcription: {str(e)}")
+        raise RuntimeError(f"Failed to transcribe audio: {str(e)}")
+
+
+@router.post("/transcribe/")
+async def transcribe(
+    file: UploadFile = File(...),
+    user_id: str = Depends(get_user_id),
+    play_integrity_verified = Depends(verify_play_integrity),
+):
+    """Endpoint to transcribe an uploaded audio file."""
+    try:
+        logging.info(f"Got transcription request from {user_id} (Notes maker)")
+        audio_data = await file.read()
+
+        loop = asyncio.get_event_loop()
+        transcript = await loop.run_in_executor(executor, transcribe_audio_with_deepgram, audio_data)
+        
+        return {"transcript": transcript}
+    except Exception as e:
+        logging.error(f"Transcription error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.post("/ocr_image_to_string")
 def ocr_image_route(
     user_id: str = Depends(get_user_id),
     file: UploadFile = File(...),
-    play_integrity_verified=Depends(verify_play_integrity),
+    play_integrity_verified = Depends(verify_play_integrity),
 ) -> Optional[str]:
     logging.info(f"Got ocr request, {user_id}")
     try:

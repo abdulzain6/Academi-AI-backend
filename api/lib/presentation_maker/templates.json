@@ -428,7 +428,7 @@
               },
               {
                 "name": "main_image",
-                "description": "Describe the image to be shown in this placeholder, it can be a mindmap, graph an image or whatever you think better helps understand the topic. Ensure the Image is large in size (Small images cause an error)",
+                "description": "A simple image prompt (Must be simple enough so an image model can genrrate it), it can be a mindmap, graph an image or whatever you think better helps understand the topic. Ensure the Image is large in size (Small images cause an error)",
                 "is_image": true,
                 "image_width": 859,
                 "image_height": 504
