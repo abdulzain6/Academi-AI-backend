@@ -97,10 +97,15 @@ def create_link_file(
             youtube_link=linkfile.youtube_link,
             web_url=linkfile.web_link,
         )
+    except ValueError as e:
+        import traceback
+        logging.error(f"File not supported, Error: {traceback.format_exception(e)}")
+        raise HTTPException(400, str(e))
+
     except Exception as e:
         import traceback
         logging.error(f"File not supported, Error: {traceback.format_exception(e)}")
-        raise HTTPException(400, "Invalid link/ Language not supported or file too large.") from e
+        raise HTTPException(400, "Video has no subtitles.") from e
 
     try:
         file_model = file_manager.add_file(

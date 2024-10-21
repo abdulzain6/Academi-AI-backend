@@ -394,12 +394,12 @@ class KnowledgeManager:
         if web_url and not self.is_youtube_video(web_url):
             logging.info("Using webbase")
             if not self.validate_url(web_url):
-                raise ValueError("Invalid URL")
+                raise ValueError("Invalid URL, Try a new one please.")
             
             if not self.is_site_working(web_url):
-                raise ValueError("Invalid URL")
+                raise ValueError("Invalid URL,  Try a new one please.")
 
-            loader = WebBaseLoader(web_path=web_url, requests_kwargs={"timeout" : 5, "allow_redirects" : True})
+            loader = WebBaseLoader(web_path=web_url, requests_kwargs={"timeout" : 10, "allow_redirects" : True})
         else:
             logging.info("Using yt")
             if self.is_youtube_video(web_url):

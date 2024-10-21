@@ -139,40 +139,37 @@ def main(args):
         url = args.get("url")
         lang = args.get("lang", "en")
         
-        if lang not in ALLOWED_LANGUAGES:
-            return {"body": f"Language '{lang}' not supported.", "statusCode": 400}
-        
         try:
             video_id = _parse_video_id(url)
             assert video_id
         except Exception as e:
-            return {"body": f"Video ID extraction failed", "statusCode": 400}
-
-        # Try to extract YouTube transcript
-        try:
-            proxy = get_random_proxy()
-            transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=(lang,), proxies={"http" : proxy, "https" : proxy})
-            transcript_text = " ".join([entry['text'] for entry in transcript])
-            return {"body": transcript_text}
+            return {"body": "Video ID extraction failed", "statusCode": 400}
         
-        # Fallback to download and transcribe audio if no transcript found
-        except (NoTranscriptFound, Exception) as e:
-            traceback.print_exception(e)
-            audio_file = download_audio(url)
-            transcription = transcribe_audio_with_deepgram(audio_file, lang)
+        proxy = get_random_proxy()
+        transcript = None
+        
+        try:            # Attempt to fetch the transcript in the requested language
+            transcript = YouTubeTranscriptApi.get_transcript(
+                video_id, languages=(lang,), proxies={"http": proxy, "https": proxy}
+            )
+        except:
+            # If the requested language is not available, fetch the available transcripts
+            available_transcripts = YouTubeTranscriptApi.list_transcripts(video_id)
             
-            # Clean up audio file after processing
-            if os.path.exists(audio_file):
-                os.remove(audio_file)
+            # Find the first available transcript (manually created or auto-generated)
+            fallback_transcript = available_transcripts.find_transcript(available_transcripts._manually_created_transcripts or available_transcripts._generated_transcripts)
 
-            return {"body": transcription}
-    
+            
+            # Extract the language from the fallback transcript object
+            fallback_language = fallback_transcript.language_code
+            # Retry fetching transcript with the fallback language
+            transcript = YouTubeTranscriptApi.get_transcript(
+                video_id, languages=(fallback_language,), proxies={"http": proxy, "https": proxy}
+            )
+        
+        # Combine the transcript text
+        transcript_text = " ".join([entry['text'] for entry in transcript])
+        return {"body": transcript_text}
     except Exception as e:
         return {"body": f"Error: {str(e)}", "statusCode": 500}
-    
-    
-print(main(
-    {
-    "url": "https://www.youtube.com/watch?si=XrDuCEpJZCxR27WO&v=BxS4FHswy5s&feature=youtu.be"
-}
-))
+
