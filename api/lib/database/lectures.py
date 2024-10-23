@@ -1,3 +1,4 @@
+import uuid
 from pymongo import MongoClient
 from bson import ObjectId
 from gridfs import GridFS
@@ -39,8 +40,8 @@ class LectureDB:
 
     def create_lecture(self, lecture: LectureCreate, video_file: BinaryIO, ppt_file: BinaryIO) -> str:
         timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-        video_id = self.fs.put(video_file, filename=f"{lecture.topic}_{timestamp}_video")
-        ppt_id = self.fs.put(ppt_file, filename=f"{lecture.topic}_{timestamp}_ppt")
+        video_id = self.fs.put(video_file, filename=f"{lecture.topic}_{timestamp}_{uuid.uuid4()}_video")
+        ppt_id = self.fs.put(ppt_file, filename=f"{lecture.topic}_{timestamp}_{uuid.uuid4()}_ppt")
 
         lecture_dict = lecture.model_dump()
         lecture_dict.update({

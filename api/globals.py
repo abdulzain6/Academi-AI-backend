@@ -9,7 +9,8 @@ from .lib.database import (
     ReferralManager,
     MongoLogManager,
     CourseRepository,
-    LectureDB
+    LectureDB,
+    MongoDBPresentationStore
 )
 from .lib.database.purchases import (
     SubscriptionFeatures,
@@ -240,6 +241,10 @@ uuid_mapping_manager = UUIDMapping(
     collection_name="uuid-uids"
 )
 lecture_db = LectureDB(
+    MONGODB_URL,
+    DATABASE_NAME
+)
+presentation_db = MongoDBPresentationStore(
     MONGODB_URL,
     DATABASE_NAME
 )

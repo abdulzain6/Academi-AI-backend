@@ -1,9 +1,60 @@
+from io import BytesIO
 from urllib.parse import urlparse, parse_qs
 from typing import Union
+from pdf2image import convert_from_path
+
+
+import logging
+import subprocess
 import os
 import json
 import random
 import time
+
+
+def convert_first_slide_to_image(pptx_path: str) -> BytesIO:
+    """
+    Converts the first slide of a PPTX presentation to an image using LibreOffice for conversion to PDF
+    and pdf2image for converting the PDF's first page to an image. Ensures unique temporary files for
+    each conversion and cleans up afterwards, with robust error handling.
+    """
+    # Initialize temporary file paths
+    temp_pdf_path = None
+    
+    try:
+        
+        subprocess.run(['libreoffice', '--headless', '--convert-to', 'pdf', '--outdir', "/tmp", pptx_path], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        temp_pdf_path = f"/tmp/{os.path.basename(pptx_path).replace('pptx', 'pdf')}"
+        
+        print(f"Pdf written to {temp_pdf_path}")
+        # Verify PDF was created before proceeding
+        if not os.path.exists(temp_pdf_path):
+            print("PDF conversion failed or the PDF file was not created.")
+            return BytesIO()
+
+        # Convert the first page of the PDF to an image
+        print("Converting to images")
+        images = convert_from_path(temp_pdf_path, first_page=1, last_page=1)
+        
+        if images:
+            # Convert the image to a BytesIO object
+            image_bytes = BytesIO()
+            images[0].save(image_bytes, format='JPEG')
+            image_bytes.seek(0)
+            return image_bytes
+        else:
+            logging.error("No slides found in the PDF.")
+            return BytesIO()
+    except Exception as e:
+        import traceback
+        print(f"Error during slide to image conversion: {traceback.format_exception(e)}")
+        return BytesIO()
+    finally:
+        # Clean up temporary files
+        if temp_pdf_path and os.path.exists(temp_pdf_path):
+            os.remove(temp_pdf_path)
+        if 'pptx_path' in locals() and os.path.exists(pptx_path):
+            os.remove(pptx_path)
 
 def flatten_dict_to_string(data_dict, parent_key=''):
     """
@@ -106,8 +157,6 @@ def format_url(url: str) -> Union[str, None]:
         url = url[len("https://"):]
 
     return f"https://{url}"
-
-
 
 def convert_youtube_url_to_standard(url: str) -> str:
     """
