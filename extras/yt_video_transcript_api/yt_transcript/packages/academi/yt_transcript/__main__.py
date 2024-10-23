@@ -1,3 +1,4 @@
+import time
 from typing import Optional
 from deepgram import DeepgramClient, PrerecordedOptions, BufferSource
 from urllib.parse import parse_qs, urlparse
@@ -12,7 +13,6 @@ import yt_dlp
 import logging
 import dotenv
 import requests
-import random
 from typing import Optional
 
 dotenv.load_dotenv()
@@ -43,23 +43,6 @@ ALLOWED_NETLOCK = {
 }
 
 
-
-def get_random_proxy() -> Optional[str]:
-    url = "https://proxy.webshare.io/api/v2/proxy/list/?mode=direct&page=1&page_size=25"
-    headers = {"Authorization": f"Token {os.getenv('WEBSHARE_KEY')}"}
-
-    response = requests.get(url, headers=headers)
-    data = response.json()
-    if data.get("results"):
-        # Select a random proxy from the list
-        proxy = random.choice(data["results"])        
-        # Construct the proxy string in the required format
-        proxy_string = f"http://{proxy['username']}:{proxy['password']}@{proxy['proxy_address']}:{proxy['port']}"
-        print(proxy_string)
-        return proxy_string
-    
-    return None
-
 def _parse_video_id(url: str) -> Optional[str]:
     """Parse a youtube url and return the video id if valid, otherwise None."""
     parsed_url = urlparse(url)
@@ -89,13 +72,13 @@ def _parse_video_id(url: str) -> Optional[str]:
 
     return video_id
 
-def download_audio(video_url: str) -> str:
+def download_audio(video_url: str, proxy: str) -> str:
     """Download the audio from a YouTube video using yt-dlp with concurrent fragment downloads."""
     try:
         logger.info(f"Downloading audio from: {video_url}")
         rand = uuid.uuid4()
         ydl_opts = {
-            'proxy' : get_random_proxy(),
+            'proxy' : proxy,
             'format': 'bestaudio[ext=m4a]',  # Select the best audio format available (m4a in this case)
             'outtmpl': os.path.join(tempfile.gettempdir(), f'{rand}%(id)s.%(ext)s'),
             'concurrent_fragment_downloads': 8,
@@ -133,43 +116,49 @@ def transcribe_audio_with_deepgram(file_path: str, lang: str) -> str:
         raise RuntimeError(f"Failed to transcribe audio: {str(e)}")
 
 
-def main(args):
+def main(args: dict):
     """DigitalOcean Function handler to extract transcript or generate it."""
-    try:
-        url = args.get("url")
-        lang = args.get("lang", "en")
-        
+    
+    url: str = args.get("url")
+    lang: str = args.get("lang", "en")
+
+    if not url:
+        return {"body": "URL is required", "statusCode": 400}
+
+    proxy: str = os.getenv("PROXY", "http://dprulefr-rotate:7obapq1qv8fl@p.webshare.io:80")
+    print(f"Using proxy: {proxy}")
+    
+    for _ in range(5):
         try:
-            video_id = _parse_video_id(url)
-            assert video_id
+            video_id: str = _parse_video_id(url)
+            if not video_id:
+                return {"body": "Video ID extraction failed", "statusCode": 400}
+            
+            try:
+                # Attempt to fetch the transcript in the requested language
+                transcript = YouTubeTranscriptApi.get_transcript(
+                    video_id, languages=(lang,), proxies={"http": proxy, "https": proxy}
+                )
+            except Exception:
+                # Fetch the available transcripts when the requested language is not found
+                available_transcripts = YouTubeTranscriptApi.list_transcripts(video_id)
+                fallback_transcript = available_transcripts.find_transcript(
+                    available_transcripts._manually_created_transcripts or 
+                    available_transcripts._generated_transcripts
+                )
+                fallback_language = fallback_transcript.language_code
+                
+                # Retry fetching transcript with the fallback language
+                transcript = YouTubeTranscriptApi.get_transcript(
+                    video_id, languages=(fallback_language,), proxies={"http": proxy, "https": proxy}
+                )
+            
+            # Combine the transcript text
+            transcript_text = " ".join([entry['text'] for entry in transcript])
+            return {"body": transcript_text, "statusCode": 200}
+        
         except Exception as e:
-            return {"body": "Video ID extraction failed", "statusCode": 400}
-        
-        proxy = get_random_proxy()
-        transcript = None
-        
-        try:            # Attempt to fetch the transcript in the requested language
-            transcript = YouTubeTranscriptApi.get_transcript(
-                video_id, languages=(lang,), proxies={"http": proxy, "https": proxy}
-            )
-        except:
-            # If the requested language is not available, fetch the available transcripts
-            available_transcripts = YouTubeTranscriptApi.list_transcripts(video_id)
-            
-            # Find the first available transcript (manually created or auto-generated)
-            fallback_transcript = available_transcripts.find_transcript(available_transcripts._manually_created_transcripts or available_transcripts._generated_transcripts)
-
-            
-            # Extract the language from the fallback transcript object
-            fallback_language = fallback_transcript.language_code
-            # Retry fetching transcript with the fallback language
-            transcript = YouTubeTranscriptApi.get_transcript(
-                video_id, languages=(fallback_language,), proxies={"http": proxy, "https": proxy}
-            )
-        
-        # Combine the transcript text
-        transcript_text = " ".join([entry['text'] for entry in transcript])
-        return {"body": transcript_text}
-    except Exception as e:
-        return {"body": f"Error: {str(e)}", "statusCode": 500}
-
+            print(f"Error: {e}")
+            time.sleep(1)
+    
+    return {"body": "Error in getting transcript", "statusCode": 500}

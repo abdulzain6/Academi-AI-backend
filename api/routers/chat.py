@@ -3,29 +3,20 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi import Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 
-from api.lib.database.collections import CollectionModel
 from api.lib.diagram_maker import DiagramMaker
-from api.lib.presentation_maker.image_gen import PexelsImageSearch
-from ..lib.cv_maker.cv_maker import CVMaker
-from ..lib.cv_maker.template_loader import template_loader
 from api.lib.presentation_maker.presentation_maker import PresentationMaker
-from api.lib.uml_diagram_maker import AIPlantUMLGenerator
 from api.config import CACHE_DOCUMENT_URL_TEMPLATE
-from api.dependencies import can_add_more_data
 from ..lib.notes_maker import make_notes_maker, get_available_note_makers
 from api.config import REDIS_URL, CACHE_DOCUMENT_URL_TEMPLATE, SEARCHX_HOST
 from api.lib.database.cache_manager import RedisCacheManager
-from api.lib.tools import ScholarlySearchRun, MarkdownToDocConverter, RequestsGetTool, SearchTool, SearchImage
+from api.lib.tools import MarkdownToDocConverter, RequestsGetTool, SearchTool, SearchImage
 from ..lib.database.messages import MessagePair
-from ..lib.utils import split_into_chunks, extract_schema_fields, timed_random_choice
+from ..lib.utils import split_into_chunks
 from ..lib.tools import (
     MakePresentationInput,
     make_ppt,
-    make_uml_diagram,
-    make_cv_from_string,
     make_vega_graph,
     make_graphviz_graph,
-    create_link_file,
     make_notes,
     write_content
 )
@@ -45,7 +36,8 @@ from ..globals import (
     template_manager,
     temp_knowledge_manager,
     get_model,
-    get_model_and_fallback
+    get_model_and_fallback,
+    course_manager
 )
 from ..dependencies import (
     can_use_premium_model,
@@ -56,7 +48,7 @@ from ..dependencies import (
 from .utils import select_random_chunks, find_most_similar
 from pydantic import BaseModel
 from openai import OpenAIError
-from langchain.tools import StructuredTool
+from langchain.tools import StructuredTool, tool
 from langchain.pydantic_v1 import BaseModel as OldBaseModel
 from langchain.pydantic_v1 import Field as OldField
 from langchain_community.utilities.searx_search import SearxSearchWrapper
@@ -646,11 +638,20 @@ File Content:
         except Exception as e:
             logging.error(f"Error in writing content {e}")
             return f"Error in writing content {e}"
-        
-        
+    
+    @tool
+    def find_free_courses(query: str):
+        """Used to find paid courses for free using coupons."""
+        courses, total = course_manager.search_courses(
+            page=1, page_size=7, query_str=query
+        )
+        return [course for course in courses if (course.actual_price_usd - course.sale_price_usd) >= 50]
+
+
     
     
     must_have_tools = [
+        find_free_courses,
         StructuredTool.from_function(
             func=lambda topic="", to_generate="content", negative_prompt="", minimum_word_count=500, instructions="", *args, **kwargs: write_content_tool_func(
                 topic=topic,

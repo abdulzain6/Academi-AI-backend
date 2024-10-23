@@ -1,5 +1,4 @@
 import io
-from openai import OpenAI
 from langchain.pydantic_v1 import BaseModel, Field
 from enum import Enum
 from concurrent.futures import ThreadPoolExecutor
@@ -8,16 +7,23 @@ from pydub import AudioSegment
 from langchain_core.language_models import BaseChatModel
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
-
+from deepgram import DeepgramClient, SpeakOptions
+import tenacity
 
 
 class Voice(str, Enum):
-    alloy = "alloy"
-    echo = "echo"
-    fable = "fable"
-    onyx = "onyx"
-    nova = "nova"
-    shimmer = "shimmer"
+    ASTERIA = "aura-asteria-en"
+    ORPHEUS = "aura-orpheus-en"
+    ANGUS = "aura-angus-en"
+    ARCAS = "aura-arcas-en"
+    ATHENA = "aura-athena-en"
+    HELIOS = "aura-helios-en"
+    HERA = "aura-hera-en"
+    LUNA = "aura-luna-en"
+    ORION = "aura-orion-en"
+    PERSEUS = "aura-perseus-en"
+    STELLA = "aura-stella-en"
+    ZEUS = "aura-zeus-en"
 
 class ConversationPart(BaseModel):
     speaker: Voice = Field(..., description="The voice representing the speaker", example="alloy")
@@ -32,26 +38,41 @@ class Conversation(BaseModel):
 
 
 class SpeechGenerator:
-    def __init__(self, llm: BaseChatModel, model: str = "tts-1") -> None:
+    def __init__(self, llm: BaseChatModel) -> None:
         self.llm = llm
-        self.model = model
 
-    def generate_speech(self, input_text: str, voice: Voice, model: str = "tts-1") -> io.BytesIO:
+    @tenacity.retry(
+        stop=tenacity.stop_after_attempt(5),
+        wait=tenacity.wait_fixed(5),
+        retry=tenacity.retry_if_exception_type(Exception),
+    )
+    def generate_speech(self, input_text: str, voice: Voice) -> io.BytesIO:
         """
-        Generate speech audio using OpenAI's TTS model and return the audio as an in-memory file.
+        Generate speech audio using Deepgram's TTS model and return the audio as an in-memory file.
+            
+        Returns:
+            io.BytesIO: An in-memory buffer containing the generated audio
+            
+        Raises:
+            Exception: If there's an error during speech generation
         """
-        # Mocked response - replace this with your actual TTS logic
-        client = OpenAI()
-        response = client.audio.speech.create(
-            model=model,
-            voice=voice.value,
-            input=input_text
+        # Initialize Deepgram client
+        deepgram = DeepgramClient()
+        
+        # Configure speech options
+        options = SpeakOptions(
+            model=voice.value,
         )
+        # Prepare text input
+        text_input = {
+            "text": input_text
+        }
+
+        response = deepgram.speak.v("1").stream_memory(text_input, options)        
+        # Create a BytesIO buffer and write the audio data to it
+        response.stream_memory.seek(0)
         
-        audio_buffer = io.BytesIO(response.read())            
-        audio_buffer.seek(0)
-        
-        return audio_buffer
+        return response.stream_memory
 
     def generate_speech_for_conversation(self, conversation: Conversation) -> AudioSegment:
         """
@@ -107,7 +128,9 @@ The conversation must be of around {minutes} minutes.
         
 
 if __name__ == "__main__":
-    generator = SpeechGenerator(ChatOpenAI(model="gpt-4o-mini"), "tts-1-hd")
+    import logging
+    logging.basicConfig(level=logging.DEBUG)
+    generator = SpeechGenerator(ChatOpenAI(model="gpt-4o-mini"))
     audio = generator.run(
         2, 5, """The Impact of Technology on Modern Communication
 
