@@ -22,6 +22,7 @@ import re
 import logging
 import tempfile, time
 import copy, six
+import markdown2
 
 
 class PresentationInput(BaseModel):
@@ -661,9 +662,13 @@ Do not leave a placeholder empty. Failure to do so, will cause fatal error!!"""
     def replace_text_in_run(self, run, placeholders: List[CombinedPlaceholder]) -> None:
         for placeholder in placeholders:
             if not placeholder.is_image and placeholder.placeholder_name in run.text:
+                # Convert Markdown to plain text
+                plain_text = markdown2.markdown(placeholder.placeholder_data, extras=["strip"])
+                
+                # Perform the replacement
                 run.text = run.text.replace(
                     "{{" + placeholder.placeholder_name + "}}",
-                    placeholder.placeholder_data,
+                    plain_text
                 ).replace("*", '')
 
     def replace_images_in_shape(self, shape, placeholders: List[CombinedPlaceholder]) -> List[Tuple[str, int, int, int, int]]:
