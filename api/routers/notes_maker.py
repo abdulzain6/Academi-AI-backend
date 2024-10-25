@@ -2,13 +2,16 @@ import asyncio
 import logging
 import tempfile
 
+from bson import ObjectId
 from fastapi.responses import StreamingResponse
 from ..auth import get_user_id, verify_play_integrity
 from ..dependencies import require_points_for_feature, can_use_premium_model
 from ..lib.notes_maker import make_notes_maker, get_available_note_makers
-from ..globals import get_model, collection_manager, file_manager, knowledge_manager
+from ..globals import get_model, collection_manager, file_manager, knowledge_manager, notes_db
 from ..lib.ocr import ImageOCR
 from .utils import select_random_chunks
+from ..lib.utils import docx_to_pdf_thumbnail
+from ..lib.database.notes import MakeNotesInput as StoreNotesInput
 from typing import Optional
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi import Depends, HTTPException
@@ -29,6 +32,12 @@ class MakeNotesInput(BaseModel):
     instructions: str
     template_name: str
 
+class NoteResponse(BaseModel):
+    note_id: str
+    user_id: str
+    instructions: str
+    template_name: str
+    thumbnail: str
 
 def transcribe_audio_with_deepgram(audio_data: bytes) -> str:
     """Transcribe the audio data using Deepgram API."""
@@ -165,12 +174,63 @@ def make_notes(
     
         
 
-    content = select_random_chunks(data, 1350, 2700)
+    content = select_random_chunks(data, 2000, 4500)
     data = notes_maker.make_notes_from_string(content, notes_input.instructions)
     data.seek(0)
 
+    print(data.getvalue())
+    data.seek(0)
+
+    thumbnail = docx_to_pdf_thumbnail(data)
+    notes_db.store_note(
+        user_id=user_id, 
+        note=StoreNotesInput(
+            instructions=notes_input.instructions,
+            template_name=notes_input.template_name
+        ),
+        file=data,
+        thumbnail=thumbnail
+    )
+    data.seek(0)  # Reset before StreamingResponse
     response = StreamingResponse(data, media_type="application/octet-stream")
     response.headers[
         "Content-Disposition"
     ] = f"attachment; filename={notes_input.template_name}.docx"
     return response
+
+
+@router.get("/")
+def get_all_notes(user_id=Depends(get_user_id)):
+    """Endpoint to get all notes for the current user."""
+    notes = notes_db.get_notes_by_user(user_id)
+    if not notes:
+        raise HTTPException(status_code=404, detail="No notes found for the user.")
+    return notes
+
+
+@router.get("/{note_id}")
+def get_note_by_id(note_id: str, user_id=Depends(get_user_id)):
+    """Endpoint to get a specific note by note ID."""
+    try:
+        note_object_id = ObjectId(note_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid note ID.")
+    
+    note = notes_db.get_note_with_file(user_id, note_object_id)
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found.")
+    return note
+
+@router.delete("/{note_id}", status_code=204)
+def delete_note(note_id: str, user_id=Depends(get_user_id)):
+    """Endpoint to delete a specific note by note ID."""
+    try:
+        note_object_id = ObjectId(note_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid note ID.")
+
+    # Attempt to delete the note
+    if not notes_db.delete_note(user_id, note_object_id):
+        raise HTTPException(status_code=404, detail="Note not found or not authorized to delete.")
+
+    return {"detail": "Note deleted successfully"}

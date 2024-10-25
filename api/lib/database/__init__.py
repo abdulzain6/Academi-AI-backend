@@ -9,3 +9,4 @@ from .log_manager import MongoLogManager
 from .mongo_course_store import CourseRepository
 from .lectures import *
 from .presentation import *
+from .notes import NotesDatabase, MakeNotesInput

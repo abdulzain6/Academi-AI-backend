@@ -4,13 +4,53 @@ from typing import Union
 from pdf2image import convert_from_path
 
 
+import tempfile
 import logging
 import subprocess
 import os
 import json
 import random
 import time
+import pypandoc
 
+
+def docx_to_pdf_thumbnail(docx_file: BytesIO) -> BytesIO:
+    """
+    Converts DOCX to PDF and generates the first page thumbnail.
+    
+    Args:
+        docx_file (BytesIO): The DOCX file input as a BytesIO object.
+        
+    Returns:
+        BytesIO: Thumbnail of the first page as a PNG image in BytesIO format.
+    """
+    with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as temp_docx:
+        temp_docx.write(docx_file.read())
+        temp_docx_path = temp_docx.name
+
+    try:
+        # Convert DOCX to PDF using pypandoc
+        temp_pdf_path = temp_docx_path.replace(".docx", ".pdf")
+        pypandoc.convert_file(temp_docx_path, 'pdf', outputfile=temp_pdf_path)
+
+        # Convert the first page of the PDF to an image (thumbnail)
+        images = convert_from_path(temp_pdf_path, first_page=1, last_page=1)
+        
+        if images:
+            # Convert the image to a BytesIO object
+            image_bytes = BytesIO()
+            images[0].save(image_bytes, format='PNG')
+            image_bytes.seek(0)
+            return image_bytes
+        else:
+            raise Exception("No image generated from the PDF.")
+    
+    finally:
+        # Clean up temporary files
+        if os.path.exists(temp_docx_path):
+            os.remove(temp_docx_path)
+        if os.path.exists(temp_pdf_path):
+            os.remove(temp_pdf_path)
 
 def convert_first_slide_to_image(pptx_path: str) -> BytesIO:
     """
@@ -39,7 +79,7 @@ def convert_first_slide_to_image(pptx_path: str) -> BytesIO:
         if images:
             # Convert the image to a BytesIO object
             image_bytes = BytesIO()
-            images[0].save(image_bytes, format='JPEG')
+            images[0].save(image_bytes, format='PNG')
             image_bytes.seek(0)
             return image_bytes
         else:

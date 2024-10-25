@@ -141,7 +141,7 @@ def main(args: dict):
                 )
             except Exception:
                 # Fetch the available transcripts when the requested language is not found
-                available_transcripts = YouTubeTranscriptApi.list_transcripts(video_id)
+                available_transcripts = YouTubeTranscriptApi.list_transcripts(video_id, proxies={"http": proxy, "https": proxy})
                 fallback_transcript = available_transcripts.find_transcript(
                     available_transcripts._manually_created_transcripts or 
                     available_transcripts._generated_transcripts
@@ -162,3 +162,8 @@ def main(args: dict):
             time.sleep(1)
     
     return {"body": "Error in getting transcript", "statusCode": 500}
+
+
+print(main(
+    {"url": "https://youtu.be/nbuyle1CsSM?feature=shared"}
+))

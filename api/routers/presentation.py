@@ -196,15 +196,17 @@ def make_presentation(
 
     logging.info(f"Presentation made successfully! {user_id}")
 
-    
-    background_tasks.add_task(
-        store_presentation_task, 
-        user_id=user_id, 
-        presentation_input=presentation_input, 
-        file_path=file_path
-    )
+    try:
+        store_presentation_task(
+            user_id=user_id, 
+            presentation_input=presentation_input, 
+            file_path=file_path
+        )
+    except Exception as e:
+        logging.error(f"Error in storing ppt, Error: {e}  User: {user_id}")
 
     return FileResponse(file_path, headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(file_path.split('/')[-1], safe='')}"})
+
 
 def store_presentation_task(user_id: str, presentation_input: MakePresentationInput, file_path: str):
     """Background task to store the presentation and thumbnail."""
@@ -219,5 +221,3 @@ def store_presentation_task(user_id: str, presentation_input: MakePresentationIn
             thumbnail_file=convert_first_slide_to_image(file_path),
             pptx_file=BytesIO(fp.read())
         )
-    with contextlib.suppress(Exception):
-        os.remove(file_path)

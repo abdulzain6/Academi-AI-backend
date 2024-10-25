@@ -10,7 +10,8 @@ from .lib.database import (
     MongoLogManager,
     CourseRepository,
     LectureDB,
-    MongoDBPresentationStore
+    MongoDBPresentationStore,
+    NotesDatabase
 )
 from .lib.database.purchases import (
     SubscriptionFeatures,
@@ -245,6 +246,10 @@ lecture_db = LectureDB(
     DATABASE_NAME
 )
 presentation_db = MongoDBPresentationStore(
+    MONGODB_URL,
+    DATABASE_NAME
+)
+notes_db = NotesDatabase(
     MONGODB_URL,
     DATABASE_NAME
 )

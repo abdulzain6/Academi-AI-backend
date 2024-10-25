@@ -1,4 +1,3 @@
-import io
 from langchain.pydantic_v1 import BaseModel, Field
 from enum import Enum
 from concurrent.futures import ThreadPoolExecutor
@@ -9,6 +8,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 from deepgram import DeepgramClient, SpeakOptions
 import tenacity
+import io
 
 
 class Voice(str, Enum):
