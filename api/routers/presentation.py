@@ -195,8 +195,7 @@ def make_presentation(
     logging.info(f"Presentation made successfully! {user_id}")
 
     try:
-        background_tasks.add_task(
-            store_presentation_task,
+        store_presentation_task(
             user_id=user_id, 
             presentation_input=presentation_input, 
             file_path=file_path

@@ -93,8 +93,8 @@ def convert_first_slide_to_image(pptx_path: str) -> BytesIO:
         # Clean up temporary files
         if temp_pdf_path and os.path.exists(temp_pdf_path):
             os.remove(temp_pdf_path)
-        if 'pptx_path' in locals() and os.path.exists(pptx_path):
-            os.remove(pptx_path)
+        #if 'pptx_path' in locals() and os.path.exists(pptx_path):
+        #    os.remove(pptx_path)
 
 def flatten_dict_to_string(data_dict, parent_key=''):
     """
