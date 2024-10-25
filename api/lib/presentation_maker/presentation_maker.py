@@ -22,7 +22,25 @@ import re
 import logging
 import tempfile, time
 import copy, six
+import markdown2
+from markdown_it import MarkdownIt
 
+def convert_markdown_to_text(markdown_content: str) -> str:
+    md = MarkdownIt()
+    tokens = md.parse(markdown_content)
+    plain_text = []
+
+    for token in tokens:
+        if token.type == "inline":
+            plain_text.append(token.content)
+        elif token.type == "bullet_list_open" or token.type == "ordered_list_open":
+            plain_text.append("\n")
+        elif token.type == "list_item_open":
+            plain_text.append("• ")  # For unordered list bullets
+        elif token.type == "softbreak":
+            plain_text.append("\n")
+
+    return ''.join(plain_text).strip()
 
 class PresentationInput(BaseModel):
     topic: str
@@ -661,21 +679,10 @@ Do not leave a placeholder empty. Failure to do so, will cause fatal error!!"""
     def replace_text_in_run(self, run, placeholders: List[CombinedPlaceholder]) -> None:
         for placeholder in placeholders:
             if not placeholder.is_image and placeholder.placeholder_name in run.text:
-                # Split the placeholder data into lines if it contains lists or multiline text
-                lines = placeholder.placeholder_data.replace("*", "").split("\n")
-                
-                # Clear the current run text
-                run.text = ""  
-
-                # Create a new run for each line to simulate line breaks
-                for i, line in enumerate(lines):
-                    if i > 0:
-                        # Add a new run for each line after the first to maintain line breaks
-                        new_run = run._element.add_paragraph().add_run()
-                        new_run.text = line
-                    else:
-                        # The first line goes into the initial run
-                        run.text = line
+                run.text = run.text.replace(
+                    "{{" + placeholder.placeholder_name + "}}",
+                    placeholder.placeholder_data
+                ).replace("*", '')
 
     def replace_images_in_shape(self, shape, placeholders: List[CombinedPlaceholder]) -> List[Tuple[str, int, int, int, int]]:
         new_shapes = []
