@@ -23,7 +23,58 @@ import logging
 import tempfile, time
 import copy, six
 import markdown2
+from markdown_it import MarkdownIt
 
+def convert_markdown_to_text(markdown_content: str) -> str:
+    md = MarkdownIt()
+    tokens = md.parse(markdown_content)
+    plain_text = []
+    current_list_level = 0
+
+    for token in tokens:
+        if token.type == "inline":
+            # Inline content such as plain text and inline code
+            plain_text.append(token.content)
+        elif token.type == "heading_open":
+            level = int(token.tag[1])
+            plain_text.append("\n" + "#" * level + " ")  # Prefix headings with appropriate number of hashes
+        elif token.type == "heading_close":
+            plain_text.append("\n")
+        elif token.type == "paragraph_open":
+            plain_text.append("\n")  # New paragraph
+        elif token.type == "paragraph_close":
+            plain_text.append("\n")
+        elif token.type == "bullet_list_open" or token.type == "ordered_list_open":
+            current_list_level += 1
+        elif token.type == "bullet_list_close" or token.type == "ordered_list_close":
+            current_list_level -= 1
+        elif token.type == "list_item_open":
+            # Indent list items based on nesting level
+            plain_text.append("  " * (current_list_level - 1) + ("• " if token.tag == "ul" else "1. "))
+        elif token.type == "softbreak" or token.type == "hardbreak":
+            plain_text.append("\n")
+        elif token.type == "code_block":
+            plain_text.append(f"\n```\n{token.content}\n```\n")  # Format code blocks
+        elif token.type == "fence":
+            language = token.info.strip() or "text"
+            plain_text.append(f"\n```{language}\n{token.content}\n```\n")
+        elif token.type == "blockquote_open":
+            plain_text.append("\n> ")  # Blockquote prefix
+        elif token.type == "blockquote_close":
+            plain_text.append("\n")
+        elif token.type == "link_open":
+            plain_text.append("[")  # Start link text
+        elif token.type == "link_close":
+            # End link text and append URL
+            link_url = token.attrs.get("href", "")
+            plain_text.append(f"]({link_url})")
+        elif token.type == "image":
+            # Format image alt text with URL
+            alt_text = token.attrs.get("alt", "")
+            img_url = token.attrs.get("src", "")
+            plain_text.append(f"![{alt_text}]({img_url})")
+
+    return ''.join(plain_text).strip()
 
 class PresentationInput(BaseModel):
     topic: str
@@ -662,8 +713,8 @@ Do not leave a placeholder empty. Failure to do so, will cause fatal error!!"""
     def replace_text_in_run(self, run, placeholders: List[CombinedPlaceholder]) -> None:
         for placeholder in placeholders:
             if not placeholder.is_image and placeholder.placeholder_name in run.text:
-                # Convert Markdown to plain text
-                plain_text = markdown2.markdown(placeholder.placeholder_data, extras=["strip"])
+                # Convert Markdown to pure formatted text
+                plain_text = convert_markdown_to_text(placeholder.placeholder_data)
                 
                 # Perform the replacement
                 run.text = run.text.replace(
