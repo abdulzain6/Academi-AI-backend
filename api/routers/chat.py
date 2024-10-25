@@ -32,12 +32,13 @@ from ..globals import (
     knowledge_manager,
     subscription_manager,
     redis_cache_manager,
-    plantuml_server,
+    notes_db,
     template_manager,
     temp_knowledge_manager,
     get_model,
     get_model_and_fallback,
-    course_manager
+    course_manager,
+    presentation_db
 )
 from ..dependencies import (
     can_use_premium_model,
@@ -529,9 +530,11 @@ File Content:
                         negative_prompt=negative_prompt,
                         collection_name=None,
                         files=None,
+                        user_id=user_id
                     ),
                     "cache_manager": redis_cache_manager,
                     "url_template": CACHE_DOCUMENT_URL_TEMPLATE,
+                    "presentation_db" : presentation_db
                 },
                 feature_key="PRESENTATION",
                 usage_key="PRESENTATION",
@@ -602,7 +605,10 @@ File Content:
                     "cache_manager": redis_cache_manager,
                     "url_template": CACHE_DOCUMENT_URL_TEMPLATE,
                     "data_string" : content,
-                    "instructions" : instructions
+                    "instructions" : instructions,
+                    "user_id" : user_id,
+                    "template_name" : template,
+                    "notes_db" : notes_db
                 },
                 feature_key="NOTES",
                 usage_key="NOTES",

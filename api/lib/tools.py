@@ -30,11 +30,13 @@ from PIL import Image
 from langchain_community.utilities.requests import TextRequestsWrapper
 from bs4 import BeautifulSoup
 from langchain_community.utilities.searx_search import SearxSearchWrapper
-from api.lib.utils import convert_youtube_url_to_standard, format_url
+from api.lib.utils import convert_first_slide_to_image, convert_youtube_url_to_standard, docx_to_pdf_thumbnail, format_url
 from api.routers.utils import image_to_pdf_in_memory
 from api.lib.cv_maker.cv_maker import CVMaker
 from api.lib.notes_maker import NotesMaker
 from graphviz import Source
+from api.lib.database import Presentation
+from api.lib.database.notes import MakeNotesInput
 
 
 
@@ -328,11 +330,23 @@ def make_ppt(
     ppt_input: MakePresentationInput,
     cache_manager,
     url_template: str,
+    presentation_db
 ):
     ppt_path, content = ppt_maker.make_presentation(
         template_name=ppt_input.template_name,
         presentation_input=PresentationInput(**ppt_input.dict()),
     )
+    with open(ppt_path, "rb") as fp:
+        presentation_db.store_presentation(
+            user_id=ppt_input.user_id,
+            presentation=Presentation(
+                topic=ppt_input.topic,
+                instructions=ppt_input.instructions,
+                number_of_pages=ppt_input.number_of_pages
+            ),
+            thumbnail_file=convert_first_slide_to_image(ppt_path),
+            pptx_file=io.BytesIO(fp.read())
+        )
     doc_id = str(uuid.uuid4()) + ".pptx"
 
     with open(ppt_path, "rb") as file:
@@ -426,11 +440,25 @@ def make_notes(
     cache_manager,
     url_template: str,
     data_string: str,
-    instructions: str
+    instructions: str,
+    user_id: str,
+    template_name: str,
+    notes_db,
 ):
     notes_io = notes_maker.make_notes_from_string(
         string=data_string,
         instructions=instructions
+    )
+    thumbnail = docx_to_pdf_thumbnail(notes_io)
+    notes_io.seek(0)
+    notes_db.store_note(
+        user_id=user_id, 
+        note=MakeNotesInput(
+            instructions=instructions,
+            template_name=template_name
+        ),
+        file=notes_io,
+        thumbnail=thumbnail
     )
     doc_id = str(uuid.uuid4()) + ".docx"
     notes_bytes = notes_io.read()
