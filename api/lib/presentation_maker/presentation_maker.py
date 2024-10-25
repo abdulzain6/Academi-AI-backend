@@ -1,4 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import os
+import subprocess
 from .pptx.enum.shapes import MSO_SHAPE_TYPE
 from .pptx import Presentation
 from typing import Any, Dict, Optional, List, Tuple
@@ -23,24 +25,7 @@ import logging
 import tempfile, time
 import copy, six
 import markdown2
-from markdown_it import MarkdownIt
 
-def convert_markdown_to_text(markdown_content: str) -> str:
-    md = MarkdownIt()
-    tokens = md.parse(markdown_content)
-    plain_text = []
-
-    for token in tokens:
-        if token.type == "inline":
-            plain_text.append(token.content)
-        elif token.type == "bullet_list_open" or token.type == "ordered_list_open":
-            plain_text.append("\n")
-        elif token.type == "list_item_open":
-            plain_text.append("• ")  # For unordered list bullets
-        elif token.type == "softbreak":
-            plain_text.append("\n")
-
-    return ''.join(plain_text).strip()
 
 class PresentationInput(BaseModel):
     topic: str
@@ -670,15 +655,50 @@ Do not leave a placeholder empty. Failure to do so, will cause fatal error!!"""
         )
         with tempfile.NamedTemporaryFile(suffix='.pptx', delete=False) as temp_file:
             prs.save(temp_file.name)
-            temp_file_path = temp_file.name  # Store the path for returning
+            temp_pptx_path = temp_file.name  # Store the path for returning
+            
+        logging.info(f"Original name: {temp_pptx_path}")
+    
+        # Step 2: Define output path and run the conversion
+        temp_ppt_path = temp_pptx_path.replace('.pptx', '.ppt')
         
-        logging.info(f"Presentation saved successfully. Time taken: , {time.time() - start_time}")
+        # Ensure no existing .ppt file at this path (clean up)
+        if os.path.exists(temp_ppt_path):
+            os.remove(temp_ppt_path)
         
-        return temp_file_path, [{**placeholders.dict(), **sequence.dict()} for placeholders, sequence in zip(content, sequence.slide_sequence)]
+        # Convert to .ppt using LibreOffice
+        subprocess.run([
+            "libreoffice", 
+            "--headless", 
+            "--convert-to", "ppt", 
+            "--outdir", tempfile.gettempdir(), 
+            temp_pptx_path
+        ], check=True)
+
+        if os.path.exists(temp_pptx_path):
+            os.remove(temp_pptx_path)
+            
+        if not os.path.exists(temp_ppt_path):
+            raise FileNotFoundError(f"Conversion failed, .ppt file not found at {temp_ppt_path}")
+
+        subprocess.run([
+            "libreoffice", 
+            "--headless", 
+            "--convert-to", "pptx", 
+            "--outdir", tempfile.gettempdir(), 
+            temp_ppt_path
+        ], check=True)
+        
+        # Step 3: Confirm conversion and return path
+        
+        logging.info(f"Presentation saved and converted successfully. Time taken: {time.time() - start_time}")
+    
+        return temp_pptx_path, [{**placeholders.dict(), **sequence.dict()} for placeholders, sequence in zip(content, sequence.slide_sequence)]
 
     def replace_text_in_run(self, run, placeholders: List[CombinedPlaceholder]) -> None:
         for placeholder in placeholders:
             if not placeholder.is_image and placeholder.placeholder_name in run.text:
+                # Perform the replacement
                 run.text = run.text.replace(
                     "{{" + placeholder.placeholder_name + "}}",
                     placeholder.placeholder_data

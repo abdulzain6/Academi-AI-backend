@@ -64,7 +64,7 @@ def convert_first_slide_to_image(pptx_path: str) -> BytesIO:
     try:
         
         subprocess.run(['libreoffice', '--headless', '--convert-to', 'pdf', '--outdir', "/tmp", pptx_path], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        temp_pdf_path = f"/tmp/{os.path.basename(pptx_path).replace('pptx', 'pdf')}"
+        temp_pdf_path = f"/tmp/{os.path.basename(pptx_path).replace('pptx', 'pdf').replace('ppt', 'pdf')}"
         
         print(f"Pdf written to {temp_pdf_path}")
         # Verify PDF was created before proceeding
