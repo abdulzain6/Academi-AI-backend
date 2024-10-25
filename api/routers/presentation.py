@@ -1,7 +1,5 @@
-import contextlib
-from io import BytesIO
 import logging
-import os
+from io import BytesIO
 from typing import Optional
 from urllib.parse import quote
 from bson import ObjectId
@@ -197,7 +195,8 @@ def make_presentation(
     logging.info(f"Presentation made successfully! {user_id}")
 
     try:
-        store_presentation_task(
+        background_tasks.add_task(
+            store_presentation_task,
             user_id=user_id, 
             presentation_input=presentation_input, 
             file_path=file_path

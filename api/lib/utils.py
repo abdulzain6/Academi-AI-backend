@@ -31,7 +31,7 @@ def docx_to_pdf_thumbnail(docx_file: BytesIO) -> BytesIO:
     try:
         # Convert DOCX to PDF using pypandoc
         temp_pdf_path = temp_docx_path.replace(".docx", ".pdf")
-        pypandoc.convert_file(temp_docx_path, 'pdf', outputfile=temp_pdf_path)
+        pypandoc.convert_file(temp_docx_path, 'pdf', outputfile=temp_pdf_path, extra_args=['--pdf-engine=xelatex'])
 
         # Convert the first page of the PDF to an image (thumbnail)
         images = convert_from_path(temp_pdf_path, first_page=1, last_page=1)
