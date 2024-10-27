@@ -82,7 +82,7 @@ class YoutubeLoader(BaseLoader):
                 
                 # Combine the transcript text
                 transcript_text = " ".join([entry['text'] for entry in transcript])
-                return Document(page_content=transcript_text)
+                return [Document(page_content=transcript_text)]
             
             except Exception as e:
                 print(f"Error: {e}")
