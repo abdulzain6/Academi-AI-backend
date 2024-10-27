@@ -5,7 +5,7 @@ from typing import Optional
 from urllib.parse import parse_qs, urlparse
 from langchain.document_loaders.base import BaseLoader
 from youtube_transcript_api import YouTubeTranscriptApi
-
+from langchain.schema import Document
 
 logging.basicConfig(level=logging.DEBUG)
 ALLOWED_SCHEMAS = {"http", "https"}
@@ -82,7 +82,7 @@ class YoutubeLoader(BaseLoader):
                 
                 # Combine the transcript text
                 transcript_text = " ".join([entry['text'] for entry in transcript])
-                return transcript_text
+                return Document(page_content=transcript_text)
             
             except Exception as e:
                 print(f"Error: {e}")
