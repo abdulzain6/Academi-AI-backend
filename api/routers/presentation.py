@@ -18,7 +18,7 @@ from ..globals import (
     subscription_manager,
     presentation_db
 )
-from ..lib.presentation_maker.presentation_maker import PresentationInput, PresentationMaker, PexelsImageSearch
+from ..lib.presentation_maker.presentation_maker import PresentationInput, PresentationMaker
 from ..dependencies import get_model, require_points_for_feature, use_feature_with_premium_model_check
 from pydantic import BaseModel
 from api.lib.database.presentation import Presentation
