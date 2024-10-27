@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import random
 import tempfile
 
 from bson import ObjectId
@@ -133,6 +134,9 @@ def make_notes(
         filename=notes_input.file_name,
     ):
         raise HTTPException(400, detail="File not found!")
+
+    if notes_input.template_name not in get_available_note_makers():
+        notes_input.template_name = random.choice(get_available_note_makers())
 
     if notes_input.data:
         data = notes_input.data

@@ -1,6 +1,4 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import os
-import subprocess
 from .pptx.enum.shapes import MSO_SHAPE_TYPE
 from .pptx import Presentation
 from typing import Any, Dict, Optional, List, Tuple
@@ -12,7 +10,6 @@ from langchain.prompts import (
 )
 from .database import TemplateDBManager, TemplateKnowledgeManager, TemplateModel, PlaceholderModel, SlideModel
 from langchain.pydantic_v1 import BaseModel, Field
-from .image_gen import PexelsImageSearch
 from ..knowledge_manager import KnowledgeManager
 from ..diagram_maker import DiagramMaker
 from retrying import retry
@@ -21,10 +18,11 @@ from langchain.chat_models.base import BaseChatModel
 
 import random
 import re
+import os
+import subprocess
 import logging
 import tempfile, time
 import copy, six
-import markdown2
 
 
 class PresentationInput(BaseModel):
@@ -677,7 +675,7 @@ Do not leave a placeholder empty. Failure to do so, will cause fatal error!!"""
 
         if os.path.exists(temp_pptx_path):
             os.remove(temp_pptx_path)
-            
+
         if not os.path.exists(temp_ppt_path):
             raise FileNotFoundError(f"Conversion failed, .ppt file not found at {temp_ppt_path}")
 

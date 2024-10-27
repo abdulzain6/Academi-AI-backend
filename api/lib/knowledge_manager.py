@@ -405,10 +405,7 @@ class KnowledgeManager:
             if self.is_youtube_video(web_url):
                 youtube_link = web_url
             loader = YoutubeLoaderNew(
-                serverless_url=os.getenv("YOUTUBE_LOADER_URL"),
-                auth_key=os.getenv("YOUTUBE_LOADER_KEY"),
                 video_url=youtube_link,
-                get_result_url=os.getenv("GET_RESULT_URL")
             )
 
         docs = loader.load()

@@ -1,63 +1,98 @@
 import logging
+import os
 import time
-import requests
+from typing import Optional
+from urllib.parse import parse_qs, urlparse
 from langchain.document_loaders.base import BaseLoader
-from langchain.schema import Document
+from youtube_transcript_api import YouTubeTranscriptApi
+
 
 logging.basicConfig(level=logging.DEBUG)
+ALLOWED_SCHEMAS = {"http", "https"}
+ALLOWED_NETLOCK = {
+    "youtu.be",
+    "m.youtube.com",
+    "youtube.com",
+    "www.youtube.com",
+    "www.youtube-nocookie.com",
+    "vid.plus",
+}
 
 class YoutubeLoader(BaseLoader):
-    def __init__(self, serverless_url: str, auth_key: str, video_url: str, get_result_url: str) -> None:
-        self.serverless_url = serverless_url
-        self.auth_key = auth_key
+    def __init__(self, video_url: str) -> None:
         self.video_url = video_url
-        self.get_result_url = get_result_url
-        
+
+    def _parse_video_id(self, url: str) -> Optional[str]:
+        """Parse a youtube url and return the video id if valid, otherwise None."""
+        parsed_url = urlparse(url)
+
+        if parsed_url.scheme not in ALLOWED_SCHEMAS:
+            return None
+
+        if parsed_url.netloc not in ALLOWED_NETLOCK:
+            return None
+
+        path = parsed_url.path
+
+        if path.endswith("/watch"):
+            query = parsed_url.query
+            parsed_query = parse_qs(query)
+            if "v" in parsed_query:
+                ids = parsed_query["v"]
+                video_id = ids if isinstance(ids, str) else ids[0]
+            else:
+                return None
+        else:
+            path = parsed_url.path.lstrip("/")
+            video_id = path.split("/")[-1]
+
+        if len(video_id) != 11:  # Video IDs are 11 characters long
+            return None
+
+        return video_id
+    
     def load(self):
-        headers = {
-            'Content-Type': 'application/json',
-            'Authorization': f'Basic {self.auth_key}',
-        }
-
-        params = {
-            'blocking': 'false',
-        }
-        json_data = {
-            'url': self.video_url,
-        }
-
-        response = requests.post(
-            self.serverless_url,
-            params=params,
-            headers=headers,
-            json=json_data
-        )
-        response.raise_for_status()
-        activation_id = response.json()["activationId"]
-        logging.info(f"FUnction invoke started: {response.text}")
-        for _ in range(24):
-            response = requests.get(
-                f'{self.get_result_url}{activation_id}',
-                headers=headers,
-            ).json()
-            logging.info(f"Polling... {response}")
-                            
+        proxy: str = os.getenv("PROXY", "http://dprulefr-rotate:7obapq1qv8fl@p.webshare.io:80")
+        print(f"Using proxy: {proxy}")
+        
+        for _ in range(5):
+            try:
+                video_id: str = self._parse_video_id(self.video_url)
+                if not video_id:
+                    raise ValueError("Video ID extraction failed")
+                
+                try:
+                    # Attempt to fetch the transcript in the requested language
+                    transcript = YouTubeTranscriptApi.get_transcript(
+                        video_id, languages=("eng",), proxies={"http": proxy, "https": proxy}
+                    )
+                except Exception:
+                    # Fetch the available transcripts when the requested language is not found
+                    available_transcripts = YouTubeTranscriptApi.list_transcripts(video_id, proxies={"http": proxy, "https": proxy})
+                    fallback_transcript = available_transcripts.find_transcript(
+                        available_transcripts._manually_created_transcripts or 
+                        available_transcripts._generated_transcripts
+                    )
+                    fallback_language = fallback_transcript.language_code
+                    
+                    # Retry fetching transcript with the fallback language
+                    transcript = YouTubeTranscriptApi.get_transcript(
+                        video_id, languages=(fallback_language,), proxies={"http": proxy, "https": proxy}
+                    )
+                
+                # Combine the transcript text
+                transcript_text = " ".join([entry['text'] for entry in transcript])
+                return transcript_text
             
-            if response.get("response", {}).get("result"):
-                if response["response"]["result"].get("statusCode") == 500:
-                    raise RuntimeError("Unable to transcribe video")
-                return [Document(page_content=response["response"]["result"]["body"])]
-            
-            time.sleep(5)
-            
-        raise RuntimeError("Tiemout")
+            except Exception as e:
+                print(f"Error: {e}")
+                time.sleep(1)
+        
+        raise Exception("Failed to get transcript")
     
     
 if __name__ == "__main__":
     loader = YoutubeLoader(
-        serverless_url="https://faas-blr1-8177d592.doserverless.co/api/v1/namespaces/fn-e4125fdf-f695-4a9e-9bc4-75db4a5994db/actions/academi/yt_transcript",
-        auth_key="N2FlOWIwMjAtOGY4Ny00NGE4LThiMzEtMmJlMGZiMDUwYjk1OmtqNzd6R0xMNWo4YjNoZklUMmJOekkwbFVBcDIzSVpmbWJ5ZElSZGEzWDdhVm1TTmQ4WDFiZlJ6SU81dnkyRk0=",
-        video_url="https://youtu.be/ShsUfAMQ3iQ?si=88WK_s_c-pQAy4R3",
-        get_result_url="https://faas-blr1-8177d592.doserverless.co/api/v1/namespaces/fn-e4125fdf-f695-4a9e-9bc4-75db4a5994db/activations/"
+        video_url="https://youtu.be/rwcvBAh3IRI?si=YEG3uoOuYCoZ0m2F",
     )
     print(loader.load())
