@@ -122,8 +122,23 @@ The conversation must be of around {minutes} minutes.
         chain = chat_prompt | structured_llm
         return chain.invoke({"num_people": num_people, "minutes" : minutes, "data" : data})
 
+    def add_drama(self, convo: Conversation) -> Conversation:
+        system_message = """You are an AI designed to help make educational podcast like conversations.
+Your job is to take an existing conversation and make it more dramatic and fun to listen.
+Do not change anything but the conversation part text.
+Only use text in the conversation, No special symbols or emojis or anything else just text
+"""     
+        messages = [
+            ("system", system_message),
+            ("human", "Make the following conversation more fun and dramatic: {data}"),
+        ]
+        chat_prompt = ChatPromptTemplate.from_messages(messages)
+        structured_llm = self.llm.with_structured_output(schema=Conversation)
+        chain = chat_prompt | structured_llm
+        return chain.invoke({"data" : convo})
+
     def run(self, num_people: int, minutes: int, data: str) -> AudioSegment:
-        conversation = self.generate_conversation(num_people, minutes, data)
+        conversation = self.add_drama(self.generate_conversation(num_people, minutes, data))
         return self.generate_speech_for_conversation(conversation)
         
 

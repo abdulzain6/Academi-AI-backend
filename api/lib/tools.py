@@ -460,8 +460,9 @@ def make_notes(
         file=notes_io,
         thumbnail=thumbnail
     )
+    notes_io.seek(0)
     doc_id = str(uuid.uuid4()) + ".docx"
-    notes_bytes = notes_io.read()
+    notes_bytes = notes_io.getvalue()
     cache_manager.set(key=doc_id, value=notes_bytes, ttl=18000, suppress=False)
     document_url = url_template.format(doc_id=doc_id)
     return f"{document_url} Give this link as it is to the user dont add sandbox prefix to it, user wont recieve file until you explicitly read out the link to him"
