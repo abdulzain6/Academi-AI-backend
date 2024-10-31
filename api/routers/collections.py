@@ -65,7 +65,7 @@ def create_collection(
     user_id=Depends(get_user_id),
     play_integrity_verified=Depends(verify_play_integrity),
 ):
-    can_add_more_data(user_id, collection_check=True, file_check=False)
+    can_add_more_data(user_id, collection_check=False, file_check=False)
 
     logging.info(f"Got make collection request, {user_id}... Input: {collection}")
     try:
