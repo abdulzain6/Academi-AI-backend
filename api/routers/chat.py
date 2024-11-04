@@ -547,16 +547,10 @@ File Content:
         if not vega_lite_spec:
             return "Enter a valid spec recieved none"
         try:
-            return deduct_points_for_feature(
-                user_id,
-                make_vega_graph,
-                func_kwargs={
-                    "vl_spec": vega_lite_spec,
-                    "cache_manager": redis_cache_manager,
-                    "url_template": CACHE_DOCUMENT_URL_TEMPLATE,
-                },
-                feature_key="GRAPH",
-                usage_key="GRAPH",
+            return make_vega_graph(
+                vl_spec=vega_lite_spec,
+                cache_manager=redis_cache_manager,
+                url_template=CACHE_DOCUMENT_URL_TEMPLATE
             )
         except Exception as e:
             logging.error(f"Error in graph generation {e}")

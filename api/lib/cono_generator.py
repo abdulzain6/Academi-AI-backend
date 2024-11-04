@@ -26,7 +26,7 @@ class Voice(str, Enum):
     ZEUS = "aura-zeus-en"
 
 class ConversationPart(BaseModel):
-    speaker: Voice = Field(..., description="The voice representing the speaker", example="alloy")
+    speaker: Voice = Field(..., description="The voice representing the speaker")
     text: str = Field(..., description="The actual content of the dialogue", example="Hello, how are you?")
     delay: float = Field(1.0, description="Silence delay in seconds before the next part", example=1.0)
 
