@@ -41,10 +41,8 @@ FEATURE_PRICING = get_dict_from_env_var(
         "TEXT_TO_HANDWRITTING" : 3,
         "GRAMMAR" : 2,
         "UML" : 3,
-        "GRAPH" : 1,
         "ASSIGNMENT" : 25,
         "INFOGRAPHIC" : 2,
-        "COURSE" : 0,
         "LECTURE" : 30
     }
 )
