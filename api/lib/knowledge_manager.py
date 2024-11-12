@@ -1,6 +1,4 @@
 import ipaddress
-from itertools import islice
-import os
 import time
 import logging
 import random
@@ -16,7 +14,7 @@ from urllib.parse import urlparse
 from uuid import UUID
 from typing import Any, Optional, Union
 from typing import Dict, List, Tuple
-from azure.ai.formrecognizer import DocumentAnalysisClient
+from itertools import islice
 
 from langchain.embeddings.base import Embeddings
 from langchain.chat_models.base import BaseChatModel
@@ -49,13 +47,15 @@ from langchain.agents.agent import AgentExecutor
 from langchain.schema.agent import AgentFinish
 from langchain_community.document_loaders import WebBaseLoader
 from langchain_google_firestore import FirestoreVectorStore
+from langchain.document_loaders.base import BaseLoader
 
 
 from google.cloud.firestore_v1.vector import Vector  # type: ignore
 from api.lib.maths_solver.python_exec_client import PythonClient
 from api.lib.ocr import VisionOCR
-from .database.files import FileDBManager
 from api.lib.utils import format_url
+from .database.files import FileDBManager
+from extractous import Extractor, TesseractOcrConfig, PdfOcrStrategy, PdfParserConfig
 
 
 class FirestoreVectorStoreModified(FirestoreVectorStore):
@@ -80,11 +80,6 @@ class FirestoreVectorStoreModified(FirestoreVectorStore):
         )
 
         return results.get()  
-
-
-
-def split_into_chunks(text, chunk_size):
-    return [text[i : i + chunk_size] for i in range(0, len(text), chunk_size)]
 
 class CustomCallback(BaseCallbackHandler):
     def __init__(self, callback, on_end_callback) -> None:
@@ -161,24 +156,33 @@ class CustomCallbackAgent(BaseCallbackHandler):
             pass
         self.callback(None)
 
+class ExtractousLoader(BaseLoader):
+    def __init__(self, file_path: str) -> None:
+        self.file_path = file_path
+
+    def load(self):
+        pdf_config = PdfParserConfig().set_ocr_strategy(PdfOcrStrategy.NO_OCR)
+        extractor = Extractor().set_ocr_config(TesseractOcrConfig().set_language("eng")).set_pdf_config(pdf_config)
+        return [Document(
+            page_content=extractor.extract_file_to_string(self.file_path)
+        )]
+
+def split_into_chunks(text, chunk_size):
+    return [text[i : i + chunk_size] for i in range(0, len(text), chunk_size)]
 
 
 class KnowledgeManager:
     def __init__(
         self,
         embeddings: Embeddings,
-        unstructured_api_key: str,
-        unstructured_url: str,
         ocr: VisionOCR,
-        chunk_size: int = 230,
+        chunk_size: int = 1000,
         advanced_ocr_page_count: int = 15,
         collection_name: str = "academi"
     ) -> None:
         self.azure_ocr = ocr
         self.embeddings = embeddings
-        self.unstructured_api_key = unstructured_api_key
         self.chunk_size = chunk_size
-        self.unstructured_url = unstructured_url
         self.advanced_ocr_page_count = advanced_ocr_page_count
         self.vectorstore = FirestoreVectorStoreModified(
             collection=collection_name,
@@ -236,13 +240,8 @@ class KnowledgeManager:
         loader = PDFLoader()
         return loader.load(filepath)
 
-    def load_using_unstructured(self, filepath: str) -> list[Document]:
-        loader = UnstructuredAPIFileLoader(
-            file_path=filepath,
-            api_key=self.unstructured_api_key,
-            url=self.unstructured_url,
-            strategy="fast"
-        )
+    def load_using_extractous(self, filepath: str) -> list[Document]:
+        loader = ExtractousLoader(file_path=filepath)
         return loader.load()
 
     def load_data(self, file_path: str, advanced_pdf_extraction: bool = False) -> Tuple[str, List[Document], bytes]:
@@ -261,10 +260,10 @@ class KnowledgeManager:
                 try:
                     docs = self.load_using_advanced_extraction(file_path)
                 except:
-                    docs = self.load_using_unstructured(file_path)                         
+                    docs = self.load_using_extractous(file_path)                         
             else:
-                logging.info("Using unstructured")
-                docs = self.load_using_unstructured(file_path)         
+                logging.info("Using extractous")
+                docs = self.load_using_extractous(file_path)         
 
         docs = self.split_docs(docs)
         logging.info(f"Loaded {len(docs)} Documents.")
@@ -289,7 +288,7 @@ class KnowledgeManager:
         if len(content) <= 7:
             raise ValueError("Insufficient data in documents")
         
-        batch_size = 150
+        batch_size = 200
         ids = []
         
         iterator = iter(documents)

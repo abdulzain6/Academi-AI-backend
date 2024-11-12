@@ -215,3 +215,4 @@ cairosvg
 pydub
 deepgram-sdk
 markdown-it-py
+extractous

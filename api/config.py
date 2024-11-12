@@ -13,11 +13,9 @@ def get_dict_from_env_var(env_var_name: str, default: Dict = None) -> Dict:
     return json.loads(env_val) if env_val is not None else default
 
 
-UNSTRUCTURED_API_KEY = os.getenv("UNSTRUCTURED_API_KEY", None)
-UNSTRUCTURED_URL = os.getenv("UNSTRUCTURED_URL", "http://localhost:8080/general/v0/general")
+
 MONGODB_URL = os.getenv("MONGODB_URL")
 DATABASE_NAME = os.getenv("DATABASE_NAME", "study-app")
-PEXELS_API_KEY = os.getenv("PEXELS_API_KEY")
 PLANTUML_URL = os.getenv("PLANTUML_URL", "http://localhost:9080/img/")
 MAIN_URL_EXECUTOR = os.getenv("MAIN_URL_EXECUTOR", "http://127.0.0.1:9000/")
 EVALUATE_URL_EXECUTOR = os.getenv("EVALUATE_URL_EXECUTOR", "http://127.0.0.1:9000/evaluate")
@@ -91,16 +89,12 @@ PROM_USERNAME = os.getenv("PROM_USERNAME", "PROM_MONITO_MY_APP_U_M0RON_BE_N!CE")
 PROM_PASSWORD = os.getenv("PROM_PASSWORD", "ABRACADABRA_KAZAMM_HEHE_@#$")
 CRONJOB_KEY = os.getenv("CRONJOB_KEY", "ABRACADABRA_KAZAMM_HEHE_@#$")
 API_KEY_BACKDOOR = os.getenv("API_KEY_BACKDOOR", "ZAIGHAMNETTTTTTTT!!!CHUTIKRRRR!!!")
-AZURE_OCR_ENDPOINT = os.getenv("AZURE_OCR_ENDPOINT")
-AZURE_OCR_KEY = os.getenv("AZURE_OCR_KEY")
 
 CACHE_DOCUMENT_URL_TEMPLATE = os.getenv("CACHE_DOCUMENT_URL_TEMPLATE", "https://api.academiai.org/api/v1/tools/document/{doc_id}")
 CACHE_IMAGE_URL_TEMPLATE = os.getenv("CACHE_IMAGE_URL_TEMPLATE", "https://api.academiai.org/api/v1/tools/image/{doc_id}")
 CACHE_VIDEO_URL_TEMPLATE = os.getenv("CACHE_VIDEO_URL_TEMPLATE", "https://api.academiai.org/api/v1/tools/retrieve_video/{video_id}")
 
 
-DOC_INTELLIGENCE_ENDPOINT = os.getenv("DOC_INTELLIGENCE_ENDPOINT")
-AZURE_DOC_INTELLIGENCE_KEY = os.getenv("AZURE_DOC_INTELLIGENCE_KEY")
 SEARCHX_HOST = os.getenv("SEARCHX_HOST", "http://localhost:8090")
 APP_DOMAIN = os.getenv("APP_DOMAIN", "https://api.academiai.org")
 GET_CV_IMAGES_ENDPOINT = APP_DOMAIN + "/api/v1/cv_maker/get_image/{name}"

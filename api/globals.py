@@ -264,8 +264,6 @@ knowledge_manager = KnowledgeManager(
         max_retries=2
     ),
     chunk_size=520,
-    unstructured_api_key=UNSTRUCTURED_API_KEY,
-    unstructured_url=UNSTRUCTURED_URL,
     ocr=ImageOCR(),
     collection_name="academi"
 )
