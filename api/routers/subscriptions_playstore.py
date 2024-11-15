@@ -270,10 +270,8 @@ def receive_notification(notification: dict, token_verified=Depends(verify_googl
             )
             if "externalAccountIdentifiers" in sub_doc:
                 user_id = sub_doc["externalAccountIdentifiers"]["obfuscatedExternalAccountId"]
-                if handle_purchase(user_id, sub_notification['purchaseToken'], sub_doc):
-                    return {"status": "success"}
-                else:
-                    raise HTTPException("Error")
+                handle_purchase(user_id, sub_notification['purchaseToken'], sub_doc)
+                return {"status": "success"}
     elif voided_notification:
         handle_voided_notification(voided_notification)
     elif onetime_notification:
