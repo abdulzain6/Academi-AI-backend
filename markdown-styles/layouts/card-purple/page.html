@@ -1,0 +1,104 @@
+<style>
+    body {
+      background-color: #f5f5f5; /* Light gray background */
+    }
+
+    .card-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    
+    .fitness-card {
+      padding: 24px;
+      border-radius: 12px;
+      width: 300px;
+      font-family: system-ui, -apple-system, "Segoe UI", "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      transition: transform 0.2s;
+      background-color: #8e44ad; /* Purple theme */
+      color: white;
+    }
+    
+    .fitness-card:hover {
+      transform: translateY(-5px);
+    }
+    
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    
+    .card-title {
+      font-size: 18px;
+      font-weight: bold;
+    }
+    
+    .card-content {
+      font-size: 16px;
+      line-height: 1.5;
+    }
+    
+    /* Markdown content styles */
+    .fitness-card h1, .fitness-card h2, .fitness-card h3,
+    .fitness-card h4, .fitness-card h5, .fitness-card h6 {
+      margin-top: 1em;
+      margin-bottom: 0.5em;
+    }
+    
+    .fitness-card p {
+      margin-bottom: 1em;
+    }
+    
+    .fitness-card ul, .fitness-card ol {
+      margin-bottom: 1em;
+      padding-left: 1.5em;
+    }
+    
+    .fitness-card li {
+      margin-bottom: 0.5em;
+    }
+    
+    .fitness-card a {
+      color: inherit;
+      text-decoration: underline;
+    }
+    
+    .fitness-card code {
+      background-color: rgba(255, 255, 255, 0.2);
+      padding: 2px 4px;
+      border-radius: 4px;
+    }
+    
+    .fitness-card pre {
+      background-color: rgba(255, 255, 255, 0.1);
+      padding: 1em;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+    
+    .fitness-card blockquote {
+      border-left: 4px solid rgba(255, 255, 255, 0.5);
+      padding-left: 1em;
+      margin-left: 0;
+      font-style: italic;
+    }
+
+    /* Emoji styles */
+    .fitness-card emoji {
+      font-family: "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
+      font-size: 1.2em;
+      line-height: 1;
+      vertical-align: middle;
+    }
+  </style>
+  
+  <div class="card-container">
+  <div class="fitness-card">
+        {{~> content}}
+    </div>
+  </div>

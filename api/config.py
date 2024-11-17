@@ -41,7 +41,8 @@ FEATURE_PRICING = get_dict_from_env_var(
         "UML" : 3,
         "ASSIGNMENT" : 25,
         "INFOGRAPHIC" : 2,
-        "LECTURE" : 30
+        "LECTURE" : 30,
+        "IMAGE_EXPLAINERS" : 2
     }
 )
 

@@ -32,7 +32,7 @@ class InfographicMaker:
             strip=True
         )
     
-    def make_infographic(self, markdown: str, style: str, border_color: str = 'black', border_width: int = 10) -> Image.Image:
+    def make_infographic(self, markdown: str, style: str, border_color: str = 'black', border_width: int = 10, poster_size: int = 500) -> Image.Image:
         if style not in self.available_styles:
             raise ValueError(f"Style not available. Please pick from {self.available_styles}")
         
@@ -52,15 +52,35 @@ class InfographicMaker:
             # Generate HTML from Markdown using the specified style and specify the output directory
             subprocess.run(['generate-md', '--layout', style, '--input', md_path, '--output', temp_dir], check=True)
 
-            # Convert the generated HTML to an image
+            # Convert the generated HTML to an image with dynamic sizing
             subprocess.run([
                 'wkhtmltoimage',
                 '--enable-local-file-access',
+                '--width', str(poster_size),
+                '--height', '0',  # Set height to 0 for automatic height adjustment
+                '--zoom', '1',
+                '--encoding', 'UTF-8',
                 html_path, img_path
             ], check=True)
             
             image = Image.open(img_path)
-            image = ImageOps.expand(image, border=border_width, fill=border_color)
+        
+            # Extract background color from the top-left pixel
+            background_color = image.getpixel((0, 0))
+        
+            # Resize the image to fit within the poster size while maintaining aspect ratio
+            image.thumbnail((poster_size, poster_size), Image.LANCZOS)
+            
+            # Create a new square image with the poster size and extracted background color
+            new_image = Image.new('RGB', (poster_size, poster_size), background_color)
+            
+            # Paste the resized image onto the center of the new square image
+            offset = ((poster_size - image.width) // 2, (poster_size - image.height) // 2)
+            new_image.paste(image, offset)
+            
+            image = new_image
+        
+        # Add border
+        image = ImageOps.expand(image, border=border_width, fill=border_color)
 
         return image
-

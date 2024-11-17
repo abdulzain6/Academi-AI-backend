@@ -1,0 +1,133 @@
+<style>
+    body {
+      background-color: #1a1a1a; /* Dark background */
+      font-family: 'Open Sans', Arial, sans-serif;
+      color: #e0e0e0; /* Light gray text */
+    }
+
+    .card-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    
+    .student-card {
+      padding: 30px;
+      border-radius: 20px;
+      width: 350px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      transition: transform 0.3s, box-shadow 0.3s;
+      background-color: #2a2a2a; /* Dark gray background */
+      color: #e0e0e0; /* Light gray text */
+      border-left: 8px solid #ff6600; /* Darker orange accent */
+    }
+    
+    .student-card:hover {
+      transform: translateY(-10px);
+      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+    }
+    
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    
+    .card-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: #ff6600; /* Darker orange title */
+    }
+    
+    .card-content {
+      font-size: 16px;
+      line-height: 1.8;
+    }
+    
+    /* Markdown content styles */
+    .student-card h1, .student-card h2, .student-card h3,
+    .student-card h4, .student-card h5, .student-card h6 {
+      margin-top: 1.2em;
+      margin-bottom: 0.6em;
+      color: #ff6600; /* Darker orange headings */
+    }
+    
+    .student-card p {
+      margin-bottom: 1.2em;
+    }
+    
+    .student-card ul, .student-card ol {
+      margin-bottom: 1.2em;
+      padding-left: 1.8em;
+    }
+    
+    .student-card li {
+      margin-bottom: 0.6em;
+    }
+    
+    .student-card a {
+      color: #ff6600;
+      text-decoration: none;
+      border-bottom: 2px solid #b34700; /* Darker gold underline */
+      transition: border-bottom-color 0.3s;
+    }
+    
+    .student-card a:hover {
+      border-bottom-color: #ff6600;
+    }
+    
+    .student-card code {
+      background-color: #3a3a3a; /* Darker background for code */
+      padding: 3px 6px;
+      border-radius: 4px;
+      font-family: 'Source Code Pro', monospace;
+      color: #ff6600;
+    }
+    
+    .student-card pre {
+      background-color: #3a3a3a;
+      padding: 1.2em;
+      border-radius: 8px;
+      overflow-x: auto;
+    }
+
+    .student-card blockquote {
+      border-left: 4px solid #b34700; /* Darker gold quote bar */
+      padding-left: 1.2em;
+      margin-left: 0;
+      font-style: italic;
+      color: #a0a0a0;
+    }
+
+    /* Emoji styles */
+    .student-card emoji {
+      font-family: "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
+      font-size: 1.3em;
+      line-height: 1;
+      vertical-align: middle;
+    }
+
+    /* New educational elements */
+    .student-card .note {
+      background-color: #3a3a3a;
+      border: 1px solid #b34700;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 1.2em;
+    }
+
+    .student-card .highlight {
+      background-color: #4a4a4a; /* Darker highlight */
+      padding: 2px 4px;
+      border-radius: 4px;
+    }
+  </style>
+  
+  <div class="card-container">
+    <div class="student-card">
+        {{~> content}}
+    </div>
+  </div>

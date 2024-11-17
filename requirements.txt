@@ -216,3 +216,4 @@ pydub
 deepgram-sdk
 markdown-it-py
 extractous
+youtube-search-python

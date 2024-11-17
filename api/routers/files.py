@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from typing import Optional
 from ..auth import get_user_id, verify_play_integrity
 from ..dependencies import can_add_more_data
+from ..lib.youtube_search import YouTubeSearch
 
 
 router = APIRouter()
@@ -25,11 +26,9 @@ class FileCreate(BaseModel):
     description: str
     file: UploadFile
 
-
 class FileDelete(BaseModel):
     collection_name: str
     file_name: str
-
 
 class LinkFileInput(BaseModel):
     collection_name: str
@@ -45,6 +44,37 @@ def is_safe_filename(filename: str) -> bool:
     """
     return not any(seg in ["..", "/"] for seg in os.path.split(filename))
 
+
+@router.get("/youtube-search")
+def search_youtube(
+    query: str,
+    user_id=Depends(get_user_id),
+    play_integrity_verified=Depends(verify_play_integrity),
+):
+    """
+    Search YouTube videos based on the given query.
+
+    Args:
+        query (str): The search query for YouTube videos.
+
+    Returns:
+        dict: A dictionary containing the search results.
+
+    Raises:
+        HTTPException: If there's an error during the search process.
+    """
+    logging.info(f"Received YouTube search request with query: {query}")
+
+    try:
+        youtube_search = YouTubeSearch()
+        results = youtube_search.search_videos(query)
+        
+        logging.info(f"Successfully completed YouTube search for query: {query}")
+        return {"status": "success", "results": results}
+    
+    except Exception as e:
+        logging.error(f"Error occurred during YouTube search for query '{query}': {str(e)}")
+        raise HTTPException(status_code=500, detail="An error occurred during the YouTube search")
 
 @router.post("/linkfile")
 def create_link_file(
@@ -135,7 +165,6 @@ def create_link_file(
             "friendly_name": file_model.friendly_filename,
         },
     }
-
 
 @router.post("/")
 def create_file(
@@ -239,7 +268,6 @@ def create_file(
     finally:
         file.file.close()
 
-
 @router.get("/")
 def get_file(
     collection_name: str,
@@ -264,7 +292,6 @@ def get_file(
     ]
     logging.info(f"Files got successfully, {user_id}")
     return {"status": "success", "files": files_response}
-
 
 @router.get("/{file_name}")
 def get_file(
@@ -293,7 +320,6 @@ def get_file(
         }
     logging.error(f"File does not exist, {user_id}")
     raise HTTPException(detail="File does not exist", status_code=404)
-
 
 @router.delete("/")
 def delete_file(
@@ -330,7 +356,6 @@ def delete_file(
     logging.info(f"File {file_name} deleted successfully, {user_id}")
     return {"status": "success", "error": "", "code": success}
 
-
 @router.get("/{file_name}/download")
 def download_file(
     collection_name: str,
@@ -361,3 +386,4 @@ def download_file(
     else:
         logging.error(f"File does not {user_id}")
         raise HTTPException(detail="File does not exist", status_code=404)
+
