@@ -44,9 +44,8 @@ from .ai_model import AIModel
 
 from contextlib import suppress
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_openai import AzureChatOpenAI
+from langchain_openai import AzureChatOpenAI, AzureOpenAIEmbeddings
 from langchain_openai.chat_models import ChatOpenAI
-from langchain_openai.embeddings import OpenAIEmbeddings
 from langchain.chat_models.base import BaseChatModel
 from google.generativeai.types.safety_types import HarmBlockThreshold, HarmCategory
 
@@ -256,20 +255,18 @@ notes_db = NotesDatabase(
 
 # OCR
 knowledge_manager = KnowledgeManager(
-    OpenAIEmbeddings(
-        model="text-embedding-3-small",
-        timeout=10,
-        max_retries=2
+    AzureOpenAIEmbeddings(
+        api_version="2023-05-15",
+        azure_deployment="text-embedding-3-small",
     ),
     chunk_size=520,
     ocr=ImageOCR(),
     collection_name="academi"
 )
 chat_manager = ChatManagerRetrieval(
-    OpenAIEmbeddings(
-        model="text-embedding-3-small",
-        timeout=10,
-        max_retries=2
+    AzureOpenAIEmbeddings(
+        api_version="2023-05-15",
+        azure_deployment="text-embedding-3-small",
     ),
     conversation_limit=2000,
     docs_limit=3700,

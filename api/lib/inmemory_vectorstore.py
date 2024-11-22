@@ -1,24 +1,26 @@
 from typing import List
 from langchain.vectorstores.qdrant import Qdrant
 from langchain.schema import Document
+from langchain_openai import AzureOpenAIEmbeddings
 from qdrant_client import QdrantClient
 from qdrant_client.http import models as rest
-from langchain.embeddings.openai import OpenAIEmbeddings
 
 class InMemoryVectorStore:
     def __init__(self, embeddings = None) -> None:
         if not embeddings:
-            self.embeddings = OpenAIEmbeddings(
-               model="text-embedding-3-small",
-               max_retries=2,
-               timeout=5
+            self.embeddings = AzureOpenAIEmbeddings(
+                api_version="2023-05-15",
+                azure_deployment="text-embedding-3-small",
             )
         else:
             self.embeddings = embeddings
         try:
             self.vectorstore = self.get_vectorstore()
         except Exception:
-            self.embeddings = OpenAIEmbeddings()
+            self.embeddings = AzureOpenAIEmbeddings(
+                api_version="2023-05-15",
+                azure_deployment="text-embedding-3-small",
+            )
             self.vectorstore = self.get_vectorstore()
         
         self.stored_page_docs = set()

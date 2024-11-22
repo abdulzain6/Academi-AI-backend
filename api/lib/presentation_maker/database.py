@@ -1,5 +1,7 @@
 import json
 import os
+
+from langchain_openai import AzureOpenAIEmbeddings
 from pptx.util import Inches
 from shutil import copy
 from pydantic import BaseModel
@@ -11,7 +13,6 @@ from qdrant_client import QdrantClient
 from qdrant_client.http import models as rest
 from pptx import Presentation
 from typing import List, Union, Optional
-from langchain.embeddings.openai import OpenAIEmbeddings
 
 DEFAULT_TEMPLATE_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "template_dir")
 DEFAULT_TEMPLATES_JSON = os.path.join(os.path.dirname(os.path.realpath(__file__)), "templates.json")
@@ -120,17 +121,19 @@ class TemplateDBManager:
 class TemplateKnowledgeManager(TemplateObserver):
     def __init__(self, embeddings = None) -> None:
         if not embeddings:
-            self.embeddings = OpenAIEmbeddings(
-               model="text-embedding-3-small",
-               max_retries=2,
-               timeout=5
+            self.embeddings = AzureOpenAIEmbeddings(
+                api_version="2023-05-15",
+                azure_deployment="text-embedding-3-small",
             )
         else:
             self.embeddings = embeddings
         try:
             self.vectorstore = self.get_vectorstore()
         except Exception:
-            self.embeddings = OpenAIEmbeddings()
+            self.embeddings = AzureOpenAIEmbeddings(
+                api_version="2023-05-15",
+                azure_deployment="text-embedding-3-small",
+            )
             self.vectorstore = self.get_vectorstore()
 
     def get_vectorstore(self) -> Qdrant:
