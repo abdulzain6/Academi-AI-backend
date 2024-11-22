@@ -73,10 +73,16 @@ except Exception:
     redis_cache_manager = RedisCacheManager(None)
 
 global_chat_model = AIModel(
-    regular_model=ChatOpenAI,
-    regular_args={"request_timeout": 60, "model_name" : "gpt-4o-mini"},
-    premium_model=ChatOpenAI,
-    premium_args={"model_name": "gpt-4o", "request_timeout": 60, "max_retries": 4},
+    regular_model=AzureChatOpenAI,
+    regular_args={
+        "api_version":"2024-08-01-preview",
+        "azure_deployment":"gpt-4o-mini",
+    },
+    premium_model=AzureChatOpenAI,
+    premium_args={
+        "api_version":"2024-08-01-preview",
+        "azure_deployment":"gpt-4o-mini",
+    },
 )
 
 global_chat_model_alternative = AIModel(
@@ -100,18 +106,10 @@ global_chat_model_alternative = AIModel(
 
 fallback_chat_models = [
     AIModel(
-        regular_model=AzureChatOpenAI,
-        regular_args={
-            "openai_api_version": "2024-05-01-preview",
-            "model": "gpt-35-turbo",
-            "azure_deployment": "academi",
-        },
-        premium_model=AzureChatOpenAI,
-        premium_args={
-            "openai_api_version": "2024-05-01-preview",
-            "model": "gpt-35-turbo",
-            "azure_deployment": "academi",
-        },
+        regular_model=ChatOpenAI,
+        regular_args={"request_timeout": 60, "model_name" : "gpt-4o-mini"},
+        premium_model=ChatOpenAI,
+        premium_args={"model_name": "gpt-4o-mini", "request_timeout": 60, "max_retries": 4},
     )
 ]
 

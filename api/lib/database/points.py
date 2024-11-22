@@ -188,3 +188,11 @@ class UserPointsManager:
             return timedelta(seconds=0)
 
         return timedelta(days=1) - time_since_last_claim
+    
+if __name__ == "__main__":
+    manager = UserPointsManager(
+        "mongodb://root:pdCHU4f7tF@localhost:27017", "study-app"
+    )
+    #pt = manager.increment_user_points("vMqZ3Ef9IyfrgDN5HIAWdCsrGWO2", 30)
+    print(manager.get_user_points("vMqZ3Ef9IyfrgDN5HIAWdCsrGWO2"))
+    #print(pt)
