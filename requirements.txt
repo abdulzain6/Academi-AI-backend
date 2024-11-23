@@ -215,5 +215,5 @@ cairosvg
 pydub
 deepgram-sdk
 markdown-it-py
-extractous
+extractous==0.2.0
 youtube-search-python

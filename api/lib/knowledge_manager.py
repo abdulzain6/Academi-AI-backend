@@ -163,8 +163,9 @@ class ExtractousLoader(BaseLoader):
     def load(self):
         pdf_config = PdfParserConfig().set_ocr_strategy(PdfOcrStrategy.NO_OCR)
         extractor = Extractor().set_ocr_config(TesseractOcrConfig().set_language("eng")).set_pdf_config(pdf_config)
+        data = extractor.extract_file_to_string(self.file_path)
         return [Document(
-            page_content=extractor.extract_file_to_string(self.file_path)
+            page_content=data[0]
         )]
 
 def split_into_chunks(text, chunk_size):
