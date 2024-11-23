@@ -85,22 +85,16 @@ global_chat_model = AIModel(
 )
 
 global_chat_model_alternative = AIModel(
-    regular_model=ChatOpenAI,
-    regular_args={"request_timeout": 60, "model_name" : "gpt-4o-mini"},
-    premium_model=ChatGoogleGenerativeAI,
-    premium_args={"model": "models/gemini-1.5-pro-latest", "request_timeout": 60, "max_retries": 4, "max_output_tokens" : 2500, "safety_settings" : {
-        HarmCategory.HARM_CATEGORY_UNSPECIFIED: HarmBlockThreshold.BLOCK_NONE,
-        HarmCategory.HARM_CATEGORY_DEROGATORY: HarmBlockThreshold.BLOCK_NONE,
-        HarmCategory.HARM_CATEGORY_TOXICITY: HarmBlockThreshold.BLOCK_NONE,
-        HarmCategory.HARM_CATEGORY_VIOLENCE: HarmBlockThreshold.BLOCK_NONE,
-        HarmCategory.HARM_CATEGORY_SEXUAL: HarmBlockThreshold.BLOCK_NONE,
-        HarmCategory.HARM_CATEGORY_MEDICAL: HarmBlockThreshold.BLOCK_NONE,
-        HarmCategory.HARM_CATEGORY_DANGEROUS: HarmBlockThreshold.BLOCK_NONE,
-        HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-        HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-        HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-        HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-    }}
+    regular_model=AzureChatOpenAI,
+    regular_args={
+        "api_version":"2024-08-01-preview",
+        "azure_deployment":"gpt-4o-mini",
+    },
+    premium_model=AzureChatOpenAI,
+    premium_args={
+        "api_version":"2024-08-01-preview",
+        "azure_deployment":"gpt-4o-mini",
+    },
 )
 
 fallback_chat_models = [
