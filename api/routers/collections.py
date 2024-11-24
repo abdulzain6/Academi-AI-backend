@@ -72,7 +72,7 @@ def create_collection(
         if collection_manager.collection_exists(collection.name, user_id):
             logging.error(f"Collection already exists, {user_id}")
             raise HTTPException(
-                status.HTTP_409_CONFLICT, "Collection with this name already exists"
+                status.HTTP_409_CONFLICT, "Subject with this name already exists. Please try a new name"
             )
 
         uid = str(uuid.uuid4())  # Generate a new UID for the collection
@@ -118,7 +118,7 @@ def delete_collection(
             )
     else:
         raise HTTPException(
-            status.HTTP_409_CONFLICT, "Collection with this name does not exist"
+            status.HTTP_409_CONFLICT, "Subject with this name does not exist"
         )
 
 
@@ -136,7 +136,7 @@ def update_collection(
             collection_update.name, user_id
         ):
             raise HTTPException(
-                status.HTTP_400_BAD_REQUEST, "Collection name already exists"
+                status.HTTP_400_BAD_REQUEST, "Subject name already exists. Try a new name."
             )
 
         to_update = collection_update.model_dump(exclude_none=True)
