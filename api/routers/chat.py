@@ -9,7 +9,7 @@ from api.config import CACHE_DOCUMENT_URL_TEMPLATE
 from ..lib.notes_maker import make_notes_maker, get_available_note_makers
 from api.config import REDIS_URL, CACHE_DOCUMENT_URL_TEMPLATE, SEARCHX_HOST
 from api.lib.database.cache_manager import RedisCacheManager
-from api.lib.tools import MarkdownToDocConverter, RequestsGetTool, SearchTool, SearchImage
+from api.lib.tools import MarkdownToDocConverter, RequestsGetTool, SearchTool, SearchImage, MakeTableTool
 from ..lib.database.messages import MessagePair
 from ..lib.utils import split_into_chunks
 from ..lib.tools import (
@@ -705,6 +705,10 @@ File Content:
             cache_manager=RedisCacheManager(redis.from_url(REDIS_URL)),
             url_template=CACHE_DOCUMENT_URL_TEMPLATE,
         ),
+        MakeTableTool(
+            cache_manager=RedisCacheManager(redis.from_url(REDIS_URL)),
+            url_template=CACHE_DOCUMENT_URL_TEMPLATE,
+        )
     ]
     
     optional_tools = [

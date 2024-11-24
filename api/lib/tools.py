@@ -8,7 +8,7 @@ from docx import Document
 from docx.shared import RGBColor
 import requests
 import vl_convert as vlc
-from typing import List, Dict, Union, Optional, IO
+from typing import Any, List, Dict, Union, Optional, IO
 from scholarly import scholarly
 from langchain.tools.base import BaseTool
 from langchain.callbacks.manager import (
@@ -37,7 +37,90 @@ from api.lib.notes_maker import NotesMaker
 from graphviz import Source
 from api.lib.database import Presentation
 from api.lib.database.notes import MakeNotesInput
+import random
+import pandas as pd
+from io import BytesIO
+from bs4 import BeautifulSoup
+import matplotlib.pyplot as plt
 
+class MakeTableTool(BaseTool):
+    """Used to make a table from html table input."""
+
+    name: str = "make_table"
+    description: str = (
+        "Used to make a table from html table input. Make sure to include table tag."
+    )
+    url_template: str
+    cache_manager: Any
+
+    def _run(
+        self,
+        html_table: str,
+        run_manager: Optional[CallbackManagerForToolRun] = None,
+        *args,
+        **kwargs,
+    ) -> str:
+
+        if not html_table.strip():
+            raise ValueError("HTML table string is empty.")
+        
+        try:
+            soup = BeautifulSoup(html_table, 'html.parser')
+        except Exception as e:
+            raise ValueError(f"Error parsing HTML: {e}")
+
+        table = soup.find('table')
+        if not table:
+            raise ValueError("No <table> element found in the HTML.")
+        
+        headers = [th.get_text() for th in table.find_all('th')]
+        if not headers:
+            raise ValueError("No headers found in the table.")
+
+        rows = []
+        for tr in table.find_all('tr'):
+            cells = tr.find_all('td')
+            if len(cells) > 0:
+                row = [cell.get_text() for cell in cells]
+                rows.append(row)
+
+        if not rows:
+            raise ValueError("No data rows found in the table.")
+
+        df = pd.DataFrame(rows, columns=headers)
+
+        if df.empty:
+            raise ValueError("Failed to create DataFrame from HTML table.")
+
+        try:
+            plt.style.use(random.choice(plt.style.available))
+        except Exception as e:
+            raise RuntimeError(f"Error setting matplotlib style: {e}")
+
+        fig, ax = plt.subplots(figsize=(8, len(rows) * 0.5))
+        ax.axis('tight')
+        ax.axis('off')
+        table = ax.table(cellText=df.values, colLabels=df.columns, cellLoc='center', loc='center')
+
+        for key, cell in table.get_celld().items():
+            if key[0] == 0:
+                cell.set_text_props(fontweight='bold')
+
+        image_stream = BytesIO()
+        try:
+            plt.savefig(image_stream, format='png', bbox_inches='tight')
+            plt.close(fig)
+        except Exception as e:
+            raise RuntimeError(f"Error saving plot to image stream: {e}")
+
+        image_stream.seek(0)
+
+        doc_id = str(uuid.uuid4()) + ".png"
+        document_url = self.url_template.format(doc_id=doc_id)
+
+
+        self.cache_manager.set(key=doc_id, value=image_stream.getvalue(), ttl=18000, suppress=False)
+        return f"{document_url} Give this link as it is to the user; don't add a sandbox prefix to it. The user won't receive the file until you explicitly read out the link to him."
 
 
 def _clean_url(url: str) -> str:

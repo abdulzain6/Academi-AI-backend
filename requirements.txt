@@ -217,3 +217,5 @@ deepgram-sdk
 markdown-it-py
 extractous==0.2.0
 youtube-search-python
+matplotlib
+pandas
