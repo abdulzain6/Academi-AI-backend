@@ -693,7 +693,7 @@ File Content:
             func=lambda dot_code, *args, **kwargs: create_graphviz_graph(
                 dot_code=dot_code
             ),
-            name="make_graphviz_graph",
+            name="make_graph",
             description="Used to make graphs using graphviz. Takes in valid dot language code for graphviz it must be in string no extra args",
             #args_schema=MakeGraphArgs,
         ),
