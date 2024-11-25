@@ -18,7 +18,7 @@ from itertools import islice
 
 from langchain.embeddings.base import Embeddings
 from langchain.chat_models.base import BaseChatModel
-from langchain_community.document_loaders.unstructured import UnstructuredAPIFileLoader
+from langchain_community.document_loaders.unstructured import UnstructuredFileLoader
 from langchain.text_splitter import TokenTextSplitter
 from langchain_community.document_loaders import YoutubeLoader
 
@@ -246,7 +246,7 @@ class KnowledgeManager:
             loader = ExtractousLoader(file_path=filepath)
             return loader.load()
         except Exception:
-            return UnstructuredAPIFileLoader(file_path=filepath, strategy="fast").load()
+            return UnstructuredFileLoader(file_path=filepath, strategy="fast").load()
 
     def load_data(self, file_path: str, advanced_pdf_extraction: bool = False) -> Tuple[str, List[Document], bytes]:
         print(f"Loading {file_path}")
