@@ -70,15 +70,15 @@ class DiagramMaker:
             dot = Source(dot_code)
             return dot.pipe(format='png')
         
-        @tool
-        def make_uml_diagram(plantuml_code: str) -> bytes:
-            "Used to make diagrams using plantuml"
-            plantuml_code = self.extract_code(plantuml_code)
-            data = self.uml_generator.processes(plantuml_code)
-            return data
+    #    @tool
+    #    def make_uml_diagram(plantuml_code: str) -> bytes:
+    #        "Used to make diagrams using plantuml"
+    #        plantuml_code = self.extract_code(plantuml_code)
+    #        data = self.uml_generator.processes(plantuml_code)
+    #        return data
         
         
-        tools = [make_graphviz_graph, make_vegalite_graph, make_uml_diagram]
+        tools = [make_graphviz_graph, make_vegalite_graph]
         tool_map = {tool.name: tool for tool in tools}
         llm_with_tools = self.llm.bind_tools(tools, tool_choice="required")
         instructions = f"\nFollow the following instructions: {instructions}" if instructions else  ""
