@@ -13,10 +13,12 @@ from .lib.database.user_city_country import UserLocation
 
 import logging
 import jwt
+from threading import Lock
 
 
 security = HTTPBearer()
 
+location_lock = Lock()
 
 
 class FraudException(Exception):
@@ -39,22 +41,34 @@ def get_user_id(credentials: HTTPAuthorizationCredentials = Depends(security), r
     try:
         user_id = get_set_user_id(cache_key, token)
         
-        try:
-            if not user_location_db.get_location(user_id=user_id) and ip_address:
-                location = ip_locator.get_location_from_ip(ip_address)
-                assert "country" in location
-                logging.info(f"User {user_id} is from {location.get('country')}, {location.get('city')}")
-                user_location_db.create_location(
-                    UserLocation(user_id=user_id, city=location.get("city"), country=location.get("country"))
-                )
-        except Exception as e:
-            print(e)
-            logging.error(f"Error finding location for IP: {ip_address}, User: {user_id}")
-        
+        with location_lock:
+            location_cache_key = f"user_location:{user_id}"
+            cached_location = redis_cache_manager.get(location_cache_key)
+            
+            if not cached_location:
+                try:
+                    db_location = user_location_db.get_location(user_id=user_id)
+                    if not db_location and ip_address:
+                        location = ip_locator.get_location_from_ip(ip_address)
+                        assert "country" in location
+                        logging.info(f"User {user_id} is from {location.get('country')}, {location.get('city')}")
+                        user_location_db.create_location(
+                            UserLocation(user_id=user_id, city=location.get("city"), country=location.get("country"))
+                        )
+                        cached_location = {"city": location.get("city"), "country": location.get("country")}
+                    elif db_location:
+                        cached_location = {"city": db_location.city, "country": db_location.country}
+                    
+                    if cached_location:
+                        redis_cache_manager.set(location_cache_key, cached_location, ttl=86400)  # Cache for 24 hours
+                except Exception as e:
+                    print(e)
+                    logging.error(f"Error finding location for IP: {ip_address}, User: {user_id}")
+
         # Log the IP address along with the user ID
         if ip_address:
             logging.info(f"User ID: {user_id}, IP Address: {ip_address}")
-        
+
         return user_id
     except FraudException as e:
         logging.error(f"Fraud detected - Token: {token}, IP: {ip_address}, Error: {e}")
@@ -63,7 +77,7 @@ def get_user_id(credentials: HTTPAuthorizationCredentials = Depends(security), r
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"Your account has been banned because of fraud, please contact customer support!",
             headers={"WWW-Authenticate": "Bearer"},
-        )     
+        )
     except Exception as e:
         logging.error(f"Authentication error - Token: {token}, IP: {ip_address}, Error: {e}")
         redis_cache_manager.delete(cache_key)
@@ -72,7 +86,6 @@ def get_user_id(credentials: HTTPAuthorizationCredentials = Depends(security), r
             detail=f"Invalid authentication credentials {str(e)}",
             headers={"WWW-Authenticate": "Bearer"},
         ) from e
-
 
 def get_set_user_id(cache_key, token):
     if cached_user_id := redis_cache_manager.get(cache_key):
