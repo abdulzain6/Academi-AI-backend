@@ -48,6 +48,7 @@ def get_user_id(credentials: HTTPAuthorizationCredentials = Depends(security), r
                     UserLocation(user_id=user_id, city=location.get("city"), country=location.get("country"))
                 )
         except Exception as e:
+            print(e)
             logging.error(f"Error finding location for IP: {ip_address}, User: {user_id}")
         
         # Log the IP address along with the user ID
