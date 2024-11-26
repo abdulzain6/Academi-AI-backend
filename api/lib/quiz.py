@@ -191,6 +191,7 @@ You will generate a variety of question types. (IMportant)
 You will not generate unimportant or incomplete questions.
 You will not generate too many questions as this is not the full quiz but a part of it. (Important) 
 The quiz is to be of {number_of_questions} questions. (Important)
+The quiz must be in the same language as the data provided (important)
 Follow the schema provided to generate the quiz, failing to do so will raise an error. (Important!!)
 """
                 ),
@@ -299,6 +300,7 @@ You will not generate too many questions as this is not the full set but a part 
 The flashcard set is to be of {number_of_questions} questions. (Important)
 Follow the schema provided to generate the flashcards, failing to do so will raise an error. (Important!!)
 Only return the json!!
+The flashcards must be in the same language as the data provided (important)
 """
                 ),
                 HumanMessagePromptTemplate.from_template(
