@@ -1,3 +1,4 @@
+from api.lib.ip_locator import IPLocator
 from api.lib.uml_diagram_maker import PlantUML
 from .config import *
 from .lib.database import (
@@ -11,7 +12,9 @@ from .lib.database import (
     CourseRepository,
     LectureDB,
     MongoDBPresentationStore,
-    NotesDatabase
+    NotesDatabase,
+    UserLocation,
+    UserLocationDB
 )
 from .lib.database.purchases import (
     SubscriptionFeatures,
@@ -47,7 +50,6 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import AzureChatOpenAI, AzureOpenAIEmbeddings
 from langchain_openai.chat_models import ChatOpenAI
 from langchain.chat_models.base import BaseChatModel
-from google.generativeai.types.safety_types import HarmBlockThreshold, HarmCategory
 
 
 
@@ -244,7 +246,11 @@ notes_db = NotesDatabase(
     MONGODB_URL,
     DATABASE_NAME
 )
-
+user_location_db = UserLocationDB(
+    MONGODB_URL,
+    DATABASE_NAME
+)
+ip_locator = IPLocator()
 
 
 # OCR

@@ -1,13 +1,15 @@
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from firebase_admin import auth
 from fastapi import Depends, HTTPException, Header, status
+from fastapi import Request
 from firebase_admin import app_check
 from google.oauth2 import id_token
 from google.auth.transport import requests
 from google.oauth2 import service_account
-from .globals import credentials_path, redis_cache_manager, email_checker
+from .globals import credentials_path, redis_cache_manager, email_checker, user_location_db, ip_locator
 from .firebase import default_app
 from .config import API_KEY_BACKDOOR, CRONJOB_KEY
+from .lib.database.user_city_country import UserLocation
 
 import logging
 import jwt
@@ -15,16 +17,46 @@ import jwt
 
 security = HTTPBearer()
 
+
+
 class FraudException(Exception):
     pass
 
-def get_user_id(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
+
+
+
+def get_user_id(credentials: HTTPAuthorizationCredentials = Depends(security), request: Request = None) -> str:
     token = credentials.credentials
     cache_key = f"token_new:{token}"
+    
+    # Get the client's IP address
+    if request:
+        ip_address = request.headers.get('X-Forwarded-For', request.client.host)
+        ip_address = ip_address.split(',')[0].strip() if ip_address else None
+    else:
+        ip_address = None
+
     try:
-        return get_set_user_id(cache_key, token)
+        user_id = get_set_user_id(cache_key, token)
+        
+        try:
+            if not user_location_db.get_location(user_id=user_id) and ip_address:
+                location = ip_locator.get_location_from_ip(ip_address)
+                assert "country" in location
+                logging.info(f"User {user_id} is from {location.get('country')}, {location.get('city')}")
+                user_location_db.create_location(
+                    UserLocation(user_id=user_id, city=location.get("city"), country=location.get("country"))
+                )
+        except Exception as e:
+            logging.error(f"Error finding location for IP: {ip_address}, User: {user_id}")
+        
+        # Log the IP address along with the user ID
+        if ip_address:
+            logging.info(f"User ID: {user_id}, IP Address: {ip_address}")
+        
+        return user_id
     except FraudException as e:
-        logging.error(f"Fraud detected {token} {e}")
+        logging.error(f"Fraud detected - Token: {token}, IP: {ip_address}, Error: {e}")
         redis_cache_manager.delete(cache_key)
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -32,6 +64,7 @@ def get_user_id(credentials: HTTPAuthorizationCredentials = Depends(security)) -
             headers={"WWW-Authenticate": "Bearer"},
         )     
     except Exception as e:
+        logging.error(f"Authentication error - Token: {token}, IP: {ip_address}, Error: {e}")
         redis_cache_manager.delete(cache_key)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
