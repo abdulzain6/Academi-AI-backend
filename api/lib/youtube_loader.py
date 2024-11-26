@@ -55,7 +55,7 @@ class YoutubeLoader(BaseLoader):
         proxy: str = os.getenv("PROXY", "http://dprulefr-rotate:7obapq1qv8fl@p.webshare.io:80")
         print(f"Using proxy: {proxy}")
         
-        for _ in range(5):
+        for _ in range(2):
             try:
                 video_id: str = self._parse_video_id(self.video_url)
                 if not video_id:
