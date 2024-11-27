@@ -33,7 +33,7 @@ class MarkdownNotesMaker(NotesMaker):
         prompt = ChatPromptTemplate(
             messages=[
                 SystemMessagePromptTemplate.from_template(
-                    """You are an AI designed to make cornell notes from text.
+                    """You are an AI designed to make Text notes from text.
 You must also follow the instructions given to you
 Only answer from the notes given to you. No making things up
 You must pick every minute detail.
@@ -63,6 +63,41 @@ The notes in markdown (RETURN NO OTHER TEXT):"""
         chain = LLMChain(prompt=prompt, llm=self.llm)
         notes = chain.run(data=string, instructions=instructions)
         return self.make_notes(data=MarkdownData(content=notes))
+    
+    def make_notes_from_string_return_string(self, string: str, instructions: str) -> tuple[str, io.BytesIO]:
+        prompt = ChatPromptTemplate(
+            messages=[
+                SystemMessagePromptTemplate.from_template(
+                    """You are an AI designed to make cornell notes from text.
+You must also follow the instructions given to you
+Only answer from the notes given to you. No making things up
+You must pick every minute detail.
+You will return the notes in markdown
+You must make super detailed and lenghty notes
+"""
+                ),
+                HumanMessagePromptTemplate.from_template(
+                    """
+Use the following data to make the notes:
+{data}
+============
+
+Follow the instructions below also:
+============
+{instructions}
+============
+
+The notes in markdown (RETURN NO OTHER TEXT):"""
+                ),
+            ],
+            input_variables=[
+                "data",
+                "instructions"
+            ],
+        )
+        chain = LLMChain(prompt=prompt, llm=self.llm)
+        notes = chain.run(data=string, instructions=instructions)
+        return notes, self.make_notes(data=MarkdownData(content=notes))
         
     def make_notes(self, data: MarkdownData, context: None = None):
         with tempfile.NamedTemporaryFile(delete=False, suffix='.docx') as temp_file:

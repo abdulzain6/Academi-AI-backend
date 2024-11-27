@@ -5,7 +5,7 @@ from pymongo.collection import Collection
 
 class UserLocation(BaseModel):
     user_id: str
-    city: str
+    city: Optional[str] = None
     country: str
 
 class UserLocationDB:

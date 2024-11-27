@@ -5,9 +5,9 @@ from typing import Optional, Dict
 
 class IPLocator:
     API_ENDPOINTS = [
+        "http://ip-api.com/json/{}",
         "https://ipwhois.app/json/{}",
         "https://ipapi.com/ip_api.php?ip={}",
-        "http://ip-api.com/json/{}",
         "https://ipapi.co/{}/json/",
         "https://ipinfo.io/{}/json",
         "https://freegeoip.app/json/{}",

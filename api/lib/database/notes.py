@@ -1,3 +1,4 @@
+from typing import Optional
 import uuid
 from bson import ObjectId
 from pydantic import BaseModel
@@ -8,6 +9,7 @@ import gridfs, base64
 class MakeNotesInput(BaseModel):
     instructions: str
     template_name: str
+    notes_md: Optional[str] = None
 
 
 class NotesDatabase:
@@ -18,8 +20,8 @@ class NotesDatabase:
         self.collection = self.db["notes"]
         self.fs = gridfs.GridFS(self.db)
     
-    def store_note(self, user_id: str, note: MakeNotesInput, file: BytesIO, thumbnail: BytesIO):
-        """Store a note along with the file and thumbnail in GridFS."""
+    def store_note(self, user_id: str, note: MakeNotesInput, file: BytesIO, thumbnail: BytesIO) -> str:
+        """Store a note along with the file and thumbnail in GridFS and return the note id as a string."""
         file.seek(0)
         thumbnail.seek(0)
     
@@ -31,10 +33,12 @@ class NotesDatabase:
             "instructions": note.instructions,
             "template_name": note.template_name,
             "file_id": file_id,
-            "thumbnail_id": thumbnail_id
+            "thumbnail_id": thumbnail_id,
+            "notes_md": note.notes_md
         }
-        self.collection.insert_one(note_data)
-
+        result = self.collection.insert_one(note_data)
+        return str(result.inserted_id)
+    
     def get_notes_by_user(self, user_id: str):
         """Retrieve all notes for a specific user, with base64-encoded thumbnails (no files)."""
         notes = self.collection.find({"user_id": user_id})
@@ -48,6 +52,7 @@ class NotesDatabase:
                 "instructions": note["instructions"],
                 "template_name": note["template_name"],
                 "thumbnail_base64": thumbnail_base64,
+                "notes_md" : note["notes_md"],
                 "id" : str(note["_id"])
             })
         return notes_list
@@ -70,6 +75,7 @@ class NotesDatabase:
                 "template_name": note_data["template_name"],
                 "file_base64": file_base64,
                 "thumbnail_base64": thumbnail_base64,
+                "notes_md" : note_data["notes_md"],
                 "id" : str(note_data["_id"])
             }
         return None

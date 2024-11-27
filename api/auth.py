@@ -59,8 +59,10 @@ def get_user_id(credentials: HTTPAuthorizationCredentials = Depends(security), r
                     elif db_location:
                         cached_location = {"city": db_location.city, "country": db_location.country}
                     
-                    if cached_location:
-                        redis_cache_manager.set(location_cache_key, cached_location, ttl=86400)  # Cache for 24 hours
+                    else:
+                        cached_location = {"city" : None, "country" : None}
+
+                    redis_cache_manager.set(location_cache_key, cached_location, ttl=86400)  # Cache for 24 hours
                 except Exception as e:
                     print(e)
                     logging.error(f"Error finding location for IP: {ip_address}, User: {user_id}")

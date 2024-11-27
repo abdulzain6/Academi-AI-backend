@@ -1,4 +1,5 @@
 import asyncio
+from io import BytesIO
 import logging
 import random
 import tempfile
@@ -7,7 +8,7 @@ from bson import ObjectId
 from fastapi.responses import StreamingResponse
 from ..auth import get_user_id, verify_play_integrity
 from ..dependencies import require_points_for_feature, can_use_premium_model
-from ..lib.notes_maker import make_notes_maker, get_available_note_makers
+from ..lib.notes_maker import make_notes_maker, get_available_note_makers, MarkdownNotesMaker
 from ..globals import get_model, collection_manager, file_manager, knowledge_manager, notes_db
 from ..lib.ocr import ImageOCR
 from .utils import select_random_chunks
@@ -30,7 +31,9 @@ class MakeNotesInput(BaseModel):
     url: Optional[str] = None
     collection_name: Optional[str] = None
     file_name: Optional[str] = None
-    instructions: str
+    instructions: Optional[str] = "Create comprehensive and well-structured notes that summarize the main points, include relevant details, use clear headings and subheadings, incorporate bullet points or numbered lists for clarity, highlight key concepts or terms, and provide brief examples or explanations where necessary. Ensure the notes are concise yet informative, easy to read, and follow a logical flow."
+
+class MakeNotesInputWithTemplate(MakeNotesInput):
     template_name: str
 
 class NoteResponse(BaseModel):
@@ -99,7 +102,6 @@ def ocr_image_route(
         logging.error(f"Error in ocr {e}")
         raise HTTPException(400, f"Error: {e}") from e
 
-
 @router.get("/templates")
 def get_available_templates(
     user_id: str = Depends(get_user_id),
@@ -110,21 +112,20 @@ def get_available_templates(
     logging.info(f"processed get ppt templates request, {user_id}")
     return {"note_templates": templates}
 
-
 @router.post("/make_notes")
 @require_points_for_feature("NOTES")
 def make_notes(
-    notes_input: MakeNotesInput,
+    notes_input: MakeNotesInputWithTemplate,
     user_id: str = Depends(get_user_id),
     play_integrity_verified=Depends(verify_play_integrity),
 ):
     if not notes_input.data and not notes_input.collection_name and not notes_input.url:
-        raise HTTPException(400, detail="Data, collection name or url must be provided")
+        raise HTTPException(400, detail="Data, Subject name or url must be provided")
 
     if notes_input.collection_name and not collection_manager.collection_exists(
         notes_input.collection_name, user_id
     ):
-        raise HTTPException(400, detail="Collection not found!")
+        raise HTTPException(400, detail="Subject not found!")
 
     if notes_input.file_name and not file_manager.file_exists(
         collection_uid=collection_manager.resolve_collection_uid(
@@ -180,21 +181,6 @@ def make_notes(
 
     content = select_random_chunks(data, 2000, 4500)
     data = notes_maker.make_notes_from_string(content, notes_input.instructions)
-    data.seek(0)
-
-    print(data.getvalue())
-    data.seek(0)
-
-    thumbnail = docx_to_pdf_thumbnail(data)
-    notes_db.store_note(
-        user_id=user_id, 
-        note=StoreNotesInput(
-            instructions=notes_input.instructions,
-            template_name=notes_input.template_name
-        ),
-        file=data,
-        thumbnail=thumbnail
-    )
     data.seek(0)  # Reset before StreamingResponse
     response = StreamingResponse(data, media_type="application/octet-stream")
     response.headers[
@@ -202,6 +188,75 @@ def make_notes(
     ] = f"attachment; filename={notes_input.template_name}.docx"
     return response
 
+@router.post("/make-notes-v2")
+@require_points_for_feature("NOTES")
+def make_notes(
+    notes_input: MakeNotesInput,
+    user_id: str = Depends(get_user_id),
+    play_integrity_verified = Depends(verify_play_integrity),
+):
+    if not notes_input.data and not notes_input.collection_name and not notes_input.url:
+        raise HTTPException(400, detail="Data, Subject name or url must be provided")
+
+    if notes_input.collection_name and not collection_manager.collection_exists(
+        notes_input.collection_name, user_id
+    ):
+        raise HTTPException(400, detail="Subject not found!")
+
+    if notes_input.file_name and not file_manager.file_exists(
+        collection_uid=collection_manager.resolve_collection_uid(
+            notes_input.collection_name, user_id=user_id
+        ),
+        user_id=user_id,
+        filename=notes_input.file_name,
+    ):
+        raise HTTPException(400, detail="File not found!")
+
+    if notes_input.data:
+        data = notes_input.data
+    elif notes_input.url:
+        try:
+            data, _, _ = knowledge_manager.load_web_youtube_link({}, None, web_url=notes_input.url, injest=False)
+        except ValueError as e:
+            raise HTTPException(400, detail=f"Error: {e}")
+        except Exception as e:
+            logging.error(f"Error: {e}")
+            raise HTTPException(400, detail=f"There was an issue in getting data from the url, Please try another url")
+
+
+    elif notes_input.file_name:
+        file = file_manager.get_file_by_name(
+            user_id=user_id,
+            collection_name=notes_input.collection_name,
+            filename=notes_input.file_name,
+        )
+        data = file.file_content
+    else:
+        files = file_manager.get_all_files(
+            user_id=user_id, collection_name=notes_input.collection_name
+        )
+        data = "\n".join([file.file_content for file in files])
+
+    model_name, premium_model = can_use_premium_model(user_id=user_id)
+    model = get_model({"temperature": 0.2}, False, premium_model, alt=True, json_mode=True)
+    notes_maker = MarkdownNotesMaker(model)    
+        
+    content = select_random_chunks(data, 2000, 4500)
+    data, doc = notes_maker.make_notes_from_string_return_string(content, notes_input.instructions)
+    doc.seek(0)
+    thumbnail = docx_to_pdf_thumbnail(doc)
+    doc.seek(0)
+    notes_id = notes_db.store_note(
+        user_id=user_id, 
+        note=StoreNotesInput(
+            instructions=notes_input.instructions,
+            template_name="Text Notes",
+            notes_md=data
+        ),
+        file=doc,
+        thumbnail=thumbnail
+    )
+    return {"note_id" : notes_id, "notes_markdown" : data}
 
 @router.get("/")
 def get_all_notes(user_id=Depends(get_user_id)):
@@ -210,7 +265,6 @@ def get_all_notes(user_id=Depends(get_user_id)):
     if not notes:
         raise HTTPException(status_code=404, detail="No notes found for the user.")
     return notes
-
 
 @router.get("/{note_id}")
 def get_note_by_id(note_id: str, user_id=Depends(get_user_id)):
