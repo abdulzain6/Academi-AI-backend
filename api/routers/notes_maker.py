@@ -170,7 +170,7 @@ def make_notes(
     else:
         json_mode = True
 
-    model = get_model({"temperature": 0.2}, False, premium_model, alt=True, json_mode=json_mode)
+    model = get_model({"temperature": 0.2}, False, premium_model, alt=False, json_mode=json_mode)
 
     try:
         notes_maker = make_notes_maker(notes_input.template_name, llm=model)
@@ -238,7 +238,7 @@ def make_notes(
         data = "\n".join([file.file_content for file in files])
 
     model_name, premium_model = can_use_premium_model(user_id=user_id)
-    model = get_model({"temperature": 0.2}, False, premium_model, alt=True, json_mode=True)
+    model = get_model({"temperature": 0.2}, False, premium_model, alt=False, json_mode=True)
     notes_maker = MarkdownNotesMaker(model)    
         
     content = select_random_chunks(data, 2000, 4500)

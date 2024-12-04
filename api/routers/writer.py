@@ -16,7 +16,7 @@ def write_content(
     play_integrity_verified=Depends(verify_play_integrity),
 ):     
     model_name, premium_model = can_use_premium_model(user_id=user_id)     
-    model = get_model({"temperature": 0.3}, False, premium_model, alt=True)
+    model = get_model({"temperature": 0.3}, False, premium_model, alt=False)
     writer = Writer(model)
     logging.info(f"Writer request from {user_id}, Data: {input}")
     content = writer.get_content(input)
