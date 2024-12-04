@@ -75,7 +75,7 @@ def make_cv(
     cv_maker = CVMaker(
         templates=template_loader(),
         chrome_path="/usr/bin/google-chrome",
-        chat_model=get_model({"temperature": 0.2}, stream=False, is_premium=False, alt=True, json_mode=True)
+        chat_model=get_model({"temperature": 0.2}, stream=False, is_premium=False, alt=False, json_mode=True)
     )
 
     if not cv_maker.get_template_by_name(cv_input.template_name):

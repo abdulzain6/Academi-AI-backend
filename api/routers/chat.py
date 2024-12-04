@@ -138,7 +138,7 @@ def chat_collection_stream(
 
     model_name, premium_model = can_use_premium_model(user_id=user_id)
     model_default, model_fallback = get_model_and_fallback(
-        {"temperature": 0.3}, True, premium_model, alt=True
+        {"temperature": 0.3}, True, premium_model, alt=False
     )
     data_queue = queue.Queue()
 
@@ -266,7 +266,7 @@ def chat_file_stream(
 
     model_name, premium_model = can_use_premium_model(user_id=user_id)
     model_default, model_fallback = get_model_and_fallback(
-        {"temperature": 0.3}, True, premium_model, alt=True
+        {"temperature": 0.3}, True, premium_model, alt=False
     )
     data_queue = queue.Queue()
 
@@ -504,7 +504,7 @@ File Content:
         except Exception:
             return "Limit reached user cannot make more ppts"
 
-        llm = get_model({"temperature": 0.3}, False, premium_model, alt=True, json_mode=True)
+        llm = get_model({"temperature": 0.3}, False, premium_model, alt=False, json_mode=True)
         ppt_pages = (
             subscription_manager.get_feature_value(user_id, "ppt_pages").main_data or 12
         )
@@ -586,7 +586,7 @@ File Content:
         except Exception:
             return "Limit reached user cannot make more notes"
 
-        llm = get_model({"temperature": 0.3}, False, premium_model, alt=True)
+        llm = get_model({"temperature": 0.3}, False, premium_model, alt=False)
         try:
             return deduct_points_for_feature(
                 user_id,
@@ -616,7 +616,7 @@ File Content:
         
     def write_content_tool_func(topic: str, to_generate: str, negative_prompt: str, minimum_word_count: int, instructions: str):
         model_name, premium_model = can_use_premium_model(user_id=user_id)
-        model = get_model({"temperature": 0}, False, premium_model, alt=True)
+        model = get_model({"temperature": 0}, False, premium_model, alt=False)
         writer = Writer(model)
         try:
             return deduct_points_for_feature(
