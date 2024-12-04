@@ -87,16 +87,10 @@ global_chat_model = AIModel(
 )
 
 global_chat_model_alternative = AIModel(
-    regular_model=AzureChatOpenAI,
-    regular_args={
-        "api_version":"2024-08-01-preview",
-        "azure_deployment":"gpt-4o-mini",
-    },
-    premium_model=AzureChatOpenAI,
-    premium_args={
-        "api_version":"2024-08-01-preview",
-        "azure_deployment":"gpt-4o-mini",
-    },
+    regular_model=ChatOpenAI,
+    regular_args={"request_timeout": 60, "model_name" : "gpt-4o-mini"},
+    premium_model=ChatOpenAI,
+    premium_args={"model_name": "gpt-4o-mini", "request_timeout": 60, "max_retries": 4},
 )
 
 fallback_chat_models = [
