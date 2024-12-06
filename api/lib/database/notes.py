@@ -1,10 +1,16 @@
+import io
+import os
+import tempfile
+import pypandoc
 from typing import Optional
-import uuid
 from bson import ObjectId
+from docx import Document
 from pydantic import BaseModel
-from io import BytesIO
+from datetime import datetime
 from pymongo import MongoClient
-import gridfs, base64
+from api.lib.notes_maker.markdown_maker import MarkdownData, RGBColor
+
+
 
 class MakeNotesInput(BaseModel):
     instructions: str
@@ -14,82 +20,74 @@ class MakeNotesInput(BaseModel):
 
 class NotesDatabase:
     def __init__(self, mongo_url: str, db_name: str):
-        """Initialize the NotesDatabase with a MongoDB connection URL and database name."""
         client = MongoClient(mongo_url)
         self.db = client[db_name]
         self.collection = self.db["notes"]
-        self.fs = gridfs.GridFS(self.db)
-    
-    def store_note(self, user_id: str, note: MakeNotesInput, file: BytesIO, thumbnail: BytesIO) -> str:
-        """Store a note along with the file and thumbnail in GridFS and return the note id as a string."""
-        file.seek(0)
-        thumbnail.seek(0)
-    
-        file_id = self.fs.put(file, filename=f"{note.template_name}_{uuid.uuid4()}.docx")
-        thumbnail_id = self.fs.put(thumbnail, filename=f"{note.template_name}__{uuid.uuid4()}thumbnail.png")
 
+    def store_note(self, user_id: str, note: MakeNotesInput) -> str:
         note_data = {
             "user_id": user_id,
             "instructions": note.instructions,
             "template_name": note.template_name,
-            "file_id": file_id,
-            "thumbnail_id": thumbnail_id,
-            "notes_md": note.notes_md
+            "notes_md": note.notes_md,
+            "created_at": datetime.utcnow()
         }
         result = self.collection.insert_one(note_data)
         return str(result.inserted_id)
     
     def get_notes_by_user(self, user_id: str):
-        """Retrieve all notes for a specific user, with base64-encoded thumbnails (no files)."""
         notes = self.collection.find({"user_id": user_id})
         notes_list = []
         for note in notes:
-            thumbnail_file = self.fs.get(note["thumbnail_id"]).read()
-            thumbnail_base64 = base64.b64encode(thumbnail_file).decode('utf-8')
-            
             notes_list.append({
                 "user_id": note["user_id"],
                 "instructions": note["instructions"],
                 "template_name": note["template_name"],
-                "thumbnail_base64": thumbnail_base64,
-                "notes_md" : note["notes_md"],
-                "id" : str(note["_id"])
+                "notes_md": note["notes_md"],
+                "id": str(note["_id"]),
+                "created_at": note["created_at"]
             })
         return notes_list
 
-    def get_note_with_file(self, user_id: str, note_id: ObjectId):
-        """Retrieve a specific note with the file and thumbnail."""
+    def get_note(self, user_id: str, note_id: ObjectId):
         note_data = self.collection.find_one({"_id": note_id, "user_id": user_id})
         
         if note_data:
-            file = self.fs.get(note_data["file_id"]).read()
-            print(len(file))
-            thumbnail_file = self.fs.get(note_data["thumbnail_id"]).read()
-            file_base64 = base64.b64encode(file).decode('utf-8')
-            thumbnail_base64 = base64.b64encode(thumbnail_file).decode('utf-8')
-
-
             return {
                 "user_id": note_data["user_id"],
                 "instructions": note_data["instructions"],
                 "template_name": note_data["template_name"],
-                "file_base64": file_base64,
-                "thumbnail_base64": thumbnail_base64,
-                "notes_md" : note_data["notes_md"],
-                "id" : str(note_data["_id"])
+                "notes_md": note_data["notes_md"],
+                "id": str(note_data["_id"]),
+                "created_at": note_data["created_at"]
             }
         return None
 
     def delete_note(self, user_id: str, note_id: ObjectId) -> bool:
-        """Delete a note by ID if it belongs to the user."""
-        note = self.collection.find_one({"_id": note_id, "user_id": user_id})
-        if not note:
-            return False
+        result = self.collection.delete_one({"_id": note_id, "user_id": user_id})
+        return result.deleted_count > 0
 
-        # Delete associated files from GridFS
-        self.fs.delete(note["thumbnail_id"])
-        self.fs.delete(note["file_id"])
+    def make_notes(self, data: MarkdownData) -> io.BytesIO:
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.docx') as temp_file:
+            pypandoc.convert_text(data.content, 'docx', format='md', outputfile=temp_file.name, sandbox=True)
+            temp_file_path = temp_file.name
 
-        # Delete the note document
-        self.collection.delete_one({"_id": note_id, "user_id": user_id})
-        return True
+        doc = Document(temp_file_path)
+
+        for paragraph in doc.paragraphs:
+            for run in paragraph.runs:
+                run.font.color.rgb = RGBColor(0, 0, 0)
+
+        file_obj = io.BytesIO()
+        doc.save(file_obj)
+        file_obj.seek(0)
+
+        os.unlink(temp_file_path)
+        return file_obj
+
+    def update_notes_md(self, user_id: str, note_id: ObjectId, new_notes_md: str) -> bool:
+        result = self.collection.update_one(
+            {"_id": note_id, "user_id": user_id},
+            {"$set": {"notes_md": new_notes_md}}
+        )
+        return result.modified_count > 0

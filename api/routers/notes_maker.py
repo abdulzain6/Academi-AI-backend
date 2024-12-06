@@ -1,18 +1,18 @@
 import asyncio
-from io import BytesIO
+import base64
 import logging
 import random
 import tempfile
 
 from bson import ObjectId
 from fastapi.responses import StreamingResponse
+from api.lib.notes_maker.markdown_maker import MarkdownData
 from ..auth import get_user_id, verify_play_integrity
 from ..dependencies import require_points_for_feature, can_use_premium_model
 from ..lib.notes_maker import make_notes_maker, get_available_note_makers, MarkdownNotesMaker
 from ..globals import get_model, collection_manager, file_manager, knowledge_manager, notes_db
 from ..lib.ocr import ImageOCR
 from .utils import select_random_chunks
-from ..lib.utils import docx_to_pdf_thumbnail
 from ..lib.database.notes import MakeNotesInput as StoreNotesInput
 from typing import Optional
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
@@ -42,6 +42,9 @@ class NoteResponse(BaseModel):
     instructions: str
     template_name: str
     thumbnail: str
+
+class UpdateNoteInput(BaseModel):
+    new_notes_md: str
 
 def transcribe_audio_with_deepgram(audio_data: bytes) -> str:
     """Transcribe the audio data using Deepgram API."""
@@ -242,45 +245,61 @@ def make_notes(
     notes_maker = MarkdownNotesMaker(model)    
         
     content = select_random_chunks(data, 2000, 4500)
-    data, doc = notes_maker.make_notes_from_string_return_string(content, notes_input.instructions)
-    doc.seek(0)
-    thumbnail = docx_to_pdf_thumbnail(doc)
-    doc.seek(0)
+    data = notes_maker.make_notes_from_string_return_string_only(content, notes_input.instructions)
     notes_id = notes_db.store_note(
         user_id=user_id, 
         note=StoreNotesInput(
             instructions=notes_input.instructions,
             template_name="Text Notes",
             notes_md=data
-        ),
-        file=doc,
-        thumbnail=thumbnail
+        )
     )
     return {"note_id" : notes_id, "notes_markdown" : data}
 
 @router.get("/")
-def get_all_notes(user_id=Depends(get_user_id)):
+def get_all_notes(user_id=Depends(get_user_id), play_integrity_verified = Depends(verify_play_integrity),):
     """Endpoint to get all notes for the current user."""
     notes = notes_db.get_notes_by_user(user_id)
-    if not notes:
-        raise HTTPException(status_code=404, detail="No notes found for the user.")
     return notes
 
+
 @router.get("/{note_id}")
-def get_note_by_id(note_id: str, user_id=Depends(get_user_id)):
+def get_note_by_id(
+    note_id: str,
+    user_id=Depends(get_user_id),
+    play_integrity_verified = Depends(verify_play_integrity),
+):
     """Endpoint to get a specific note by note ID."""
     try:
         note_object_id = ObjectId(note_id)
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid note ID.")
     
-    note = notes_db.get_note_with_file(user_id, note_object_id)
+    note = notes_db.get_note(user_id, note_object_id)
     if not note:
         raise HTTPException(status_code=404, detail="Note not found.")
-    return note
+    
+    # Generate the file
+    bytes_io = notes_db.make_notes(MarkdownData(content=note.get("notes_md")))
+
+    # Convert BytesIO to base64
+    bytes_io.seek(0)
+    file_content = bytes_io.getvalue()
+    base64_file = base64.b64encode(file_content).decode('utf-8')
+    
+    # Prepare the response
+    response = {
+        "note": note,
+        "file_base64": base64_file
+    }
+    return response
 
 @router.delete("/{note_id}", status_code=204)
-def delete_note(note_id: str, user_id=Depends(get_user_id)):
+def delete_note(
+    note_id: str, 
+    user_id=Depends(get_user_id),
+    play_integrity_verified = Depends(verify_play_integrity),
+):
     """Endpoint to delete a specific note by note ID."""
     try:
         note_object_id = ObjectId(note_id)
@@ -292,3 +311,22 @@ def delete_note(note_id: str, user_id=Depends(get_user_id)):
         raise HTTPException(status_code=404, detail="Note not found or not authorized to delete.")
 
     return {"detail": "Note deleted successfully"}
+
+@router.put("/{note_id}", status_code=200)
+def update_notes(
+    note_id: str, 
+    update_data: UpdateNoteInput, 
+    user_id=Depends(get_user_id),
+    play_integrity_verified = Depends(verify_play_integrity),
+):
+    """Endpoint to update a specific note by note ID."""
+    try:
+        note_object_id = ObjectId(note_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid note ID.")
+
+    # Attempt to update the note
+    if not notes_db.update_notes_md(user_id, note_object_id, update_data.new_notes_md):
+        raise HTTPException(status_code=404, detail="Note not found or not authorized to update.")
+
+    return {"detail": "Note updated successfully"}

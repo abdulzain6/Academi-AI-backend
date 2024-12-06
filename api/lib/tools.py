@@ -535,7 +535,6 @@ def make_notes(
             string=data_string,
             instructions=instructions
         )
-        thumbnail = docx_to_pdf_thumbnail(notes_io)
         notes_io.seek(0)
         notes_db.store_note(
             user_id=user_id, 
@@ -543,10 +542,7 @@ def make_notes(
                 instructions=instructions,
                 template_name=template_name,
                 notes_md=md
-
-            ),
-            file=notes_io,
-            thumbnail=thumbnail
+            )
         )
     else:
         notes_io = notes_maker.make_notes_from_string(
