@@ -11,7 +11,7 @@ from api.dependencies import require_points_for_feature
 from api.lib.assignment_solver import AssignmentSolver
 from api.lib.tools import SearchImage, SearchTool, ScholarlySearchRun, RequestsGetTool, make_uml_diagram, make_vega_graph, make_graphviz_graph
 from fastapi import APIRouter, Response, UploadFile, Depends, HTTPException
-from api.globals import SEARCHX_HOST, get_model_and_fallback, plantuml_server, redis_cache_manager, client, subscription_manager
+from api.globals import SEARCHX_HOST, get_model_and_fallback, get_model, redis_cache_manager, client, subscription_manager
 from ..auth import get_user_id, verify_play_integrity
 from langchain_community.utilities.searx_search import SearxSearchWrapper
 from langchain_community.utilities.requests import TextRequestsWrapper
@@ -39,8 +39,8 @@ def solve_assignment(
     if subscription_manager.get_subscription_type(user_id) in {SubscriptionType.FREE, SubscriptionType.LITE}:
         raise HTTPException(status_code=400, detail="You must be subscribed to pro or elite to use this feature.")
     
-    solver_llm, _ = get_model_and_fallback({"temperature" : 0}, False, True, alt=True)
-    extractor_llm, _ = get_model_and_fallback({"temperature" : 0}, False, True, alt=True)
+    solver_llm = get_model({"temperature" : 0}, False, True, alt=True)
+    extractor_llm, _ = get_model({"temperature" : 0}, False, True, alt=True)
 
     def make_graph(vega_lite_spec: str) -> str:
         if not vega_lite_spec:
