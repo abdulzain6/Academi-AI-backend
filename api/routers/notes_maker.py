@@ -13,7 +13,7 @@ from ..lib.notes_maker import make_notes_maker, get_available_note_makers, Markd
 from ..globals import get_model, collection_manager, file_manager, knowledge_manager, notes_db
 from ..lib.ocr import ImageOCR
 from .utils import select_random_chunks
-from ..lib.database.notes import MakeNotesInput as StoreNotesInput
+from ..lib.database.notes import MakeNotesInput as StoreNotesInput, NoteType
 from typing import Optional
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi import Depends, HTTPException
@@ -32,6 +32,7 @@ class MakeNotesInput(BaseModel):
     collection_name: Optional[str] = None
     file_name: Optional[str] = None
     instructions: Optional[str] = "Create comprehensive and well-structured notes that summarize the main points, include relevant details, use clear headings and subheadings, incorporate bullet points or numbered lists for clarity, highlight key concepts or terms, and provide brief examples or explanations where necessary. Ensure the notes are concise yet informative, easy to read, and follow a logical flow."
+    note_type: NoteType
 
 class MakeNotesInputWithTemplate(MakeNotesInput):
     template_name: str
@@ -45,6 +46,10 @@ class NoteResponse(BaseModel):
 
 class UpdateNoteInput(BaseModel):
     new_notes_md: str
+
+class CreateNoteManually(MakeNotesInput):
+    title: str
+    data: str
 
 def transcribe_audio_with_deepgram(audio_data: bytes) -> str:
     """Transcribe the audio data using Deepgram API."""
@@ -251,17 +256,36 @@ def make_notes(
         note=StoreNotesInput(
             instructions=notes_input.instructions,
             template_name="Text Notes",
-            notes_md=data
+            notes_md=data,
+            note_type=notes_input.note_type,
+            tilte=notes_maker.generate_title(data)
         )
     )
     return {"note_id" : notes_id, "notes_markdown" : data}
 
+@router.post("/")
+def create_note_manually(
+    notes_input: CreateNoteManually,
+    user_id = Depends(get_user_id),
+    play_integrity_verified = Depends(verify_play_integrity),
+):
+    notes_id = notes_db.store_note(
+        user_id=user_id, 
+        note=StoreNotesInput(
+            instructions=notes_input.instructions,
+            template_name="Text Notes",
+            notes_md=notes_input.data,
+            note_type=notes_input.note_type,
+            tilte=notes_input.title
+        )
+    )
+    return {"id" : notes_id}
+
 @router.get("/")
-def get_all_notes(user_id=Depends(get_user_id), play_integrity_verified = Depends(verify_play_integrity),):
+def get_all_notes(user_id=Depends(get_user_id), play_integrity_verified = Depends(verify_play_integrity)):
     """Endpoint to get all notes for the current user."""
     notes = notes_db.get_notes_by_user(user_id)
     return notes
-
 
 @router.get("/{note_id}")
 def get_note_by_id(

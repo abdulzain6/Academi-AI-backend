@@ -1,11 +1,13 @@
+import re
 import tempfile
 import pypandoc
 import os
 import io
-from pydantic import BaseModel, Field
+from langchain.pydantic_v1 import BaseModel, Field
 from docx import Document
 from docx.shared import RGBColor
 from langchain.chat_models.base import BaseChatModel
+from langchain.schema import SystemMessage, HumanMessage
 from langchain.prompts import (
     ChatPromptTemplate,
     SystemMessagePromptTemplate,
@@ -16,6 +18,9 @@ from .base import NotesMaker
 
 class MarkdownData(BaseModel):
     content: str = Field(json_schema_extra={"description" : "The notes content in markdown format"})
+
+class Title(BaseModel):
+    title: str
 
 class MarkdownNotesMaker(NotesMaker):
     def __init__(self, llm: BaseChatModel, **kwargs):
@@ -74,6 +79,7 @@ Only answer from the notes given to you. No making things up
 You must pick every minute detail.
 You will return the notes in markdown
 You must make super detailed and lenghty notes
+Only return markdown content dont put inside of markdown block just return content.
 """
                 ),
                 HumanMessagePromptTemplate.from_template(
@@ -97,7 +103,29 @@ The notes in markdown (RETURN NO OTHER TEXT):"""
         )
         chain = LLMChain(prompt=prompt, llm=self.llm)
         notes = chain.run(data=string, instructions=instructions)
-        return notes
+    
+        # Extract content from markdown code blocks
+        code_block_pattern = r'```(?:markdown)?\s*([\s\S]*?)\s*```'
+        code_blocks = re.findall(code_block_pattern, notes, re.IGNORECASE)
+        
+        if code_blocks:
+            # Join all extracted code blocks
+            extracted_content = '\n\n'.join(code_blocks)
+            return extracted_content.strip()
+        else:
+            # If no code blocks found, return the original notes
+            return notes.strip()
+        
+    def generate_title(self, content: str) -> str:
+        structured_llm = self.llm.with_structured_output(Title)
+        return structured_llm.invoke(
+            [
+                SystemMessage(
+                    content="Your purpose is to generate one line title from the notes given to you."
+                ),
+                HumanMessage(content=f"Genrate a one line title for the following text: \n{content}")
+            ]
+        ).title
         
     def make_notes_from_string_return_string(self, string: str, instructions: str) -> tuple[str, io.BytesIO]:
         prompt = ChatPromptTemplate(

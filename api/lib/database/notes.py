@@ -9,13 +9,24 @@ from pydantic import BaseModel
 from datetime import datetime
 from pymongo import MongoClient
 from api.lib.notes_maker.markdown_maker import MarkdownData, RGBColor
+from enum import Enum
 
+
+class NoteType(Enum):
+    LINK = "LINK"
+    FILE = "FILE"
+    TOPIC = "TOPIC"
+    TEXT = "TEXT"
+    IMAGE = "IMAGE"
+    AUDIO = "AUDIO"
 
 
 class MakeNotesInput(BaseModel):
     instructions: str
     template_name: str
     notes_md: Optional[str] = None
+    note_type: NoteType
+    tilte: str
 
 
 class NotesDatabase:
@@ -30,7 +41,9 @@ class NotesDatabase:
             "instructions": note.instructions,
             "template_name": note.template_name,
             "notes_md": note.notes_md,
-            "created_at": datetime.utcnow()
+            "created_at": datetime.utcnow(),
+            "note_type" : note.note_type.value,
+            "title" : note.tilte
         }
         result = self.collection.insert_one(note_data)
         return str(result.inserted_id)
@@ -45,7 +58,9 @@ class NotesDatabase:
                 "template_name": note["template_name"],
                 "notes_md": note["notes_md"],
                 "id": str(note["_id"]),
-                "created_at": note["created_at"]
+                "created_at": note["created_at"],
+                "note_type" : note["note_type"],
+                "title" : note["title"]
             })
         return notes_list
 
@@ -59,7 +74,9 @@ class NotesDatabase:
                 "template_name": note_data["template_name"],
                 "notes_md": note_data["notes_md"],
                 "id": str(note_data["_id"]),
-                "created_at": note_data["created_at"]
+                "created_at": note_data["created_at"],
+                "note_type" : note_data["note_type"],
+                "title" : note_data["title"]
             }
         return None
 

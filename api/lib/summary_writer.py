@@ -1,6 +1,7 @@
 import io
 import logging
 import os
+import re
 import tempfile
 from markdown import markdown
 from typing import Type
@@ -28,6 +29,7 @@ You are an AI designed to assist people in writing summaries.
 You will generate a summary for a minimum {minimum_words} words.
 Do not mention the parts of summary as headings. For example, dont say ## Body or ## Intro etc.
 Use the features of markdown like headings, text formatting to make the document professional looking this will be stored as pdf (Important)
+Only return markdown content dont put inside of markdown block just return content.
 """
         human_prompt = """Use the following data to write a summary:
 ===============
@@ -60,11 +62,21 @@ The summary in markdown (DO NOT RETURN ANY OTHER TEXT):"""
         )
         chain = LLMChain(prompt=prompt, llm=self.llm)
 
-        return chain.run(
+        summary = chain.run(
             minimum_words=word_count,
             data=data,
             instructions=instructions
         )
+        code_block_pattern = r'```(?:markdown)?\s*([\s\S]*?)\s*```'
+        code_blocks = re.findall(code_block_pattern, summary, re.IGNORECASE)
+        
+        if code_blocks:
+            # Join all extracted code blocks
+            extracted_content = '\n\n'.join(code_blocks)
+            return extracted_content.strip()
+        else:
+            # If no code blocks found, return the original notes
+            return summary.strip()
     
     def docx_bytes_to_pdf_bytes(self, docx_bytes: bytes) -> bytes:
         # Create a temporary file for the DOCX content

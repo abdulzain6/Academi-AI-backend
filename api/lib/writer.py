@@ -1,5 +1,6 @@
 import io
 import os
+import re
 import tempfile
 from langchain.chat_models.base import BaseChatModel
 from pydantic import BaseModel
@@ -35,6 +36,7 @@ You are an AI designed to assist people in writing {to_generate}.
 You will generate an {to_generate} for a minimum {minimum_words} words.
 Do not mention the parts of {to_generate} as headings. For example, dont say ## Body or ## Intro etc.
 Use the features of markdown like headings, text formatting to make the document professional looking this will be stored as pdf (Important)
+Only return markdown content dont put inside of markdown block just return content.
 
 The user has given some instructions on how the {to_generate} should be. They are as follows:
 {instructions}
@@ -60,13 +62,23 @@ The {to_generate} in markdown (DO NOT RETURN ANY OTHER TEXT):"""
         )
         chain = LLMChain(prompt=prompt, llm=self.llm)
 
-        return chain.run(
+        content = chain.run(
             minimum_words=word_count,
             instructions=content_input.instructions,
             negative_prompt=content_input.negative_prompt,
             topic=content_input.topic,
             to_generate=content_input.to_generate,
         )
+        code_block_pattern = r'```(?:markdown)?\s*([\s\S]*?)\s*```'
+        code_blocks = re.findall(code_block_pattern, content, re.IGNORECASE)
+        
+        if code_blocks:
+            # Join all extracted code blocks
+            extracted_content = '\n\n'.join(code_blocks)
+            return extracted_content.strip()
+        else:
+            # If no code blocks found, return the original notes
+            return content.strip()
 
 
     def docx_bytes_to_pdf_bytes(self, docx_bytes: bytes) -> bytes:

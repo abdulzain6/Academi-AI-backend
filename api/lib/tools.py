@@ -40,7 +40,7 @@ from api.lib.cv_maker.cv_maker import CVMaker
 from api.lib.notes_maker import NotesMaker, MarkdownNotesMaker
 from graphviz import Source
 from api.lib.database import Presentation
-from api.lib.database.notes import MakeNotesInput, NotesDatabase
+from api.lib.database.notes import MakeNotesInput, NoteType, NotesDatabase
 from io import BytesIO
 from bs4 import BeautifulSoup
 
@@ -541,7 +541,9 @@ def make_notes(
             note=MakeNotesInput(
                 instructions=instructions,
                 template_name=template_name,
-                notes_md=md
+                notes_md=md,
+                note_type=NoteType.LINK,
+                tilte=notes_maker.generate_title(md)
             )
         )
     else:
