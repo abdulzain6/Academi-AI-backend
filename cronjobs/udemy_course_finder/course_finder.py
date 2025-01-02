@@ -131,7 +131,9 @@ class RealDiscount(CourseScraper):
                 }
                 response = requests.get(f'{self.base_url}api-web/all-courses/', params=params)
                 response.raise_for_status()
-                results = response.json()["results"]
+                results = response.json()
+                print(results)
+                results = results["results"]
 
                 if not results:
                     break  # Exit if no more results are returned
@@ -181,11 +183,11 @@ class RealDiscount(CourseScraper):
                         import traceback
                         print(f"Error: {traceback.format_exc()}, {result}")
 
-                page += 1  # Move to the next page
-
             except Exception as e:
                 import traceback
                 print(f"Error: {traceback.format_exc()} during pagination or fetching results")
+
+            page += 1
 
         return courses
             
@@ -524,7 +526,7 @@ if __name__ == "__main__":
     max_limit = int(os.getenv("MAX_LIMIT", 30))
     cycle_tls_url = os.getenv("CYCLETLS_URL", "http://localhost:3000/")
     max_pages = int(os.getenv("MAX_PAGES", 3))
-    proxy = os.getenv("PROXY_URL", "http://dprulefr-rotate:7obapq1qv8fl@p.webshare.io:80")
+    proxy = os.getenv("PROXY_URL")
     
     scrapers: list[CourseScraper] = [
         CouponScorpion(
