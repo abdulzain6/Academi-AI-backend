@@ -388,8 +388,8 @@ End of example
 You must follow the instructions above failure to do so will cause fatal error!
 Lets think step by step, Looking at the placeholders and their descriptions to fill them for the slide topic {slide_detail}. Follow all rules above! Ensure it fits in a slide
 Follow the damn rules, you gave 150 words for a placeholder last time that caused error so keep it within slide limits.
-Lets think step by step to accomplish this.
-Do not leave a placeholder empty. Failure to do so, will cause fatal error!!"""
+Titles and subtitles must be even shorter only content placeholders can have more words. Please adhere to this (IMportant)
+"""
                 ),
             ],
             input_variables=[
