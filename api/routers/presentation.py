@@ -88,7 +88,7 @@ def delete_presentation(
     deleted = presentation_db.delete_presentation(user_id=user_id, presentation_id=presentation_id)
 
     if not deleted:
-        raise HTTPException(status_code=404, detail="Presentation not found or does not belong to this user.")
+        raise HTTPException(status_code=400, detail="Presentation not found or does not belong to this user.")
     
     return {"message": "Presentation deleted successfully."}
 
@@ -107,7 +107,7 @@ def get_presentation_by_id(
     presentation = presentation_db.get_presentation(user_id=user_id, presentation_id=presentation_id)
 
     if not presentation:
-        raise HTTPException(status_code=404, detail="Presentation not found or does not belong to this user.")
+        raise HTTPException(status_code=400, detail="Presentation not found or does not belong to this user.")
 
     return presentation
 
@@ -116,7 +116,7 @@ def get_all_presentations_for_user(user_id: str = Depends(get_user_id)) -> list[
     """Retrieve all presentations for a given user."""
     presentation_list = presentation_db.get_presentations_by_user(user_id)
     if not presentation_list:
-        raise HTTPException(status_code=404, detail="No presentations found for this user.")
+        raise HTTPException(status_code=400, detail="No presentations found for this user.")
     
     return presentation_list
 
@@ -198,7 +198,8 @@ def make_presentation(
         store_presentation_task(
             user_id=user_id, 
             presentation_input=presentation_input, 
-            file_path=file_path
+            file_path=file_path,
+            content=content
         )
     except Exception as e:
         logging.error(f"Error in storing ppt, Error: {e}  User: {user_id}")
@@ -206,7 +207,7 @@ def make_presentation(
     return FileResponse(file_path, headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(file_path.split('/')[-1], safe='')}"})
 
 
-def store_presentation_task(user_id: str, presentation_input: MakePresentationInput, file_path: str):
+def store_presentation_task(user_id: str, presentation_input: MakePresentationInput, file_path: str, content: dict):
     """Background task to store the presentation and thumbnail."""
     with open(file_path, "rb") as fp:
         presentation_db.store_presentation(
@@ -214,7 +215,8 @@ def store_presentation_task(user_id: str, presentation_input: MakePresentationIn
             presentation=Presentation(
                 topic=presentation_input.topic,
                 instructions=presentation_input.instructions,
-                number_of_pages=presentation_input.number_of_pages
+                number_of_pages=presentation_input.number_of_pages,
+                content=content
             ),
             thumbnail_file=convert_first_slide_to_image(file_path),
             pptx_file=BytesIO(fp.read())

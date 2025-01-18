@@ -2,13 +2,15 @@ import base64
 import logging
 import os
 from io import BytesIO
+
+from bson import ObjectId
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator, root_validator
 from typing import List, Optional
 
 from ..lib.database.purchases import SubscriptionType
 from ..lib.diagram_maker import DiagramMaker
-from ..globals import subscription_manager, temp_knowledge_manager, template_manager, knowledge_manager, collection_manager, file_manager, lecture_db, redis_cache_manager
+from ..globals import subscription_manager, temp_knowledge_manager, template_manager, knowledge_manager, collection_manager, file_manager, lecture_db, redis_cache_manager, presentation_db
 from ..auth import get_user_id, verify_play_integrity
 from ..lib.presentation_maker.presentation_maker import PresentationInput, PresentationMaker
 from ..dependencies import get_model, can_use_premium_model, require_points_for_feature
@@ -20,13 +22,26 @@ from ..lib.database.lectures import LectureCreate, LectureResponse, LectureStatu
 router = APIRouter()
 
 
-class MakeLectureInput(BaseModel):
+class MakePPTInput(BaseModel):
     topic: str
     instructions: str
     negative_prompt: str
     collection_name: Optional[str]
     files: Optional[list[str]]
     use_data: bool = True
+
+
+class MakeLectureInput(BaseModel):
+    ppt_input: MakePPTInput | None = None
+    ppt_id: Optional[str] = None
+    
+    @model_validator(mode='before')
+    def validate_one_exists(cls, values):
+        if not values.get('ppt_input') and not values.get('ppt_id'):
+            raise ValueError('Either ppt_input or ppt_id must be provided')
+        if values.get('ppt_input') and values.get('ppt_id'):
+            raise ValueError('Only one of ppt_input or ppt_id can be provided')
+        return values
     
     
 def verify_file_existance(
@@ -40,55 +55,69 @@ def verify_file_existance(
 def background_lecture_creation(
     lecture_id: str,
     user_id: str,
-    lecture_input: MakeLectureInput,
+    ppt_input: MakePPTInput,
     model_name: str,
     premium_model: bool,
-    ppt_pages: int
+    ppt_pages: int,
+    ppt_id: str = None,
+    ppt_bytes_io: BytesIO = None,
+    existing_ppt: dict = None
 ):
     try:
-        llm = get_model({"temperature": 0}, False, True, premium_model, cache=False)
-        
-        logging.info(f"Using model {model_name} to make presentation for user {user_id}")
-        presentation_maker = PresentationMaker(
-            template_manager,
-            temp_knowledge_manager,
-            llm,
-            vectorstore=knowledge_manager,
-            diagram_maker=DiagramMaker(None, llm, None)
-        )
-        
-        coll_name = None
-        if lecture_input.use_data and lecture_input.collection_name:
-            collection = collection_manager.get_collection_by_name_and_user(
-                lecture_input.collection_name, user_id
+        if ppt_id:
+            ppt_b64 = base64.b64encode(ppt_bytes_io.getvalue()).decode("utf-8")
+            topic = existing_ppt.get("topic")
+            instructions = existing_ppt.get("instructions")
+            content = existing_ppt.get("content")
+            if not content:
+                raise Exception("Try a creating new presentation then try again.")
+        else:
+            llm = get_model({"temperature": 0}, False, True, premium_model, cache=False)
+            
+            logging.info(f"Using model {model_name} to make presentation for user {user_id}")
+            presentation_maker = PresentationMaker(
+                template_manager,
+                temp_knowledge_manager,
+                llm,
+                vectorstore=knowledge_manager,
+                diagram_maker=DiagramMaker(None, llm, None)
             )
-            if collection:
-                coll_name = collection.name
-                if lecture_input.files and not verify_file_existance(
-                    user_id, lecture_input.files, collection.collection_uid
-                ):
-                    raise ValueError("Some files don't exist")
-            else:
-                raise ValueError("Collection does not exist")
+            
+            coll_name = None
+            if ppt_input.use_data and ppt_input.collection_name:
+                collection = collection_manager.get_collection_by_name_and_user(
+                    ppt_input.collection_name, user_id
+                )
+                if collection:
+                    coll_name = collection.name
+                    if ppt_input.files and not verify_file_existance(
+                        user_id, ppt_input.files, collection.collection_uid
+                    ):
+                        raise ValueError("Some files don't exist")
+                else:
+                    raise ValueError("Collection does not exist")
 
-        file_path, content = presentation_maker.make_presentation(
-            PresentationInput(
-                topic=lecture_input.topic,
-                instructions=lecture_input.instructions,
-                number_of_pages=ppt_pages,
-                negative_prompt=lecture_input.negative_prompt,
-                collection_name=coll_name,
-                files=lecture_input.files,
-                user_id=user_id
-            ),
-            None,
-        )
+            file_path, content = presentation_maker.make_presentation(
+                PresentationInput(
+                    topic=ppt_input.topic,
+                    instructions=ppt_input.instructions,
+                    number_of_pages=ppt_pages,
+                    negative_prompt=ppt_input.negative_prompt,
+                    collection_name=coll_name,
+                    files=ppt_input.files,
+                    user_id=user_id
+                ),
+                None,
+            )
 
-        logging.info(f"Presentation made successfully! {user_id}")
-        logging.info(f"Presentation path: {file_path}")
-        
-        with open(file_path, "rb") as file:
-            ppt_b64 = base64.b64encode(file.read()).decode("utf-8")
+            logging.info(f"Presentation made successfully! {user_id}")
+            logging.info(f"Presentation path: {file_path}")
+            
+            with open(file_path, "rb") as file:
+                ppt_b64 = base64.b64encode(file.read()).decode("utf-8")
+
+            topic = ppt_input.topic
+            instructions = ppt_input.instructions
         
         caller = RunpodCaller(
             os.getenv("LECTURE_GENERATOR_ENDPOINT"),
@@ -97,8 +126,8 @@ def background_lecture_creation(
         )
         video_id = caller.generate(
             {
-                "topic": lecture_input.topic,
-                "instructions": lecture_input.instructions,
+                "topic": topic,
+                "instructions": instructions,
                 "language": "English",
                 "ppt_base64": ppt_b64,
                 "fps": 15,
@@ -120,7 +149,8 @@ def background_lecture_creation(
                 # Add any other fields you want to update
             ),
             video_file=BytesIO(video_bytes),
-            ppt_file=BytesIO(open(file_path, "rb").read())
+            ppt_file=BytesIO(base64.b64decode(ppt_b64)
+            )
         )
         
     except Exception as e:
@@ -142,10 +172,22 @@ def make_lecture(
     if subscription_manager.get_subscription_type(user_id) in {SubscriptionType.FREE}:
         raise HTTPException(status_code=400, detail="You must be subscribed to use this feature.")
     
+    if lecture_input.ppt_id:
+        presentation = presentation_db.get_presentation(user_id, ObjectId(lecture_input.ppt_id))
+        if not presentation:
+            raise HTTPException(status_code=400, detail="Presentation not found")
+        ppt_bytes = BytesIO(base64.b64decode(presentation["pptx_file"]))
+        topic = presentation.get("topic")
+        instructions = presentation.get("instructions")
+    else:
+        ppt_bytes = BytesIO(b"")
+        topic = lecture_input.ppt_input.topic
+        instructions = lecture_input.ppt_input.instructions
+
     lecture_id = lecture_db.create_lecture(
-        LectureCreate(user_id=user_id, topic=lecture_input.topic, instructions=lecture_input.instructions),
+        LectureCreate(user_id=user_id, topic=topic, instructions=instructions),
         BytesIO(b""),
-        BytesIO(b"")
+        ppt_bytes,
     )
 
     model_name, premium_model = can_use_premium_model(user_id)
@@ -159,7 +201,10 @@ def make_lecture(
         lecture_input,
         model_name,
         premium_model,
-        ppt_pages
+        ppt_pages,
+        lecture_input.ppt_id,
+        ppt_bytes,
+        presentation
     )
 
     return {"message": "Lecture creation started", "lecture_id": lecture_id}

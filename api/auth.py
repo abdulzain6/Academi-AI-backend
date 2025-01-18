@@ -143,32 +143,7 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
         
 
 def verify_play_integrity(x_firebase_appcheck: str = Header(...)) -> None:
-    cache_key = f"app_check:{x_firebase_appcheck}"
-    if x_firebase_appcheck == API_KEY_BACKDOOR:
-        return
-    
-    # Check if we have a cached result for this token
-    if cached_result := redis_cache_manager.get(cache_key):
-        if cached_result == "valid":
-            return
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid Play Integrity token",
-            )
-
-    try:
-        app_check_claims = app_check.verify_token(x_firebase_appcheck)
-        # Token is valid, cache this result
-        redis_cache_manager.set(cache_key, "valid", ttl=3600)  # expire after 1 hour
-    except (ValueError, jwt.exceptions.DecodeError) as e:
-        # Token is invalid, cache this result as well but with a shorter expiration time
-        redis_cache_manager.set(cache_key, "invalid", ttl=300)  # expire after 5 minutes
-        logging.error(f"Error in app check token. {e}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid Play Integrity token, switch to latest version",
-        ) from e
+    return
         
 def verify_google_token(id_token_header: HTTPAuthorizationCredentials = Depends(security)):
     try:

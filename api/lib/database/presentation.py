@@ -12,6 +12,10 @@ class Presentation(BaseModel):
     topic: str
     instructions: str
     number_of_pages: int
+    content: Optional[list] = []
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class MongoDBPresentationStore:
@@ -39,7 +43,8 @@ class MongoDBPresentationStore:
             "number_of_pages": presentation.number_of_pages,
             "pptx_id": pptx_id,
             "thumbnail_id": thumbnail_id,
-            "unique_id": unique_id  # Store UUID for reference if needed
+            "unique_id": unique_id,  # Store UUID for reference if needed
+            "content" : presentation.content
         }
         return self.collection.insert_one(presentation_data).inserted_id
 
@@ -65,7 +70,8 @@ class MongoDBPresentationStore:
                 "instructions": presentation_data["instructions"],
                 "number_of_pages": presentation_data["number_of_pages"],
                 "pptx_file": pptx_base64,         # Base64-encoded pptx file
-                "thumbnail_file": thumbnail_base64 # Base64-encoded thumbnail file
+                "thumbnail_file": thumbnail_base64, # Base64-encoded thumbnail file
+                "content" : presentation_data.get("content")
             }
         
         # Return None if no presentation is found or if the user_id doesn't match
@@ -85,6 +91,7 @@ class MongoDBPresentationStore:
                 "instructions": presentation_data["instructions"],
                 "number_of_pages": presentation_data["number_of_pages"],
                 "thumbnail_file": thumbnail_base64,
+                "content" : presentation_data.get("content"),
                 "id" : str(presentation_data["_id"])
             })
         return result
