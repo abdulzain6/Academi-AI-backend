@@ -4,6 +4,9 @@ import logging
 import os
 import traceback
 import requests
+
+from fastapi import Body, status
+from typing import Optional
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, Request, HTTPException, status
 from appstoreserverlibrary.signed_data_verifier import SignedDataVerifier, VerificationException
@@ -65,6 +68,10 @@ app_store_client_test = AppStoreServerAPIClient(
     APP_PACKAGE_NAME,
     Environment.SANDBOX
 )
+
+
+class PurchaseVerificationRequest(BaseModel):
+    transaction_id: str
 
 class OneTimeData(BaseModel):
     transaction_id: str
@@ -295,3 +302,82 @@ async def receive_notification(request: Request):
 def generate_uuid(user_id: str = Depends(get_user_id)):
     uuid_key = uuid_mapping_manager.create_mapping(user_id)
     return {"uuid_key" : uuid_key}
+
+
+def verify_transaction_with_apple(transaction_id: str) -> Optional[dict]:
+    """Verify transaction with Apple's servers (production first, then sandbox)"""
+    try:
+        # Try production environment first
+        response = app_store_client.get_transaction_info(
+            transaction_id
+        )
+        return response
+    except APIException as prod_error:
+        logging.info(f"Production verification failed, trying sandbox: {prod_error}")
+        try:
+            # Fallback to sandbox environment
+            response = app_store_client_test.get_transaction_info(
+                transaction_id
+            )
+            return response
+        except APIException as test_error:
+            logging.error(f"Sandbox verification also failed: {test_error}")
+            return None
+
+@router.post("/handle-purchase/", status_code=status.HTTP_200_OK)
+def handle_user_purchase(
+    request: PurchaseVerificationRequest = Body(...),
+    user_id: str = Depends(get_user_id)
+):
+    """Endpoint to verify and process an Apple purchase"""
+    try:
+        # Verify transaction with Apple
+        transaction_info = verify_transaction_with_apple(request.transaction_id)
+        
+        if not transaction_info:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid transaction ID"
+            )
+
+        # Extract relevant information
+        product_id = transaction_info.get('productId')
+        app_account_token = transaction_info.get('appAccountToken')
+        transaction_id = transaction_info.get('transactionId')
+
+        # Validate product ID
+        if product_id not in PRODUCT_ID_MAP:
+            logging.error(f"Invalid product ID: {product_id}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid product ID"
+            )
+
+        # Update user subscription
+        subscription_type = PRODUCT_ID_MAP[product_id]
+        subscription_manager.apply_or_default_subscription(
+            user_id=user_id,
+            purchase_token=transaction_id,
+            subscription_type=subscription_type,
+            subscription_provider=SubscriptionProvider.APPSTORE,
+            update=True
+        )
+
+        logging.info(f"Successfully processed purchase for user {user_id}")
+        return {
+            "status": "success",
+            "message": "Purchase processed successfully",
+            "user_id": user_id,
+            "product_id": product_id,
+            "transaction_id": transaction_id
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error processing purchase: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error processing purchase"
+        )
