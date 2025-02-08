@@ -190,6 +190,7 @@ class SubscriptionManager:
         """
         Replace the old user ID with a new user ID in the subscription document,
         while keeping the document data unchanged.
+        If a document with the new user ID already exists, it will be deleted.
 
         :param old_user_id: Existing user ID to be replaced.
         :param new_user_id: New user ID to replace with.
@@ -202,6 +203,11 @@ class SubscriptionManager:
             logging.error(f"Document with user ID {old_user_id} not found.")
             return False
 
+        # Check and delete any document with the new user ID
+        if self.subscriptions.find_one({"user_id": new_user_id}):
+            self.subscriptions.delete_one({"user_id": new_user_id})
+            logging.info(f"Existing document with new user ID {new_user_id} has been deleted.")
+
         # Update the document by setting the new user ID
         update_result = self.subscriptions.update_one(
             {"user_id": old_user_id},
@@ -212,6 +218,7 @@ class SubscriptionManager:
             # Delete any cache related to the old user ID to prevent inconsistencies
             self.cache_manager.delete(f"user_subscription:{old_user_id}")
             # Create new cache entry for the new user ID
+            self.cache_manager.set(f"user_subscription:{new_user_id}", dumps(existing_doc), 3600)  # Re-cache with new ID
             logging.info(f"User ID {old_user_id} successfully replaced with {new_user_id}.")
             return True
 

@@ -188,6 +188,12 @@ def create_user(
         f"Create user request from {current_user['user_id']}, {current_user['email']}"
     )
     try:
+        if annonymous_uid:
+            logging.info(f"Replace user id {annonymous_uid} with {current_user['user_id']}")
+            if annonymous_uid.startswith("$RCAnonymousID:"):
+                logging.info("Performing replacement")
+                subscription_manager.replace_user_id(annonymous_uid, current_user["user_id"])
+    
         user = user_manager.add_user(
             UserModel(
                 uid=current_user["user_id"],
@@ -196,10 +202,6 @@ def create_user(
                 photo_url=current_user["photo_url"],
             )
         )
-        if annonymous_uid:
-            if annonymous_uid.startswith("$RCAnonymousID:"):
-                subscription_manager.replace_user_id(annonymous_uid, current_user["user_id"])
-    
         return {"status": "success", "error": "", "user": user}
     except ValueError as e:
         raise HTTPException(status.HTTP_409_CONFLICT, str(e)) from e
