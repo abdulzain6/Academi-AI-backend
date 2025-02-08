@@ -20,7 +20,7 @@ from fastapi import Request, HTTPException
 from concurrent.futures import ThreadPoolExecutor
 from ..lib.database.purchases import SubscriptionProvider, SubscriptionType
 from ..config import APP_PACKAGE_NAME, PRODUCT_ID_COIN_MAP, SUB_COIN_MAP
-from ..globals import user_points_manager, subscription_manager, PRODUCT_ID_MAP, uuid_mapping_manager
+from ..globals import user_points_manager, subscription_manager, PRODUCT_ID_MAP, uuid_mapping_manager, user_manager
 from ..auth import get_user_id
 
 
@@ -203,6 +203,9 @@ def process_notification(
         if not user_id:
             return 
         
+        if not user_manager.user_exists(user_id):
+            return {"status" : "ignored"}
+        
         if payload.notificationType == NotificationTypeV2.SUBSCRIBED:
             logging.info("Subscription Notification Received")
             if payload.data.status == Status.ACTIVE and payload.subtype in [Subtype.INITIAL_BUY, Subtype.RESUBSCRIBE]:
@@ -323,61 +326,3 @@ def verify_transaction_with_apple(transaction_id: str) -> Optional[dict]:
         except APIException as test_error:
             logging.error(f"Sandbox verification also failed: {test_error}")
             return None
-
-@router.post("/handle-purchase/", status_code=status.HTTP_200_OK)
-def handle_user_purchase(
-    request: PurchaseVerificationRequest = Body(...),
-    user_id: str = Depends(get_user_id)
-):
-    """Endpoint to verify and process an Apple purchase"""
-    try:
-        # Verify transaction with Apple
-        transaction_info = verify_transaction_with_apple(request.transaction_id)
-        
-        if not transaction_info:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid transaction ID"
-            )
-
-        # Extract relevant information
-        product_id = transaction_info.get('productId')
-        app_account_token = transaction_info.get('appAccountToken')
-        transaction_id = transaction_info.get('transactionId')
-
-        # Validate product ID
-        if product_id not in PRODUCT_ID_MAP:
-            logging.error(f"Invalid product ID: {product_id}")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid product ID"
-            )
-
-        # Update user subscription
-        subscription_type = PRODUCT_ID_MAP[product_id]
-        subscription_manager.apply_or_default_subscription(
-            user_id=user_id,
-            purchase_token=transaction_id,
-            subscription_type=subscription_type,
-            subscription_provider=SubscriptionProvider.APPSTORE,
-            update=True
-        )
-
-        logging.info(f"Successfully processed purchase for user {user_id}")
-        return {
-            "status": "success",
-            "message": "Purchase processed successfully",
-            "user_id": user_id,
-            "product_id": product_id,
-            "transaction_id": transaction_id
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logging.error(f"Error processing purchase: {str(e)}")
-        traceback.print_exc()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error processing purchase"
-        )

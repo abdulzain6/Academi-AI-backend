@@ -2,7 +2,7 @@ from enum import Enum
 from fastapi import APIRouter, Depends, HTTPException, status
 from api.lib.database.purchases import SubscriptionType
 from ..auth import get_user_id, verify_play_integrity, verify_google_token
-from ..globals import subscription_checker, subscription_manager, user_points_manager
+from ..globals import subscription_checker, subscription_manager, user_points_manager, user_manager
 from ..config import APP_PACKAGE_NAME, PRODUCT_ID_MAP, PRODUCT_ID_COIN_MAP, SUB_COIN_MAP
 from pydantic import BaseModel
 from ..globals import log_manager as logging
@@ -74,67 +74,12 @@ def verify_onetime(
         status_code=status.HTTP_400_BAD_REQUEST, detail="Token verification failed."
     )
     
-@router.post("/verify")
-def verify_subscription(
-    subscription_data: SubscriptionData,
-    user_id=Depends(get_user_id),
-    play_integrity_verified=Depends(verify_play_integrity),
-):
-    if subscription_manager.purchase_sub_token_exists(subscription_data.purchase_token):
-        logging.info(f"Subscription purchase attempt by {user_id}. Tokens already used.")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Token already used"
-        )
-    else:
-        subscription_manager.add_subscription_token(user_id, subscription_data.purchase_token)
-
-    logging.info(f"Subscription purchase attempt by {user_id}")
-
-    try:    
-        data = subscription_checker.check_subscription(APP_PACKAGE_NAME, subscription_data.purchase_token)
-        subscription_state = data.get('subscriptionState', '')
-        if subscription_state == 'SUBSCRIPTION_STATE_ACTIVE':
-            if line_items := data.get('lineItems', []):
-                if product_id := line_items[0].get('productId'):
-                    if "6_monthly" in product_id:
-                        muliplier = 6
-                    elif "monthly" in product_id:
-                     muliplier = 1
-                    elif "yearly" in product_id:
-                        muliplier = 12
-                    else:
-                        muliplier = 1
-                    
-                    if product_id not in PRODUCT_ID_MAP:
-                        logging.error(f"Product not found, Data: {subscription_data} User: {user_id}")
-                        raise HTTPException(
-                            status_code=status.HTTP_400_BAD_REQUEST, detail="Product Not found"
-                        )
-                        
-                    subscription_type = PRODUCT_ID_MAP[product_id]
-                    subscription_manager.apply_or_default_subscription(
-                        user_id=user_id,
-                        purchase_token=subscription_data.purchase_token,
-                        subscription_type=subscription_type,
-                        update=True,
-                        mulitplier=muliplier
-                    )
-                    subscription_manager.reset_monthly_limits(user_id, muliplier)
-                    logging.info(f"{user_id} Just subscribed {subscription_data.purchase_token}")
-                    return {"status" : "success"}   
     
-    except Exception as e:
-        logging.error(f"Error in verify subscription {e}")
-        
-    raise HTTPException(
-        status_code=status.HTTP_400_BAD_REQUEST, detail="Token verification failed."
-    )
-    
-    
-    
-
 def handle_expired_or_revoked(sub_notification: dict):
     user_id = subscription_manager.retrieve_user_id_by_sub_token(sub_notification['purchaseToken'])
+    if not user_manager.user_exists(user_id):
+        return {"status" : "ignored"}
+    
     if user_id:
         subscription_manager.apply_or_default_subscription(
             user_id=user_id,
@@ -148,6 +93,9 @@ def handle_expired_or_revoked(sub_notification: dict):
 
 def handle_renewed(sub_notification: dict):
     user_id = subscription_manager.retrieve_user_id_by_sub_token(sub_notification['purchaseToken'])
+    if not user_manager.user_exists(user_id):
+        return {"status" : "ignored"}
+    
     if user_id:
         data = subscription_checker.check_subscription(APP_PACKAGE_NAME, sub_notification['purchaseToken'])
         multiplier = calculate_multiplier(data)
@@ -204,6 +152,9 @@ def calculate_multiplier(data: dict) -> int:
 
 def handle_voided_subscription(voided_notification: dict):
     user_id = subscription_manager.retrieve_user_id_by_sub_token(voided_notification['purchaseToken'])
+    if not user_manager.user_exists(user_id):
+        return {"status" : "ignored"}
+    
     if user_id:
         subscription_manager.apply_or_default_subscription(
             user_id=user_id,
@@ -218,6 +169,9 @@ def handle_voided_subscription(voided_notification: dict):
 
 def handle_voided_one_time(voided_notification: dict):
     uid = subscription_manager.find_user_by_token(voided_notification['purchaseToken'])
+    if not user_manager.user_exists(uid):
+        return {"status" : "ignored"}
+    
     if uid:
         product = subscription_manager.get_product_by_user_id_and_token(uid, voided_notification['purchaseToken'])
         if product:
@@ -270,6 +224,9 @@ def receive_notification(notification: dict, token_verified=Depends(verify_googl
             )
             if "externalAccountIdentifiers" in sub_doc:
                 user_id = sub_doc["externalAccountIdentifiers"]["obfuscatedExternalAccountId"]
+                if not user_manager.user_exists(user_id):
+                    return {"status" : "ignored"}
+                
                 handle_purchase(user_id, sub_notification['purchaseToken'], sub_doc)
                 return {"status": "success"}
     elif voided_notification:
@@ -282,9 +239,11 @@ def receive_notification(notification: dict, token_verified=Depends(verify_googl
                 onetime_notification["purchaseToken"],
                 product_id=onetime_notification["sku"]
             )
-            print(data)
             if "obfuscatedExternalAccountId" in data:
                 user_id = data["obfuscatedExternalAccountId"]
+                if not user_manager.user_exists(user_id):
+                    return {"status" : "ignored"}
+                
                 if user_id:
                     subscription_manager.add_onetime_token(user_id=user_id, token=onetime_notification["purchaseToken"], product_purchased=onetime_notification["sku"])
                     user_points_manager.increment_user_points(user_id, points=PRODUCT_ID_COIN_MAP[onetime_notification["sku"]])

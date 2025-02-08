@@ -13,6 +13,7 @@ from .routers.writer import router as writer_router
 from .routers.summary_writer import router as summary_router
 from .routers.subscriptions_playstore import router as playstore_sub_router
 from .routers.subscriptions import router as subscriptions_router
+from .routers.subscriptions_revenuecat import router as revenue_cat_router
 from .routers.cv_maker import router as cv_router
 from .routers.notes_maker import router as notes_router
 from .routers.grammar_checker import router as grammar_router
@@ -137,6 +138,7 @@ app.include_router(writer_router, prefix="/api/v1/writer", tags=["writer"])
 app.include_router(playstore_sub_router, prefix="/api/v1/subscriptions/playstore", tags=["playstore", "subscriptions"])
 app.include_router(summary_router, prefix="/api/v1/summary", tags=["summary"])
 app.include_router(subscriptions_router, prefix="/api/v1/subscriptions-info", tags=["subscriptions"])
+app.include_router(revenue_cat_router, prefix="/api/v1/revenue-cat", tags=["revenue-cat"])
 app.include_router(cv_router, prefix="/api/v1/cv_maker", tags=["cv maker"])
 app.include_router(notes_router, prefix="/api/v1/notes_maker", tags=["notes maker"])
 app.include_router(grammar_router, prefix="/api/v1/grammar_checker", tags=["grammar checker"])

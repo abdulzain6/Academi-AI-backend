@@ -74,6 +74,19 @@ SUB_COIN_MAP = {
     'elite_6_monthly' : 2000,
     'elite_yearly' : 2000
 }
+SUB_COIN_MAP_REVENUE_CAT = {
+    "pro_weekly" : 500,
+    "pro_yearly" : 500,
+    "pro_yearly:pro-yearly" : 500,
+    "pro_weekly:pro-weekly" : 500
+}
+PRODUCT_ID_MAP_REVENUE_CAT = {
+    'pro_weekly' : SubscriptionType.PRO,
+    'pro_yearly' : SubscriptionType.PRO,
+    "pro_yearly:pro-yearly" : SubscriptionType.PRO,
+    "pro_weekly:pro-weekly" : SubscriptionType.PRO
+}
+
 PRODUCT_ID_COIN_MAP = {
     '30_coins_product': 30,
     '50_coins_product' : 50,
@@ -90,7 +103,7 @@ PROM_USERNAME = os.getenv("PROM_USERNAME", "PROM_MONITO_MY_APP_U_M0RON_BE_N!CE")
 PROM_PASSWORD = os.getenv("PROM_PASSWORD", "ABRACADABRA_KAZAMM_HEHE_@#$")
 CRONJOB_KEY = os.getenv("CRONJOB_KEY", "ABRACADABRA_KAZAMM_HEHE_@#$")
 API_KEY_BACKDOOR = os.getenv("API_KEY_BACKDOOR", "ZAIGHAMNETTTTTTTT!!!CHUTIKRRRR!!!")
-
+REVENUE_CAT_WEBHOOK_TOKEN = os.getenv("REVENUE_CAT_WEBHOOK_TOKEN")
 CACHE_DOCUMENT_URL_TEMPLATE = os.getenv("CACHE_DOCUMENT_URL_TEMPLATE", "https://api.academiai.org/api/v1/tools/document/{doc_id}")
 CACHE_IMAGE_URL_TEMPLATE = os.getenv("CACHE_IMAGE_URL_TEMPLATE", "https://api.academiai.org/api/v1/tools/image/{doc_id}")
 CACHE_VIDEO_URL_TEMPLATE = os.getenv("CACHE_VIDEO_URL_TEMPLATE", "https://api.academiai.org/api/v1/tools/retrieve_video/{video_id}")

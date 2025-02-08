@@ -185,6 +185,38 @@ class SubscriptionManager:
             self.subscriptions.update_one({"user_id": user_id}, {"$set": doc}, upsert=True)
             self.cache_manager.delete(f"user_subscription:{user_id}")
             self.allocate_coins(user_id, multiplier=mulitplier)
+
+    def replace_user_id(self, old_user_id: str, new_user_id: str) -> bool:
+        """
+        Replace the old user ID with a new user ID in the subscription document,
+        while keeping the document data unchanged.
+
+        :param old_user_id: Existing user ID to be replaced.
+        :param new_user_id: New user ID to replace with.
+        :return: True if the user ID was successfully replaced, False otherwise.
+        """
+        # Find the existing document with the old user ID
+        existing_doc = self.subscriptions.find_one({"user_id": old_user_id})
+
+        if not existing_doc:
+            logging.error(f"Document with user ID {old_user_id} not found.")
+            return False
+
+        # Update the document by setting the new user ID
+        update_result = self.subscriptions.update_one(
+            {"user_id": old_user_id},
+            {"$set": {"user_id": new_user_id}}
+        )
+
+        if update_result.modified_count > 0:
+            # Delete any cache related to the old user ID to prevent inconsistencies
+            self.cache_manager.delete(f"user_subscription:{old_user_id}")
+            # Create new cache entry for the new user ID
+            logging.info(f"User ID {old_user_id} successfully replaced with {new_user_id}.")
+            return True
+
+        logging.error(f"Could not replace user ID {old_user_id} with {new_user_id}.")
+        return False
             
     def allocate_coins(self, user_id: str, multiplier: int = 1) -> None:
         sub_doc = self.fetch_or_cache_subscription(user_id)

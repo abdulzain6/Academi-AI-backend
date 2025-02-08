@@ -5,7 +5,7 @@ from ..auth import get_current_user, get_user_id, verify_play_integrity
 from ..globals import (
     user_manager,
     knowledge_manager,
-    collection_manager,
+    subscription_manager,
     user_points_manager,
     DEFAULT_POINTS_INCREMENT,
     referral_manager,
@@ -13,7 +13,6 @@ from ..globals import (
     conversation_manager,
 )
 from ..lib.database.users import UserModel
-from ..lib.database.points import UserPoints
 import logging
 
 router = APIRouter()
@@ -181,6 +180,7 @@ def apply_referral_code(
 
 @router.post("/", response_model=UserResponse, tags=["user"])
 def create_user(
+    annonymous_uid: str | None = None,
     current_user=Depends(get_current_user),
     play_integrity_verified=Depends(verify_play_integrity),
 ):
@@ -196,6 +196,10 @@ def create_user(
                 photo_url=current_user["photo_url"],
             )
         )
+        if annonymous_uid:
+            if annonymous_uid.startswith("$RCAnonymousID:"):
+                subscription_manager.replace_user_id(annonymous_uid, current_user["user_id"])
+    
         return {"status": "success", "error": "", "user": user}
     except ValueError as e:
         raise HTTPException(status.HTTP_409_CONFLICT, str(e)) from e
