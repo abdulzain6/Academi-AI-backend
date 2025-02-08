@@ -40,7 +40,7 @@ def solve_assignment(
         raise HTTPException(status_code=400, detail="You must be subscribed to pro or elite to use this feature.")
     
     solver_llm = get_model({"temperature" : 0}, False, True, alt=True)
-    extractor_llm, _ = get_model({"temperature" : 0}, False, True, alt=True)
+    extractor_llm = get_model({"temperature" : 0}, False, True, alt=True)
 
     def make_graph(vega_lite_spec: str) -> str:
         if not vega_lite_spec:
