@@ -20,8 +20,8 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     
 def get_multiplier(product_id: str) -> float:
     """Determine the subscription multiplier based on the product ID."""
-    if "yearly" in product_id:
-        return 12
+    if "monthly" in product_id:
+        return 1
     elif "weekly" in product_id:
         return 0.25
     else:
@@ -49,7 +49,8 @@ def handle_subscription_purchase(user_id: str, purchase_token: str, product_id: 
         purchase_token=purchase_token,
         subscription_type=subscription_type,
         update=True,
-        mulitplier=muliplier
+        mulitplier=muliplier,
+        product_id=product_id
     )
     subscription_manager.reset_monthly_limits(user_id, muliplier)
     logging.info(f"{user_id} Just subscribed {purchase_token}")
@@ -86,24 +87,28 @@ def revenue_cat_webhook(request: dict):
         elif event_type == "RENEWAL":
             handle_subscription_renewal(user_id=user_id, product_id=product_id)
         elif event_type == "EXPIRATION":
-            subscription_manager.apply_or_default_subscription(
-                user_id=user_id,
-                purchase_token="",
-                subscription_type=SubscriptionType.FREE,
-                update=True
-            )
-        elif event_type == "CANCELLATION":
-            reason = event["cancel_reason"]
-            if reason == "CUSTOMER_SUPPORT":
+            user_sub = subscription_manager.fetch_or_cache_subscription(user_id=user_id)
+            if user_sub.get("product_id") == product_id:
                 subscription_manager.apply_or_default_subscription(
                     user_id=user_id,
                     purchase_token="",
                     subscription_type=SubscriptionType.FREE,
                     update=True
                 )
-                coins = SUB_COIN_MAP_REVENUE_CAT[product_id]
-                coins = get_multiplier(product_id) * coins
-                user_points_manager.decrement_user_points(user_id, coins)
+
+        elif event_type == "CANCELLATION":
+            reason = event["cancel_reason"]
+            if reason == "CUSTOMER_SUPPORT":
+                if user_sub.get("product_id") == product_id:
+                    subscription_manager.apply_or_default_subscription(
+                        user_id=user_id,
+                        purchase_token="",
+                        subscription_type=SubscriptionType.FREE,
+                        update=True
+                    )
+                    coins = SUB_COIN_MAP_REVENUE_CAT[product_id]
+                    coins = get_multiplier(product_id) * coins
+                    user_points_manager.decrement_user_points(user_id, coins)
             else:
                 logging.info(f"Unhandled Event : {event}.")
         else:

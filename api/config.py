@@ -78,13 +78,15 @@ SUB_COIN_MAP_REVENUE_CAT = {
     "pro_weekly" : 500,
     "pro_yearly" : 500,
     "pro_yearly:pro-yearly" : 500,
-    "pro_weekly:pro-weekly" : 500
+    "pro_weekly:pro-weekly" : 500,
+    "pro_monthly:pro-monthly" : 500,
 }
 PRODUCT_ID_MAP_REVENUE_CAT = {
     'pro_weekly' : SubscriptionType.PRO,
     'pro_yearly' : SubscriptionType.PRO,
     "pro_yearly:pro-yearly" : SubscriptionType.PRO,
-    "pro_weekly:pro-weekly" : SubscriptionType.PRO
+    "pro_weekly:pro-weekly" : SubscriptionType.PRO,
+    "pro_monthly:pro-monthly" : SubscriptionType.PRO
 }
 
 PRODUCT_ID_COIN_MAP = {

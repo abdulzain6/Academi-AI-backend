@@ -158,6 +158,7 @@ class SubscriptionManager:
     def apply_or_default_subscription(
         self,
         user_id: str,
+        product_id: str = "",
         purchase_token: str = "",
         subscription_type: SubscriptionType = SubscriptionType.FREE,
         subscription_provider: SubscriptionProvider = SubscriptionProvider.PLAYSTORE,
@@ -175,6 +176,7 @@ class SubscriptionManager:
             "static_features": [f.model_dump()  for f in features.static],
             "monthly_limit_features": [f.model_dump() for f in features.monthly_limit],
             "last_daily_reset_date": now,
+            "product_id" : product_id
         }
         
         existing_doc = self.subscriptions.find_one({"user_id": user_id})
