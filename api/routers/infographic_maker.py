@@ -86,9 +86,10 @@ def generate_with_ai(
                 SystemMessage(content="""You are an AI designed to generate content for infographics in markdown
     The user will provide you with a topic you will generate the content based on that.
     Use emojis where appropriate
+    The content must be one paragraph max. 30-50 words
     Get straight to the content and dont include phrases like 'Sure here is the content below'
                 """),
-                HumanMessage(content=f"""The content must be on {request.topic}.\nThe content in markdown:""")
+                HumanMessage(content=f"""The content must be on {request.topic}. The content must be one paragraph max. 30-50 words\nThe content in markdown:""")
             ]
         )
         return {"generation" : message.content}
