@@ -24,6 +24,8 @@ def get_multiplier(product_id: str) -> float:
         return 1
     elif "weekly" in product_id:
         return 0.25
+    elif "yearly" in product_id:
+        return 12
     else:
         return 1
 
@@ -63,6 +65,8 @@ def revenue_cat_webhook(request: dict):
     user_id = event["app_user_id"]
     transaction_id = event["transaction_id"]
     event_type = event["type"]
+    period_type = event["period_type"]
+    logging.info(f"RevenueCat webhook received: {event}")
     
     if product_id in PRODUCT_ID_COIN_MAP:
         if event_type == "NON_RENEWING_PURCHASE":
@@ -77,9 +81,7 @@ def revenue_cat_webhook(request: dict):
             coins = PRODUCT_ID_COIN_MAP[product_id]
             coins_to_decrement = coins * get_multiplier(product_id)
             user_points_manager.decrement_user_points(user_id, coins_to_decrement)
-            logging.info(f"Coins purchase attempt by {user_id}. Coins decremented.")
-        else:
-            logging.info(f"Unhandled Event : {event}.")
+            logging.info(f"{user_id}. Coins decremented. Refund scenario")
                  
     elif product_id in PRODUCT_ID_MAP_REVENUE_CAT:
         if event_type == "INITIAL_PURCHASE":
@@ -88,6 +90,12 @@ def revenue_cat_webhook(request: dict):
             handle_subscription_renewal(user_id=user_id, product_id=product_id)
         elif event_type == "EXPIRATION":
             user_sub = subscription_manager.fetch_or_cache_subscription(user_id=user_id)
+            if period_type == "TRIAL":
+                coins = SUB_COIN_MAP_REVENUE_CAT[product_id]
+                coins_to_decrement = coins * get_multiplier(product_id)
+                user_points_manager.decrement_user_points(user_id, coins_to_decrement)
+                logging.info(f"{user_id}. Coins decremented because trial expired")
+
             if user_sub.get("product_id") == product_id:
                 subscription_manager.apply_or_default_subscription(
                     user_id=user_id,
