@@ -60,12 +60,20 @@ def handle_subscription_purchase(user_id: str, purchase_token: str, product_id: 
 
 @router.post("/revenue-cat-webhook", dependencies=[Depends(verify_token)])
 def revenue_cat_webhook(request: dict):
+    required_keys = ["event", "product_id", "app_user_id", "transaction_id", "type", "period_type"]
+
+    # Check for missing keys
+    if any(key not in request.get("event", {}) for key in required_keys):
+        logging.error(f"Missing one or more required keys in event: {request.get('event')}")
+        return {"status": "error", "detail": "Missing required event information"}
+
     event = request["event"]
     product_id = event["product_id"]
     user_id = event["app_user_id"]
     transaction_id = event["transaction_id"]
     event_type = event["type"]
     period_type = event["period_type"]
+    
     logging.info(f"RevenueCat webhook received: {event}")
     
     if product_id in PRODUCT_ID_COIN_MAP:
