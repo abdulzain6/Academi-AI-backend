@@ -158,6 +158,8 @@ class SubscriptionManager:
     def apply_or_default_subscription(
         self,
         user_id: str,
+        purchase_at_ms: float = 0,
+        expiration_at_ms: float = 0,
         product_id: str = "",
         purchase_token: str = "",
         subscription_type: SubscriptionType = SubscriptionType.FREE,
@@ -176,7 +178,9 @@ class SubscriptionManager:
             "static_features": [f.model_dump()  for f in features.static],
             "monthly_limit_features": [f.model_dump() for f in features.monthly_limit],
             "last_daily_reset_date": now,
-            "product_id" : product_id
+            "product_id" : product_id,
+            "purchase_at_ms" : purchase_at_ms,
+            "expiration_at_ms" : expiration_at_ms
         }
         
         existing_doc = self.subscriptions.find_one({"user_id": user_id})
@@ -230,7 +234,7 @@ class SubscriptionManager:
     def allocate_coins(self, user_id: str, multiplier: int = 1) -> None:
         sub_doc = self.fetch_or_cache_subscription(user_id)
         monthly_coins = self.plan_features[sub_doc["subscription_type"]].monthly_coins.amount
-        logging.info(f"Granting coins {monthly_coins} coins to {user_id}")
+        logging.info(f"Granting coins {monthly_coins * multiplier} coins to {user_id}")
         self.user_points_manager.increment_user_points(user_id, monthly_coins * multiplier)
         self.cache_manager.delete(f"user_subscription:{user_id}")
 

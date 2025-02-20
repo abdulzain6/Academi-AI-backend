@@ -60,6 +60,7 @@ class UserPointsManager:
             logging.error(f"dup key Error occured for {uid}")
             data = self.points_collection.find_one({"uid" : uid}, {"_id": 0})
             
+        data["points"] = int(data["points"])
         return UserPoints(**data)
 
     def user_exists(self, uid: str) -> bool:
@@ -156,20 +157,34 @@ class UserPointsManager:
             self.points_collection.insert_one(
                 UserPoints(uid=uid, points=self.default_points).model_dump()
             )
-        result = self.points_collection.update_one(
+        self.points_collection.update_one(
             {"uid": uid}, {"$inc": {"points": points}}
         )
-        return result.modified_count
+
+        # Ensure points are non-negative and are of type int
+        self.points_collection.update_one(
+            {"uid": uid, "points": {"$lt": 0}}, {"$set": {"points": 0}}
+        )
+
+        user_points = self.points_collection.find_one({"uid": uid}, {"points": 1})
+        return int(user_points["points"])
 
     def decrement_user_points(self, uid: str, points: int) -> int:
         if not self.user_exists(uid):
             self.points_collection.insert_one(
                 UserPoints(uid=uid, points=self.default_points).model_dump()
             )
-        result = self.points_collection.update_one(
+        self.points_collection.update_one(
             {"uid": uid}, {"$inc": {"points": -points}}
         )
-        return result.modified_count
+
+        # Ensure points are non-negative
+        self.points_collection.update_one(
+            {"uid": uid, "points": {"$lt": 0}}, {"$set": {"points": 0}}
+        )
+
+        user_points = self.points_collection.find_one({"uid": uid}, {"points": 1})
+        return int(user_points["points"])
 
     def time_until_daily_bonus(self, uid: str) -> timedelta:
         user_points: UserPoints = self.get_user_points(uid)
