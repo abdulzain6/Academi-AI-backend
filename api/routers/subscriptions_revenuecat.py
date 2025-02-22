@@ -32,7 +32,9 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     logging.info("Token verified successfully")
 
 def get_multiplier(product_id: str) -> float:
-    if "monthly" in product_id:
+    if product_id == "pro_monthly:pro-yearly":
+        multiplier = 12
+    elif "monthly" in product_id:
         multiplier = 1
     elif "weekly" in product_id:
         multiplier = 0.25
