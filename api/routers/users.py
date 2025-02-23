@@ -11,6 +11,7 @@ from ..globals import (
     referral_manager,
     subscription_manager,
     conversation_manager,
+    anonymous_id_mapping
 )
 from ..lib.database.users import UserModel
 import logging
@@ -192,8 +193,11 @@ def create_user(
             logging.info(f"Replace user id {annonymous_uid} with {current_user['user_id']}")
             if annonymous_uid.startswith("$RCAnonymousID:"):
                 logging.info("Performing replacement")
+                
+                anonymous_id_mapping.add_anonymous_id(current_user["user_id"], annonymous_uid)
                 subscription_manager.replace_user_id(annonymous_uid, current_user["user_id"])
-    
+                user_points_manager.transfer_points(annonymous_uid, current_user["user_id"])
+
         user = user_manager.add_user(
             UserModel(
                 uid=current_user["user_id"],

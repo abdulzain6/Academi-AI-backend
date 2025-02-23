@@ -3,7 +3,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from ..lib.database.purchases import SubscriptionType
 from ..config import REVENUE_CAT_WEBHOOK_TOKEN, PRODUCT_ID_COIN_MAP, SUB_COIN_MAP_REVENUE_CAT, PRODUCT_ID_MAP_REVENUE_CAT
-from ..globals import subscription_manager, user_points_manager
+from ..globals import subscription_manager, user_points_manager, anonymous_id_mapping
 from ..globals import log_manager as logging
 
 router = APIRouter()
@@ -72,7 +72,6 @@ def handle_subscription_purchase(user_id: str, purchase_token: str, product_id: 
 def revenue_cat_webhook(request: dict):
     event = request.get("event", {})
     product_id = event.get("product_id")
-    user_id = event.get("app_user_id")
     transaction_id = event.get("transaction_id")
     event_type = event.get("type")
     period_type = event.get("period_type")
@@ -80,6 +79,10 @@ def revenue_cat_webhook(request: dict):
     purchased_at_ms = event.get("purchased_at_ms")
     expiration_at_ms = event.get("expiration_at_ms")
     new_product_id = event.get("new_product_id")
+    user_id = event.get("app_user_id")
+    
+    if anonymous_id_mapping.get_uid_by_anonymous_id(user_id):
+        user_id = anonymous_id_mapping.get_uid_by_anonymous_id(user_id)
 
     logging.info(f"RevenueCat webhook received: {event}")
 

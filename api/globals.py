@@ -1,3 +1,4 @@
+from api.lib.database.anonymous_uid_mapping import AnonymousUIDMapping
 from api.lib.ip_locator import IPLocator
 from api.lib.uml_diagram_maker import PlantUML
 from .config import *
@@ -227,6 +228,11 @@ uuid_mapping_manager = UUIDMapping(
     MONGODB_URL,
     DATABASE_NAME,
     collection_name="uuid-uids"
+)
+anonymous_id_mapping = AnonymousUIDMapping(
+    MONGODB_URL,
+    DATABASE_NAME,
+    collection_name="anonymous-uids"    
 )
 lecture_db = LectureDB(
     MONGODB_URL,

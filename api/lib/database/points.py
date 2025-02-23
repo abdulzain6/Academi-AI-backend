@@ -46,10 +46,54 @@ class UserPointsManager:
             return True
         return False
 
+    def delete_user_points(self, uid: str) -> bool:
+        """
+        Delete the user points record for the given uid.
+
+        Returns:
+            True if a record was deleted, otherwise False.
+        """
+        result = self.points_collection.delete_one({"uid": uid})
+        if result.deleted_count > 0:
+            logging.info(f"Successfully deleted points record for user {uid}")
+            return True
+        else:
+            logging.info(f"No points record found for user {uid} to delete")
+            return False
+
+    def transfer_points(self, old_uid: str, new_uid: str) -> bool:
+        """
+        Transfer points from old_uid to new_uid and delete the old_uid record.
+
+        Returns:
+            True if the transfer was successful, otherwise False.
+        """
+        try:
+            # Get points from the old user
+            old_user_points = self.get_user_points(old_uid)
+
+            # Check if the new user already exists
+            if not self.user_exists(new_uid):
+                # If not, create a new user record
+                new_user_points = UserPoints(uid=new_uid, points=self.default_points)
+                logging.info(f"Creating points for new user {new_uid}")
+                self.points_collection.insert_one(new_user_points.model_dump())
+
+            # Increment points of the new user
+            self.increment_user_points(new_uid, old_user_points.points - self.default_points)
+
+            # Delete the old user's record
+            self.delete_user_points(old_uid)
+            logging.info(f"Transferred points from {old_uid} to {new_uid}")
+            return True
+        except Exception as e:
+            logging.error(f"Failed to transfer points from {old_uid} to {new_uid}: {e}")
+            return False
+
     def get_user_points(self, uid: str) -> UserPoints:
         try:
             if not self.user_exists(uid):
-                logging.info(f"Creating points for user, {uid}")
+                logging.info(f"Creating points for user {uid}")
                 self.points_collection.insert_one(
                     UserPoints(uid=uid, points=self.default_points).model_dump()
                 )
@@ -57,11 +101,13 @@ class UserPointsManager:
             logging.info(f"Getting points for user, {uid}")
             data = self.points_collection.find_one({"uid": uid}, {"_id": 0})
         except DuplicateKeyError:
-            logging.error(f"dup key Error occured for {uid}")
+            logging.error(f"dup key Error occurred for {uid}")
             data = self.points_collection.find_one({"uid" : uid}, {"_id": 0})
-            
+
         data["points"] = int(data["points"])
         return UserPoints(**data)
+
+    # ... other methods remain unchanged ...
 
     def user_exists(self, uid: str) -> bool:
         return self.points_collection.count_documents({"uid": uid}, limit=1) > 0
