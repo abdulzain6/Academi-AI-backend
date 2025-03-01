@@ -4,9 +4,9 @@ from fastapi import Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 
 from api.lib.diagram_maker import DiagramMaker
+from api.lib.notes_maker.markdown_maker import MarkdownNotesMaker
 from api.lib.presentation_maker.presentation_maker import PresentationMaker
 from api.config import CACHE_DOCUMENT_URL_TEMPLATE
-from ..lib.notes_maker import make_notes_maker, get_available_note_makers
 from api.config import REDIS_URL, CACHE_DOCUMENT_URL_TEMPLATE, SEARCHX_HOST
 from api.lib.database.cache_manager import RedisCacheManager
 from api.lib.tools import MarkdownToDocConverter, RequestsGetTool, SearchTool, SearchImage, MakeTableTool
@@ -396,10 +396,6 @@ def chat_general_stream(
     
     class MakeNotesArgs(OldBaseModel):
         instructions: str = OldField("")
-        template: str = OldField(
-            random.choice(get_available_note_makers()),
-            description=f"Template to make notes from, Available: {get_available_note_makers()}"
-        )
         link: str = OldField("", description="The link to make notes from. Web or youtube link.")
 
     class ReadDataArgs(OldBaseModel):
@@ -565,11 +561,7 @@ File Content:
             logging.error(f"Error in graph generation {e}")
             return f"Error in graph generation {e}"
 
-    def create_notes(link: str, instructions: str, template: str):
-        available = get_available_note_makers()
-        if template not in available:
-            return f"Chosen Template not available. Available templates: {available}"
-        
+    def create_notes(link: str, instructions: str):
         try:
             data, _, _ = knowledge_manager.load_web_youtube_link({}, None, web_url=link, injest=False)
         except Exception as e:
@@ -592,16 +584,15 @@ File Content:
                 user_id,
                 make_notes,
                 func_kwargs={
-                    "notes_maker" : make_notes_maker(
-                        maker_type=template,
-                        llm=llm
+                    "notes_maker" : MarkdownNotesMaker(
+                        llm=llm,
+                        searxng_host=SEARCHX_HOST,
                     ),
                     "cache_manager": redis_cache_manager,
                     "url_template": CACHE_DOCUMENT_URL_TEMPLATE,
                     "data_string" : content,
                     "instructions" : instructions,
                     "user_id" : user_id,
-                    "template_name" : template,
                     "notes_db" : notes_db
                 },
                 feature_key="NOTES",
@@ -665,9 +656,8 @@ File Content:
             args_schema=WriterArgs,
         ),
         StructuredTool.from_function(
-            func=lambda  link="", instructions = "", template = random.choice(get_available_note_makers()), *args, **kwargs: create_notes(
+            func=lambda  link="", instructions = "", *args, **kwargs: create_notes(
                 instructions=instructions,
-                template=template,
                 link=link
             ),
             name="make_notes_from_link",

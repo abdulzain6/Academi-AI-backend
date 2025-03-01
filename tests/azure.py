@@ -6,7 +6,7 @@ emb = AzureOpenAIEmbeddings(
     azure_endpoint="https://academi-app.openai.azure.com/",
     api_version="2023-05-15",
     azure_deployment="text-embedding-3-small",
-    api_key="B3g2ajP77zRSGcpLUjSaIutqSXqefY2YSL08v3C3BMAeGZa8ZYYZJQQJ99AKACYeBjFXJ3w3AAABACOGlfjx"   
+    api_key=""   
 )
 
 print(emb.embed_query(

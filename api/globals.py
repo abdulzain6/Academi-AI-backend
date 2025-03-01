@@ -263,6 +263,15 @@ knowledge_manager = KnowledgeManager(
     ocr=ImageOCR(),
     collection_name="academi"
 )
+knowledge_manager_notes = KnowledgeManager(
+    AzureOpenAIEmbeddings(
+        api_version="2023-05-15",
+        azure_deployment="text-embedding-3-small",
+    ),
+    chunk_size=10000,
+    ocr=ImageOCR(),
+    collection_name="academi-notes"
+)
 chat_manager = ChatManagerRetrieval(
     AzureOpenAIEmbeddings(
         api_version="2023-05-15",

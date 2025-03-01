@@ -9,5 +9,5 @@ from .log_manager import MongoLogManager
 from .mongo_course_store import CourseRepository
 from .lectures import *
 from .presentation import *
-from .notes import NotesDatabase, MakeNotesInput
+from .notes import NotesDatabase, Note
 from .user_city_country import UserLocation, UserLocationDB

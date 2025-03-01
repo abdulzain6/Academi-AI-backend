@@ -47,6 +47,7 @@ from langchain.agents.agent import AgentExecutor
 from langchain.schema.agent import AgentFinish
 from langchain_community.document_loaders import WebBaseLoader
 from langchain_google_firestore import FirestoreVectorStore
+from langchain_google_firestore.document_converter import convert_firestore_document
 from langchain.document_loaders.base import BaseLoader
 
 
@@ -80,6 +81,33 @@ class FirestoreVectorStoreModified(FirestoreVectorStore):
         )
 
         return results.get()  
+
+    def similarity_search_with_score(
+        self,
+        query: list[float],
+        k: int = 10,  # Assuming DEFAULT_TOP_K is 10
+        filters = None,
+    ) -> list[tuple[Document, float]]:
+        _filters = filters or self.filters
+        query_ref = self.collection  # Start with the collection
+
+        if _filters is not None:
+            for field, operation, value in _filters:
+                query_ref = query_ref.where(field, operation, value)
+
+        results = query_ref.find_nearest(
+            vector_field=self.embedding_field,
+            query_vector=Vector(query),
+            distance_measure=self.distance_strategy,
+            limit=k,
+            distance_result_field="vector_distance",
+        ).get()
+
+        return [
+            (convert_firestore_document(doc, page_content_fields=[self.content_field]), doc.get("vector_distance"))
+            for doc in results
+        ]
+
 
 class CustomCallback(BaseCallbackHandler):
     def __init__(self, callback, on_end_callback) -> None:
@@ -284,13 +312,14 @@ class KnowledgeManager:
         except Exception:
             return False
     
-    def injest_data(self, documents: List[Document]) -> List[str]:
+    def injest_data(self, documents: List[Document], check_length: bool = True) -> List[str]:
         if not documents:
             raise ValueError("No documents provided")
 
         content = "".join(doc.page_content for doc in documents if doc.page_content)
-        if len(content) <= 7:
-            raise ValueError("Insufficient data in documents")
+        if check_length:
+            if len(content) <= 7:
+                raise ValueError("Insufficient data in documents")
         
         batch_size = 200
         ids = []
@@ -451,6 +480,13 @@ class KnowledgeManager:
         except Exception as e:
             print(f"error retrieving: {e}")
             return []
+        
+    def query_data_with_score(
+        self, query: str, k: int, metadata: Dict[str, str] = None
+    ):
+        vectors = self.embeddings.embed_query(query)
+        return self.vectorstore.similarity_search_with_score(vectors, k, filters=self.create_filters(metadata))
+
 
 class ChatManagerRetrieval:
     def __init__(

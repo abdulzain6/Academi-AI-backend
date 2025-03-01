@@ -34,13 +34,13 @@ from PIL import Image
 from langchain_community.utilities.requests import TextRequestsWrapper
 from bs4 import BeautifulSoup
 from langchain_community.utilities.searx_search import SearxSearchWrapper
-from api.lib.utils import convert_first_slide_to_image, convert_youtube_url_to_standard, docx_to_pdf_thumbnail, format_url
+from api.lib.utils import convert_first_slide_to_image, convert_youtube_url_to_standard, format_url
 from api.routers.utils import image_to_pdf_in_memory
 from api.lib.cv_maker.cv_maker import CVMaker
-from api.lib.notes_maker import NotesMaker, MarkdownNotesMaker
+from api.lib.notes_maker.markdown_maker import MarkdownData, MarkdownNotesMaker
 from graphviz import Source
 from api.lib.database import Presentation
-from api.lib.database.notes import MakeNotesInput, NoteType, NotesDatabase
+from api.lib.database.notes import Note, NoteType, NotesDatabase
 from io import BytesIO
 from bs4 import BeautifulSoup
 
@@ -521,37 +521,31 @@ def vega_lite_to_images(vl_spec: str) -> bytes:
 
 
 def make_notes(
-    notes_maker: NotesMaker | MarkdownNotesMaker,
+    notes_maker: MarkdownNotesMaker,
     cache_manager,
     url_template: str,
     data_string: str,
     instructions: str,
     user_id: str,
-    template_name: str,
     notes_db: NotesDatabase,
 ):
-    if template_name == "Text Notes":
-        md, notes_io = notes_maker.make_notes_from_string_return_string(
-            string=data_string,
-            instructions=instructions
-        )
-        notes_io.seek(0)
-        notes_db.store_note(
-            user_id=user_id, 
-            note=MakeNotesInput(
-                instructions=instructions,
-                template_name=template_name,
-                notes_md=md,
-                note_type=NoteType.LINK,
-                tilte=notes_maker.generate_title(md)
-            )
-        )
-    else:
-        notes_io = notes_maker.make_notes_from_string(
-            string=data_string,
-            instructions=instructions
-        )
+    md = notes_maker.make_notes_from_string_return_string_only(
+        string=data_string,
+        instructions=instructions
+    )
+    notes_io = notes_maker.make_notes(data=MarkdownData(content=md))
 
+    notes_io.seek(0)
+    notes_db.store_note(
+        user_id=user_id, 
+        note=Note(
+            instructions=instructions,
+            template_name="Text Notes",
+            notes_md=md,
+            note_type=NoteType.LINK,
+            tilte=notes_maker.generate_title(md)
+        )
+    )
     notes_io.seek(0)
     doc_id = str(uuid.uuid4()) + ".docx"
     notes_bytes = notes_io.getvalue()

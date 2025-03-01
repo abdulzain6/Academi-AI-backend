@@ -2,7 +2,8 @@ import io
 import os
 import tempfile
 import pypandoc
-from typing import Optional
+
+from typing import Optional, List, Tuple
 from bson import ObjectId
 from docx import Document
 from pydantic import BaseModel
@@ -21,12 +22,13 @@ class NoteType(Enum):
     AUDIO = "AUDIO"
 
 
-class MakeNotesInput(BaseModel):
+class Note(BaseModel):
     instructions: str
     template_name: str
     notes_md: Optional[str] = None
     note_type: NoteType
     tilte: str
+    is_public: bool = False
 
 
 class NotesDatabase:
@@ -35,7 +37,7 @@ class NotesDatabase:
         self.db = client[db_name]
         self.collection = self.db["notes"]
 
-    def store_note(self, user_id: str, note: MakeNotesInput) -> str:
+    def store_note(self, user_id: str, note: Note) -> str:
         note_data = {
             "user_id": user_id,
             "instructions": note.instructions,
@@ -43,10 +45,95 @@ class NotesDatabase:
             "notes_md": note.notes_md,
             "created_at": datetime.utcnow(),
             "note_type" : note.note_type.value,
-            "title" : note.tilte
+            "title" : note.tilte,
+            "is_public": note.is_public
         }
         result = self.collection.insert_one(note_data)
         return str(result.inserted_id)
+
+    def get_notes_by_ids(self, note_ids: List[str]) -> List[Note]:
+        """
+        Get multiple notes by their IDs.
+        If an ID doesn't exist, it's ignored in the results.
+
+        Args:
+            user_id: The user ID
+            note_ids: List of note ID strings to retrieve
+
+        Returns:
+            List of Note objects
+        """
+        # Convert string IDs to ObjectId
+        object_ids = []
+        for id_str in note_ids:
+            try:
+                object_ids.append(ObjectId(id_str))
+            except:
+                # Skip invalid IDs
+                continue
+
+        if not object_ids:
+            return []
+
+        # Query MongoDB for all valid IDs
+        notes_data = self.collection.find({
+            "_id": {"$in": object_ids}
+        })
+
+        # Convert to Note objects
+        notes = []
+        for note_data in notes_data:
+            notes.append(Note(
+                instructions=note_data["instructions"],
+                template_name=note_data["template_name"],
+                notes_md=note_data["notes_md"],
+                note_type=NoteType(note_data["note_type"]),
+                tilte=note_data["title"],
+                is_public=note_data.get("is_public", False)
+            ))
+
+        return notes
+
+    def get_public_notes(self, page: int = 1, page_size: int = 10) -> Tuple[List[Note], int]:
+        """
+        Retrieve public notes with pagination.
+
+        Args:
+            page: Page number (1-indexed)
+            page_size: Number of notes per page
+
+        Returns:
+            A tuple containing:
+            - List of Note objects for the requested page
+            - Total count of public notes
+        """
+        # Calculate skip for pagination
+        skip = (page - 1) * page_size if page > 0 else 0
+
+        # Query for public notes
+        query = {"is_public": True}
+
+        # Get total count for pagination info
+        total_count = self.collection.count_documents(query)
+
+        # Get paginated results
+        cursor = self.collection.find(query).sort("created_at", -1).skip(skip).limit(page_size)
+
+        # Convert to Note objects
+        notes = []
+        for note_data in cursor:
+            notes.append(
+                Note(
+                    instructions=note_data["instructions"],
+                    template_name=note_data["template_name"],
+                    notes_md=note_data["notes_md"],
+                    note_type=NoteType(note_data["note_type"]),
+                    tilte=note_data["title"],
+                    is_public=note_data.get("is_public", True)
+                )
+            )
+
+        return notes, total_count
     
     def get_notes_by_user(self, user_id: str):
         notes = self.collection.find({"user_id": user_id})
@@ -60,13 +147,13 @@ class NotesDatabase:
                 "id": str(note["_id"]),
                 "created_at": note["created_at"],
                 "note_type" : note["note_type"],
-                "title" : note["title"]
+                "title" : note["title"],
+                "is_public" : note.get("is_public", False)
             })
         return notes_list
 
     def get_note(self, user_id: str, note_id: ObjectId):
         note_data = self.collection.find_one({"_id": note_id, "user_id": user_id})
-        
         if note_data:
             return {
                 "user_id": note_data["user_id"],
