@@ -203,7 +203,7 @@ def make_notes(
             notes_md=data,
             note_type=notes_input.note_type,
             tilte=notes_maker.generate_title(data),
-            is_public=not similar_to_other_notes and notes_input.is_public
+            is_public=not similar_to_other_notes and notes_input.is_public,
         ),
     )
     if not similar_to_other_notes and notes_input.is_public:
@@ -239,15 +239,16 @@ def get_all_notes(
     notes = notes_db.get_notes_by_user(user_id)
     return notes
 
+
 @router.get("/public")
 def get_public_notes_endpoint(
-    page: int = 1, 
+    page: int = 1,
     page_size: int = 10,
     _=Depends(get_user_id),
     play_integrity_verified=Depends(verify_play_integrity),
 ) -> list[StoreNotesInput]:
     return notes_db.get_public_notes(page, page_size)[0]
-    
+
 
 @router.get("/search")
 def search_notes_repository(
@@ -258,6 +259,7 @@ def search_notes_repository(
 ) -> list[StoreNotesInput]:
     limit = min(limit, 20)
     return reversed(search_notes(query, limit))
+
 
 @router.get("/{note_id}")
 def get_note_by_id(
@@ -271,10 +273,13 @@ def get_note_by_id(
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid note ID.")
 
-    note = notes_db.get_note(user_id, note_object_id)
+    note = notes_db.get_note(note_object_id)
     if not note:
         raise HTTPException(status_code=404, detail="Note not found.")
 
+    if not note["is_public"]:
+        raise HTTPException(status_code=400, detail="Note is not public")
+    
     # Generate the file
     bytes_io = notes_db.make_notes(MarkdownData(content=note.get("notes_md")))
 

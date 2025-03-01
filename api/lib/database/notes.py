@@ -152,7 +152,7 @@ class NotesDatabase:
             })
         return notes_list
 
-    def get_note(self, user_id: str, note_id: ObjectId):
+    def get_note_for_user(self, user_id: str, note_id: ObjectId):
         note_data = self.collection.find_one({"_id": note_id, "user_id": user_id})
         if note_data:
             return {
@@ -164,6 +164,22 @@ class NotesDatabase:
                 "created_at": note_data["created_at"],
                 "note_type" : note_data["note_type"],
                 "title" : note_data["title"]
+            }
+        return None
+
+    def get_note(self, note_id: ObjectId):
+        note_data = self.collection.find_one({"_id": note_id})
+        if note_data:
+            return {
+                "user_id": note_data["user_id"],
+                "instructions": note_data["instructions"],
+                "template_name": note_data["template_name"],
+                "notes_md": note_data["notes_md"],
+                "id": str(note_data["_id"]),
+                "created_at": note_data["created_at"],
+                "note_type" : note_data["note_type"],
+                "title" : note_data["title"],
+                "is_public" : note_data.get("is_public", False)
             }
         return None
 
