@@ -4,6 +4,7 @@ import pypandoc
 import os
 import io
 import requests
+import nltk
 
 from langchain.pydantic_v1 import BaseModel, Field
 from docx import Document
@@ -15,6 +16,10 @@ from langchain.prompts import (
     SystemMessagePromptTemplate,
     HumanMessagePromptTemplate,
 )
+from concurrent.futures import ThreadPoolExecutor
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+from collections import Counter
 
 
 class MarkdownData(BaseModel):
@@ -40,6 +45,13 @@ class MarkdownNotesMaker:
     def __init__(self, llm: BaseChatModel, searxng_host: str):
         self.llm = llm
         self.searxng_host = searxng_host
+        # Download NLTK resources if needed (only first time)
+        try:
+            nltk.data.find('tokenizers/punkt')
+            nltk.data.find('corpora/stopwords')
+        except LookupError:
+            nltk.download('punkt')
+            nltk.download('stopwords')
 
     def make_notes_from_string_return_string_only(
         self, string: str, instructions: str
@@ -151,9 +163,32 @@ The notes in markdown (RETURN NO OTHER TEXT):"""
         return file_obj
 
     def search_images(self, query: str, limit: int = 5) -> RelevantImages:
-        from concurrent.futures import ThreadPoolExecutor
+        # If query is longer than 150 characters, it's likely a paragraph
+        if len(query) > 150:
+            # Tokenize and clean the text
+            stop_words = set(stopwords.words('english'))
+            word_tokens = word_tokenize(query.lower())
 
-        params = {"q": query, "categories": "images", "format": "json", "pageno": 1}
+            # Filter out stopwords and short words
+            filtered_words = [w for w in word_tokens if (w not in stop_words) and
+                             w.isalnum() and len(w) > 3]
+
+            # Count word frequency
+            word_counts = Counter(filtered_words)
+
+            # Get the 5 most common words
+            keywords = [word for word, count in word_counts.most_common(5)]
+
+            # Join with spaces to create search query
+            search_query = " ".join(keywords)
+
+            # If we couldn't extract keywords, use a truncated version of the original query
+            if not search_query:
+                search_query = query[:100]
+        else:
+            search_query = query
+
+        params = {"q": search_query, "categories": "images", "format": "json", "pageno": 1}
 
         response = requests.get(f"{self.searxng_host}/search", params=params)
         if response.status_code != 200:
