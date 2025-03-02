@@ -259,7 +259,7 @@ def get_note_by_id(
     if not note:
         raise HTTPException(status_code=404, detail="Note not found.")
 
-    if not note["is_public"]:
+    if not note["is_public"] and note["user_id"] != user_id:
         raise HTTPException(status_code=400, detail="Note is not public")
     
     # Generate the file
