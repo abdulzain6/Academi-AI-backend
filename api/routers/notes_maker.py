@@ -191,9 +191,12 @@ def make_notes(
     notes_maker = MarkdownNotesMaker(model, searxng_host=SEARCHX_HOST)
 
     content = select_random_chunks(data, 2000, 4500)
+
+    title = notes_maker.generate_title(content)
     data = notes_maker.make_notes_from_string_return_string_only(
-        content, notes_input.instructions
+        content, notes_input.instructions, title=title
     )
+
     similar_to_other_notes = not is_note_worthy(data)
     notes_id = notes_db.store_note(
         user_id=user_id,
@@ -202,7 +205,7 @@ def make_notes(
             template_name="Text Notes",
             notes_md=data,
             note_type=notes_input.note_type,
-            tilte=notes_maker.generate_title(data),
+            tilte=title,
             is_public=not similar_to_other_notes and notes_input.is_public,
         ),
     )
