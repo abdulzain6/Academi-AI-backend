@@ -1,5 +1,7 @@
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from typing import Generator, List, Optional, Tuple
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi import Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 
@@ -46,7 +48,7 @@ from ..dependencies import (
     deduct_points_for_feature,
     use_feature_with_premium_model_check,
 )
-from .utils import select_random_chunks, find_most_similar
+from .utils import select_random_chunks, find_most_similar, transcribe_audio_with_deepgram
 from pydantic import BaseModel
 from openai import OpenAIError
 from langchain.tools import StructuredTool, tool
@@ -60,12 +62,11 @@ from langchain.schema import Document
 import redis
 import logging
 import queue
-import random
 import threading
-import uuid
 
 router = APIRouter()
 tools_vectorstore = InMemoryVectorStore()
+executor = ThreadPoolExecutor(max_workers=10)
 
 
 
@@ -92,12 +93,36 @@ def convert_message_pairs_to_tuples(
 ) -> List[Tuple[str, str]]:
     return [(pair.human_message, pair.bot_response) for pair in message_pairs]
 
+
 def pick_relavent_tools(tools: List[StructuredTool], query: str, k: int = 2) -> List[StructuredTool]:
     docs = [Document(page_content=tool.description, metadata={"name" : tool.name}) for tool in tools]
     tools_vectorstore.add_documents(docs)
     relavent_tools = tools_vectorstore.query_vectorstore(query=query, k=k)
     relavent_tool_names = [tool.metadata["name"] for tool in relavent_tools]
     return [tool for tool in tools if tool.name in relavent_tool_names]
+    
+
+@router.post("/transcribe/")
+async def transcribe(
+    file: UploadFile = File(...),
+    user_id: str = Depends(get_user_id),
+    play_integrity_verified=Depends(verify_play_integrity),
+):
+    """Endpoint to transcribe an uploaded audio file."""
+    try:
+        logging.info(f"Got transcription request from {user_id} (Chat)")
+        audio_data = await file.read()
+
+        loop = asyncio.get_event_loop()
+        transcript = await loop.run_in_executor(
+            executor, transcribe_audio_with_deepgram, audio_data
+        )
+
+        return {"transcript": transcript}
+    except Exception as e:
+        logging.error(f"Transcription error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+    
     
 @router.post("/chat-collection-stream")
 @require_points_for_feature("CHAT")

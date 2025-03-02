@@ -1,7 +1,6 @@
 import asyncio
 import base64
 import logging
-import random
 import tempfile
 
 from bson import ObjectId
@@ -19,13 +18,13 @@ from ..globals import (
     notes_db,
 )
 from ..lib.ocr import ImageOCR
-from .utils import select_random_chunks
 from ..lib.database.notes import Note as StoreNotesInput, NoteType
+from .utils import transcribe_audio_with_deepgram
+from .utils import select_random_chunks
 from typing import Optional
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi import Depends, HTTPException
 from pydantic import BaseModel
-from deepgram import DeepgramClient, PrerecordedOptions, BufferSource
 from concurrent.futures import ThreadPoolExecutor
 
 
@@ -66,27 +65,7 @@ class CreateNoteManually(MakeNotesInput):
     data: str
 
 
-def transcribe_audio_with_deepgram(audio_data: bytes) -> str:
-    """Transcribe the audio data using Deepgram API."""
-    try:
-        deepgram = DeepgramClient()
-        options = PrerecordedOptions(
-            model="nova-2",
-            smart_format=True,
-        )
 
-        response = deepgram.listen.prerecorded.v("1").transcribe_file(
-            BufferSource(buffer=audio_data), options
-        )
-
-        transcript_text = response["results"]["channels"][0]["alternatives"][0][
-            "transcript"
-        ]
-        logging.info("Transcription completed successfully.")
-        return transcript_text
-    except Exception as e:
-        logging.error(f"Error during transcription: {str(e)}")
-        raise RuntimeError(f"Failed to transcribe audio: {str(e)}")
 
 
 @router.post("/transcribe/")

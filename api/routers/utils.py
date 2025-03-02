@@ -1,12 +1,35 @@
-from langchain.text_splitter import TokenTextSplitter
 import base64
 import tiktoken
 import random
 import img2pdf
+from langchain.text_splitter import TokenTextSplitter
+import Levenshtein, logging
 from typing import List, Optional
-import Levenshtein
+from deepgram import DeepgramClient, PrerecordedOptions, BufferSource
 
 
+def transcribe_audio_with_deepgram(audio_data: bytes) -> str:
+    """Transcribe the audio data using Deepgram API."""
+    try:
+        deepgram = DeepgramClient()
+        options = PrerecordedOptions(
+            model="nova-2",
+            smart_format=True,
+        )
+
+        response = deepgram.listen.prerecorded.v("1").transcribe_file(
+            BufferSource(buffer=audio_data), options
+        )
+
+        transcript_text = response["results"]["channels"][0]["alternatives"][0][
+            "transcript"
+        ]
+        logging.info("Transcription completed successfully.")
+        return transcript_text
+    except Exception as e:
+        logging.error(f"Error during transcription: {str(e)}")
+        raise RuntimeError(f"Failed to transcribe audio: {str(e)}")
+    
 
 def find_most_similar(strings: List[str], target: str, max_distance: int = 5) -> Optional[str]:
     """
