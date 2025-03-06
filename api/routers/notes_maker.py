@@ -65,9 +65,6 @@ class CreateNoteManually(MakeNotesInput):
     data: str
 
 
-
-
-
 @router.post("/transcribe/")
 async def transcribe(
     file: UploadFile = File(...),
@@ -171,12 +168,25 @@ def make_notes(
 
     content = select_random_chunks(data, 2000, 4500)
 
-    title = notes_maker.generate_title(content)
+    metadata = notes_maker.generate_title(content)
+    logging.info(f"Metadata: {metadata}")
+
     data = notes_maker.make_notes_from_string_return_string_only(
-        content, notes_input.instructions, title=title
+        content, notes_input.instructions, title=metadata.title
     )
 
     similar_to_other_notes = not is_note_worthy(data)
+    if (
+        not similar_to_other_notes
+        and notes_input.is_public
+        and metadata.is_content_general
+        and metadata.is_meaningful
+        and metadata.is_useful_for_students
+    ):
+        is_public = True
+    else:
+        is_public = False
+
     notes_id = notes_db.store_note(
         user_id=user_id,
         note=StoreNotesInput(
@@ -184,13 +194,16 @@ def make_notes(
             template_name="Text Notes",
             notes_md=data,
             note_type=notes_input.note_type,
-            tilte=title,
-            is_public=not similar_to_other_notes and notes_input.is_public,
+            tilte=metadata.title,
+            is_public=is_public,
+            category=metadata.category
         ),
     )
-    if not similar_to_other_notes and notes_input.is_public:
+
+    if is_public:
         logging.info("Adding note to knowledge manager")
         add_note(data, notes_id)
+
     return {"note_id": notes_id, "notes_markdown": data}
 
 
@@ -240,7 +253,10 @@ def search_notes_repository(
     play_integrity_verified=Depends(verify_play_integrity),
 ) -> list[StoreNotesInput]:
     limit = min(limit, 20)
-    return reversed(search_notes(query, limit))
+    notes = notes_db.search_notes(query, limit)
+    if not notes:
+        notes = search_notes(query, limit)
+    return notes
 
 
 @router.get("/{note_id}")
@@ -261,7 +277,7 @@ def get_note_by_id(
 
     if not note["is_public"]:
         raise HTTPException(status_code=400, detail="Note is not public")
-    
+
     # Generate the file
     bytes_io = notes_db.make_notes(MarkdownData(content=note.get("notes_md")))
 

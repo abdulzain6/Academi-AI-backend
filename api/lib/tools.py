@@ -529,11 +529,11 @@ def make_notes(
     user_id: str,
     notes_db: NotesDatabase,
 ):
-    title = notes_maker.generate_title(data_string)
+    metadata = notes_maker.generate_title(data_string)
     md = notes_maker.make_notes_from_string_return_string_only(
         string=data_string,
         instructions=instructions,
-        title=title
+        title=metadata.title
     )
     notes_io = notes_maker.make_notes(data=MarkdownData(content=md))
 
@@ -545,7 +545,8 @@ def make_notes(
             template_name="Text Notes",
             notes_md=md,
             note_type=NoteType.LINK,
-            tilte=title
+            tilte=metadata.title,
+            category=metadata.category
         )
     )
     notes_io.seek(0)

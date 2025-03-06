@@ -1,3 +1,4 @@
+from enum import Enum
 import re
 import tempfile
 import pypandoc
@@ -22,9 +23,38 @@ class MarkdownData(BaseModel):
         json_schema_extra={"description": "The notes content in markdown format"}
     )
 
+class NoteCategory(Enum):
+    GENERAL = "General"
+    MATHS = "Maths"
+    SCIENCE = "Science"
+    HISTORY = "History"
+    GEOGRAPHY = "Geography"
+    LITERATURE = "Literature"
+    PHILOSOPHY = "Philosophy"
+    ECONOMICS = "Economics"
+    BUSINESS = "Business"
+    COMPUTER_SCIENCE = "Computer Science"
+    ENGINEERING = "Engineering"
+    MEDICINE = "Medicine"
+    LAW = "Law"
+    PSYCHOLOGY = "Psychology"
+    SOCIOLOGY = "Sociology"
+    ANTHROPOLOGY = "Anthropology"
+    POLITICAL_SCIENCE = "Political Science"
+    ENVIRONMENTAL_SCIENCE = "Environmental Science"
+    PHYSICS = "Physics"
+    CHEMISTRY = "Chemistry"
+    BIOLOGY = "Biology"
+    OTHER = "Other"
 
-class Title(BaseModel):
+
+class Metadata(BaseModel):
     title: str
+    is_content_general: bool
+    reason_why_its_general: str
+    is_meaningful: bool
+    is_useful_for_students: bool
+    category: NoteCategory
 
 
 class Image(BaseModel):
@@ -110,18 +140,24 @@ The notes in markdown (RETURN NO OTHER TEXT):"""
             # If no code blocks found, return the original notes
             return notes.strip()
 
-    def generate_title(self, content: str) -> str:
-        structured_llm = self.llm.with_structured_output(Title)
+    def generate_title(self, content: str) -> Metadata:
+        structured_llm = self.llm.with_structured_output(Metadata)
         return structured_llm.invoke(
             [
                 SystemMessage(
-                    content="Your purpose is to generate one line title from the notes given to you."
+                    content="""Your purpose is to generate one line title from the notes given to you. 
+You will also check if the content is general.
+If the content is seen by someone, they should be able to understand the content.
+Remember we need to filter content for students, If the content discusses a topic that makes no sense without additional context it will not be meaningful.
+One should be able to understand in one go.
+Content will not be meaningful if its too short. It should cover the whole story
+"""
                 ),
                 HumanMessage(
-                    content=f"Genrate a one line title for the following text: \n{content}"
+                    content=f"Genrate metadata for the following content: \n{content}"
                 ),
             ]
-        ).title
+        )
 
     def make_notes(self, data: MarkdownData, context: None = None):
         with tempfile.NamedTemporaryFile(delete=False, suffix=".docx") as temp_file:
