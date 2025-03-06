@@ -72,7 +72,7 @@ def handle_subscription_purchase(user_id: str, purchase_token: str, product_id: 
 def revenue_cat_webhook(request: dict):
     event = request.get("event", {})
     product_id = event.get("product_id")
-    transaction_id = event.get("transaction_id")
+    transaction_id = event.get("original_transaction_id")
     event_type = event.get("type")
     period_type = event.get("period_type")
     event_timestamp_ms = event.get("event_timestamp_ms")
