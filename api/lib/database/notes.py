@@ -110,28 +110,30 @@ class NotesDatabase:
             notes_list.append(note)
 
         return notes_list
-
+    
     def get_public_notes(
-        self, page: int = 1, page_size: int = 10
+        self, categories: List[NoteCategory], page: int = 1, page_size: int = 10
     ) -> Tuple[List[Note], int]:
         """
-        Retrieve public notes with pagination, including user display names.
+        Retrieve public notes within specified categories with pagination, including user display names.
 
         Args:
+            categories: List of NoteCategory to filter notes
             page: Page number (1-indexed)
             page_size: Number of notes per page
 
         Returns:
             A tuple containing:
-            - List of Note objects for the requested page with display names
-            - Total count of public notes
+            - List of Note objects for the requested page with display names within specified categories
+            - Total count of public notes within specified categories
         """
         # Calculate skip for pagination
         skip = (page - 1) * page_size if page > 0 else 0
 
-        # Query for public notes
+        # Query for public notes in specified categories
         query = {"is_public": True}
-
+        if categories:
+            query["category"] = {"$in": [category.value for category in categories]}
         # Get total count for pagination info
         total_count = self.collection.count_documents(query)
 
@@ -165,13 +167,13 @@ class NotesDatabase:
                     template_name=note_data["template_name"],
                     notes_md=note_data["notes_md"],
                     note_type=NoteType(note_data["note_type"]),
-                    tilte=note_data["title"],  # Fixed typo from 'tilte' to 'title'
+                    tilte=note_data["title"],
                     is_public=note_data.get("is_public", True),
                     category=NoteCategory(
                         note_data.get("category", NoteCategory.OTHER.value)
                     ),
                     created_at=note_data.get("created_at", datetime.utcnow()),
-                    display_name=display_name  # Added display_name to Note object
+                    display_name=display_name
                 )
             )
         return notes, total_count

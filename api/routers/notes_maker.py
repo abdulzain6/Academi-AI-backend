@@ -9,7 +9,7 @@ from api.lib.notes_maker.markdown_maker import MarkdownData
 from api.lib.notes_maker.note_validation import add_note, is_note_worthy
 from ..auth import get_user_id, verify_play_integrity
 from ..dependencies import require_points_for_feature, can_use_premium_model
-from ..lib.notes_maker.markdown_maker import MarkdownNotesMaker
+from ..lib.notes_maker.markdown_maker import MarkdownNotesMaker, NoteCategory
 from ..globals import (
     get_model,
     collection_manager,
@@ -21,8 +21,8 @@ from ..lib.ocr import ImageOCR
 from ..lib.database.notes import Note as StoreNotesInput, NoteType
 from .utils import transcribe_audio_with_deepgram
 from .utils import select_random_chunks
-from typing import Optional
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from typing import List, Optional
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi import Depends, HTTPException
 from pydantic import BaseModel
 from concurrent.futures import ThreadPoolExecutor
@@ -233,11 +233,25 @@ def get_all_notes(
 def get_public_notes_endpoint(
     page: int = 1,
     page_size: int = 10,
+    categories: str = "",
     _=Depends(get_user_id),
     play_integrity_verified=Depends(verify_play_integrity),
 ) -> list[StoreNotesInput]:
-    return notes_db.get_public_notes(page, page_size)[0]
+    # Convert the comma-separated string into a list of category names
+    category_list = categories.split(",") if categories else []
+    # Validate categories against the NoteCategory enum
+    valid_categories = []
+    for category in category_list:
+        trimmed_category = category.strip()  # Trim whitespace around category names
+        try:
+            valid_category = NoteCategory(trimmed_category)
+            valid_categories.append(valid_category)
+        except KeyError:
+            raise HTTPException(
+            status_code=400, detail=f"Invalid category: {trimmed_category}"
+            )
 
+    return notes_db.get_public_notes(valid_categories, page, page_size)[0]
 
 @router.get("/search")
 def search_notes_repository(
