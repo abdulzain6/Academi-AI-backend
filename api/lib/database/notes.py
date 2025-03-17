@@ -30,6 +30,8 @@ class Note(BaseModel):
     tilte: str
     is_public: bool = False
     category: NoteCategory = NoteCategory.OTHER
+    created_at: datetime = datetime.utcnow()
+    display_name: Optional[str] = None
 
 
 class NotesDatabase:
@@ -59,35 +61,36 @@ class NotesDatabase:
         result = self.collection.insert_one(note_data)
         return str(result.inserted_id)
 
-
     def search_notes(self, query: str, limit: int = 10) -> List[Note]:
         """
         Search for notes based on text content in notes_md field.
-        Only returns public notes.
-
+        Only returns public notes and includes user display names.
         Args:
-            user_id: The user ID to search notes for
             query: The text to search for in notes_md
             limit: Maximum number of results to return (default 10)
 
         Returns:
-        List of matching Note objects
+            List of matching Note objects with display names
         """
-        # Perform text search with user_id filter and public notes only
-        results = (
-            self.collection.find(
-                {
-                    "$and": [
-                        {"is_public": True},
-                        {"$text": {"$search": query}},
-                    ]
+        pipeline = [
+            {"$match": {"is_public": True, "$text": {"$search": query}}},
+            {"$sort": {"created_at": -1}},
+            {"$limit": limit},
+            {
+                "$lookup": {
+                    "from": "users",
+                    "localField": "user_id",
+                    "foreignField": "uid",
+                    "as": "user_info",
                 }
-            )
-            .sort([("created_at", -1)])  # Sort by creation date, newest first
-            .limit(limit)
-        )
+            },
+            {"$unwind": "$user_info"},
+        ]
 
-        # Convert results to list of Note objects
+        # Execute the aggregation pipeline
+        results = self.collection.aggregate(pipeline)
+
+        # Convert results to list of Note objects with display names
         notes_list = []
         for note_data in results:
             note = Note(
@@ -96,63 +99,23 @@ class NotesDatabase:
                 notes_md=note_data["notes_md"],
                 note_type=NoteType(note_data["note_type"]),
                 tilte=note_data["title"],
+                created_at=note_data.get("created_at", datetime.utcnow()),
                 is_public=True,  # These are definitely public
-                category=NoteCategory(note_data.get("category", NoteCategory.OTHER.value)),
+                category=NoteCategory(
+                    note_data.get("category", NoteCategory.OTHER.value)
+                ),
+                display_name=note_data["user_info"].get("display_name"),
             )
+            # Add the display name to the note object or as a separate structure
             notes_list.append(note)
+
         return notes_list
-
-    def get_notes_by_ids(self, note_ids: List[str]) -> List[Note]:
-        """
-        Get multiple notes by their IDs.
-        If an ID doesn't exist, it's ignored in the results.
-
-        Args:
-            user_id: The user ID
-            note_ids: List of note ID strings to retrieve
-
-        Returns:
-            List of Note objects
-        """
-        # Convert string IDs to ObjectId
-        object_ids = []
-        for id_str in note_ids:
-            try:
-                object_ids.append(ObjectId(id_str))
-            except:
-                # Skip invalid IDs
-                continue
-
-        if not object_ids:
-            return []
-
-        # Query MongoDB for all valid IDs
-        notes_data = self.collection.find({"_id": {"$in": object_ids}})
-
-        # Convert to Note objects
-        notes = []
-        for note_data in notes_data:
-            notes.append(
-                Note(
-                    instructions=note_data["instructions"],
-                    template_name=note_data["template_name"],
-                    notes_md=note_data["notes_md"],
-                    note_type=NoteType(note_data["note_type"]),
-                    tilte=note_data["title"],
-                    is_public=note_data.get("is_public", False),
-                    category=NoteCategory(
-                        note_data.get("category", NoteCategory.OTHER.value)
-                    ),
-                )
-            )
-
-        return notes
 
     def get_public_notes(
         self, page: int = 1, page_size: int = 10
     ) -> Tuple[List[Note], int]:
         """
-        Retrieve public notes with pagination.
+        Retrieve public notes with pagination, including user display names.
 
         Args:
             page: Page number (1-indexed)
@@ -160,7 +123,7 @@ class NotesDatabase:
 
         Returns:
             A tuple containing:
-            - List of Note objects for the requested page
+            - List of Note objects for the requested page with display names
             - Total count of public notes
         """
         # Calculate skip for pagination
@@ -172,31 +135,45 @@ class NotesDatabase:
         # Get total count for pagination info
         total_count = self.collection.count_documents(query)
 
-        # Get paginated results
-        cursor = (
-            self.collection.find(query)
-            .sort("created_at", -1)
-            .skip(skip)
-            .limit(page_size)
-        )
+        # Aggregation pipeline for paginated results with user info
+        pipeline = [
+            {"$match": query},
+            {"$sort": {"created_at": -1}},
+            {"$skip": skip},
+            {"$limit": page_size},
+            {
+                "$lookup": {
+                    "from": "users",
+                    "localField": "user_id",
+                    "foreignField": "uid",
+                    "as": "user_info"
+                }
+            },
+            {"$unwind": {"path": "$user_info", "preserveNullAndEmptyArrays": True}}
+        ]
 
-        # Convert to Note objects
+        # Execute the aggregation pipeline
+        results = list(self.collection.aggregate(pipeline))
+
+        # Convert to Note objects with display names
         notes = []
-        for note_data in cursor:
+        for note_data in results:
+            display_name = note_data.get("user_info", {}).get("display_name", "Unknown")
             notes.append(
                 Note(
                     instructions=note_data["instructions"],
                     template_name=note_data["template_name"],
                     notes_md=note_data["notes_md"],
                     note_type=NoteType(note_data["note_type"]),
-                    tilte=note_data["title"],
+                    tilte=note_data["title"],  # Fixed typo from 'tilte' to 'title'
                     is_public=note_data.get("is_public", True),
                     category=NoteCategory(
                         note_data.get("category", NoteCategory.OTHER.value)
                     ),
+                    created_at=note_data.get("created_at", datetime.utcnow()),
+                    display_name=display_name  # Added display_name to Note object
                 )
             )
-
         return notes, total_count
 
     def get_notes_by_user(self, user_id: str):

@@ -335,8 +335,6 @@ subscription_manager = SubscriptionManager(
     },
     cache_manager=RedisCacheManager(redis.from_url(REDIS_URL), ttl=3600),
 )
-
-
 # Presentation
 template_manager, temp_knowledge_manager = initialize_managers(
     template_json_path=DEFAULT_TEMPLATES_JSON, template_dir=DEFAULT_TEMPLATE_DIR

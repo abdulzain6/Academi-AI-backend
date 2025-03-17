@@ -6,7 +6,7 @@ import tempfile
 from bson import ObjectId
 from api.config import SEARCHX_HOST
 from api.lib.notes_maker.markdown_maker import MarkdownData
-from api.lib.notes_maker.note_validation import add_note, is_note_worthy, search_notes
+from api.lib.notes_maker.note_validation import add_note, is_note_worthy
 from ..auth import get_user_id, verify_play_integrity
 from ..dependencies import require_points_for_feature, can_use_premium_model
 from ..lib.notes_maker.markdown_maker import MarkdownNotesMaker
@@ -175,10 +175,8 @@ def make_notes(
         content, notes_input.instructions, title=metadata.title
     )
 
-    similar_to_other_notes = not is_note_worthy(data)
     if (
-        not similar_to_other_notes
-        and notes_input.is_public
+        notes_input.is_public
         and metadata.is_content_general
         and metadata.is_meaningful
         and metadata.is_useful_for_students
@@ -199,10 +197,6 @@ def make_notes(
             category=metadata.category
         ),
     )
-
-    if is_public:
-        logging.info("Adding note to knowledge manager")
-        add_note(data, notes_id)
 
     return {"note_id": notes_id, "notes_markdown": data}
 
@@ -254,8 +248,6 @@ def search_notes_repository(
 ) -> list[StoreNotesInput]:
     limit = min(limit, 20)
     notes = notes_db.search_notes(query, limit)
-    if not notes:
-        notes = search_notes(query, limit)
     return notes
 
 

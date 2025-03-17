@@ -3,12 +3,6 @@ from ...globals import knowledge_manager_notes, notes_db
 from langchain.schema import Document
 
 
-def search_notes(query: str, limit: int = 20):
-    docs = knowledge_manager_notes.query_data(query, limit, {})
-    return notes_db.get_notes_by_ids(
-        [doc.metadata["metadata"]["note_id"] for doc in docs if "note_id" in doc.metadata["metadata"]]
-    )
-
 
 def is_note_worthy(note: str):
     doc_and_scores = knowledge_manager_notes.query_data_with_score(note, 1, {})
