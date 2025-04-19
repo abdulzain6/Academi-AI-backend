@@ -1,3 +1,4 @@
+import contextlib
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -11,7 +12,8 @@ from ..globals import (
     referral_manager,
     subscription_manager,
     conversation_manager,
-    anonymous_id_mapping
+    anonymous_id_mapping,
+    cust_io_client
 )
 from ..lib.database.users import UserModel
 import logging
@@ -197,15 +199,31 @@ def create_user(
                 anonymous_id_mapping.add_anonymous_id(current_user["user_id"], annonymous_uid)
                 subscription_manager.replace_user_id(annonymous_uid, current_user["user_id"])
                 user_points_manager.transfer_points(annonymous_uid, current_user["user_id"])
-
-        user = user_manager.add_user(
-            UserModel(
-                uid=current_user["user_id"],
-                email=current_user["email"],
-                display_name=current_user["display_name"],
-                photo_url=current_user["photo_url"],
+        
+        if not user_manager.user_exists(current_user["user_id"]) or True:
+            user = user_manager.add_user(
+                UserModel(
+                    uid=current_user["user_id"],
+                    email=current_user["email"],
+                    display_name=current_user["display_name"],
+                    photo_url=current_user["photo_url"],
+                )
             )
-        )
+            with contextlib.suppress(Exception):
+                cust_io_client.create_or_update_customer(
+                    current_user["user_id"], 
+                    {"email": current_user["email"]}
+                )
+                cust_io_client.send_event(
+                    current_user["user_id"],
+                    "user_signed_up",
+                    {
+                        "email": current_user["email"],
+                        "first_name": current_user.get("display_name", "User") if current_user.get("display_name", "User") else "User"
+                        
+                    }
+                )
+
         return {"status": "success", "error": "", "user": user}
     except ValueError as e:
         raise HTTPException(status.HTTP_409_CONFLICT, str(e)) from e

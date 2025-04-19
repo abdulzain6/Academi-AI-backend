@@ -1,5 +1,6 @@
 from api.lib.database.anonymous_uid_mapping import AnonymousUIDMapping
 from api.lib.ip_locator import IPLocator
+from api.lib.customer_io import CustomerIOClient
 from api.lib.uml_diagram_maker import PlantUML
 from .config import *
 from .lib.database import (
@@ -358,3 +359,8 @@ subscription_checker = SubscriptionChecker(credentials_path)
 
 #email Intergrity checker
 email_checker = EmailIntegrityChecker()
+
+cust_io_client = CustomerIOClient(
+    os.getenv("CUSTOMERIO_SITE_ID", "35e1fc3c58a4f86e5ca9"),
+    os.getenv("CUSTOMERIO_API_KEY", "f4e9b9440168ef781caf")
+)
